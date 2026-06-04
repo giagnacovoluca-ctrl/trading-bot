@@ -1,0 +1,66 @@
+# ===== SEGRETI — MAI committare =====
+.env
+*.env
+!*.env.example
+.env.bak.*
+*.bak*
+*_clean
+
+# ===== Chiavi / modelli =====
+*.joblib
+*.pem
+*.key
+
+# ===== Stato runtime & log (dati operativi, non codice) =====
+**/real_state.json
+**/base_real_state.json
+**/bsc_real_state.json
+**/live_state.json
+**/state.json
+**/demo_state.json
+**/alpha_wallets.json
+**/gem_watchlist.json
+**/reports/*.csv
+**/reports/*.html
+**/reports_demo/*.csv
+**/reports_demo/*.html
+**/*_executions.csv
+**/*_signals.csv
+**/signals_log.csv
+**/live_trades.csv
+**/price_followup.csv
+bot_telegram/state/
+
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ===== Runtime / dati operativi (non codice) =====
+**/reports/
+**/reports_demo/
+**/reports bot strutturale/
+**/debug/
+*.log
+*.log.*
+
+# ===== Junk / temporanei / binari ingombranti =====
+.fuse_hidden*
+*.db
+*.docx
+**/test_write
+.claude/settings.local.json
+
+# ===== OS / editor =====
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.log

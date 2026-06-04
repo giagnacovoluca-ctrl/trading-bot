@@ -1,0 +1,4 @@
+# bot_telegram usa solo requests + python-dotenv (già nel venv principale).
+# Telegram Bot API e RPC on-chain sono chiamati via requests: nessuna dipendenza extra.
+requests>=2.31
+python-dotenv>=1.0

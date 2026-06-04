@@ -1,0 +1,27 @@
+  API calls — zero duplicati
+
+  ┌─────────────────────┬─────────────────────────────────────────────────────────┐
+  │     Componente      │                        Chiamate                         │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┤
+  │ wallet_alpha_finder │ Helius REST (solo esecuzione offline/weekly)            │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┤
+  │ wallet_mirror_bot   │ Helius WebSocket (push, zero polling)                   │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Validazione token   │ DexScreener 1 call/token, cache 5 min                   │
+  ├─────────────────────┼─────────────────────────────────────────────────────────┤
+  │ Prezzi posizioni    │ trade_simulator già fa DexScreener ogni 30s (invariato) │
+  └─────────────────────┴─────────────────────────────────────────────────────────┘
+
+  ---
+  Per avviare
+
+  # Step 1: genera alpha_wallets.json
+  python executor/wallet_alpha_finder.py --min-tokens 1
+
+  # Step 2: controlla il risultato
+  cat executor/alpha_wallets.json | head -20
+
+  # Step 3: avvia mirror bot (DRY_RUN per ora)
+  python executor/wallet_mirror_bot.py
+
+  Aggiungi MIRROR_DRY_RUN=false al .env solo dopo aver visto segnali DRY sensati per 2-3 giorni.
