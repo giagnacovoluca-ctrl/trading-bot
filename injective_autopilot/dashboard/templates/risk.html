@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %} — Risk Management{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <!-- Kill Switch Status -->
+  <div class="col-12">
+    <div class="card {% if latest.kill_switch_active %}kill-active border-danger{% else %}border-success{% endif %}">
+      <div class="card-body text-center">
+        {% if latest.kill_switch_active %}
+        <h3 class="negative">🔴 KILL SWITCH ACTIVE</h3>
+        <p class="text-muted">Trading suspended. Manual intervention required.</p>
+        {% else %}
+        <h3 class="positive">🟢 KILL SWITCH: OFF — Trading Active</h3>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  {% set margin_pct = (latest.used_usdt / (latest.total_usdt + 0.001) * 100) if latest.total_usdt else 0 %}
+  {% set daily_dd = latest.daily_dd if latest.daily_dd else 0 %}
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">Margin Usage</div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+          <span>Used</span>
+          <span class="{% if margin_pct > 70 %}negative{% elif margin_pct > 50 %}neutral{% else %}positive{% endif %}">
+            {{ "%.1f"|format(margin_pct) }}%
+          </span>
+        </div>
+        <div class="progress" style="height:20px">
+          <div class="progress-bar {% if margin_pct > 70 %}bg-danger{% elif margin_pct > 50 %}bg-warning{% else %}bg-success{% endif %}"
+               style="width:{{ [margin_pct, 100]|min }}%"></div>
+        </div>
+        <small class="text-muted mt-1 d-block">
+          ${{ "%.2f"|format(latest.used_usdt or 0) }} / ${{ "%.2f"|format(latest.total_usdt or 0) }}
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">Daily Drawdown</div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+          <span>DD Today</span>
+          <span class="{% if daily_dd > 4 %}negative{% elif daily_dd > 2 %}neutral{% else %}positive{% endif %}">
+            {{ "%.2f"|format(daily_dd) }}%
+          </span>
+        </div>
+        <div class="progress" style="height:20px">
+          <div class="progress-bar {% if daily_dd > 4 %}bg-danger{% elif daily_dd > 2 %}bg-warning{% else %}bg-success{% endif %}"
+               style="width:{{ [daily_dd * 20, 100]|min }}%"></div>
+        </div>
+        <small class="text-muted">Limit: 5%</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">Equity</div>
+      <div class="card-body text-center">
+        <div class="metric-value {% if latest.equity and latest.equity >= 1000 %}positive{% else %}negative{% endif %}">
+          ${{ "%.2f"|format(latest.equity or 0) }}
+        </div>
+        <div class="metric-label">Current Equity</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Traffic lights summary -->
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">System Health</div>
+      <div class="card-body">
+        <div class="row text-center g-2">
+          {% set checks = [
+            ("Kill Switch", "OFF" if not latest.kill_switch_active else "ACTIVE", not latest.kill_switch_active),
+            ("Margin", "<80%" if margin_pct < 80 else "CRITICAL", margin_pct < 80),
+            ("Daily DD", "<5%" if daily_dd < 5 else "LIMIT", daily_dd < 5),
+            ("Mode", "PAPER" if not latest else "ACTIVE", True),
+          ] %}
+          {% for label, status, ok in checks %}
+          <div class="col-md-3">
+            <div class="card p-3 text-center" style="border-color: {% if ok %}#00e676{% else %}#ff5252{% endif %}">
+              <div style="font-size:2.5rem">{% if ok %}🟢{% else %}🔴{% endif %}</div>
+              <div class="fw-bold mt-1">{{ label }}</div>
+              <div class="text-muted small">{{ status }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

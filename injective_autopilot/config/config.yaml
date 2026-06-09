@@ -1,0 +1,65 @@
+# Injective Autopilot — configuration reference
+# Override any value via environment variable INJ_<KEY>=value
+
+mode: PAPER          # BACKTEST | PAPER | LIVE
+network: testnet     # mainnet | testnet
+
+market:
+  id: "0x790aee464fbbd02cf4476444554c71d1225f7edfe15e6dc7f874c455fd883d31"
+  base: INJ
+  quote: USDC
+
+sentinel:
+  interval_sec: 60
+  orderbook_depth: 20
+  lookback_candles: 200
+
+signals:
+  obi:
+    threshold: 0.60
+    min_persist_ticks: 3
+  funding:
+    zscore_threshold: 2.5
+    lookback_hours: 72
+  cvd:
+    divergence_threshold: 0.65
+  volatility:
+    regime_ratio_high: 1.5
+    regime_ratio_low: 0.70
+  oi_divergence:
+    threshold: 0.015
+  zscore:
+    entry_threshold: 2.0
+  liquidity_void:
+    gap_pct: 0.003
+
+risk:
+  capital_usdt: 1000.0
+  max_position_pct: 0.10
+  max_leverage: 5.0
+  min_rr_ratio: 2.0
+  atr_sl_multiplier: 2.0
+  atr_tp_multiplier: 4.0
+  kill_switch:
+    max_daily_drawdown_pct: 0.05
+    max_weekly_drawdown_pct: 0.10
+    max_margin_used_pct: 0.80
+    max_consecutive_errors: 5
+
+claude:
+  model: claude-sonnet-4-6
+  timeout_sec: 45
+  min_confidence: 0.65
+  use_subprocess: true
+
+dashboard:
+  host: "127.0.0.1"
+  port: 8080
+  auto_refresh_sec: 10
+
+live_gate:
+  min_simulated_trades: 500
+  min_profit_factor: 1.5
+  min_sharpe: 1.5
+  max_drawdown_pct: 0.20
+  min_stable_days: 30

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %} — Overview{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if metrics.total_pnl >= 0 %}positive{% else %}negative{% endif %}">
+        ${{ metrics.total_pnl }}
+      </div>
+      <div class="metric-label">Total PnL</div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if metrics.win_rate >= 55 %}positive{% elif metrics.win_rate >= 45 %}neutral{% else %}negative{% endif %}">
+        {{ metrics.win_rate }}%
+      </div>
+      <div class="metric-label">Win Rate</div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if metrics.profit_factor >= 1.5 %}positive{% elif metrics.profit_factor >= 1 %}neutral{% else %}negative{% endif %}">
+        {{ metrics.profit_factor }}x
+      </div>
+      <div class="metric-label">Profit Factor</div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if metrics.sharpe_ratio >= 1.5 %}positive{% elif metrics.sharpe_ratio >= 1 %}neutral{% else %}negative{% endif %}">
+        {{ metrics.sharpe_ratio }}
+      </div>
+      <div class="metric-label">Sharpe</div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value negative">{{ metrics.max_drawdown_pct }}%</div>
+      <div class="metric-label">Max Drawdown</div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value">{{ metrics.total_trades }}</div>
+      <div class="metric-label">Total Trades</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Equity Curve</div>
+      <div class="card-body">
+        <div id="equity-chart" style="height:350px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Recent Trades</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm table-hover mb-0">
+          <thead><tr>
+            <th>ID</th><th>Dir</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Exit</th><th>Conf</th>
+          </tr></thead>
+          <tbody>
+            {% for t in trades %}
+            <tr>
+              <td class="text-muted">{{ t.id }}</td>
+              <td><span class="badge {% if t.direction == 'LONG' %}bg-success{% else %}bg-danger{% endif %}">{{ t.direction }}</span></td>
+              <td>{{ "%.4f"|format(t.entry_price) }}</td>
+              <td>{{ "%.4f"|format(t.exit_price) }}</td>
+              <td class="{% if t.pnl_usdt >= 0 %}positive{% else %}negative{% endif %}">
+                ${{ "%.2f"|format(t.pnl_usdt) }} ({{ "%.1f"|format(t.pnl_pct) }}%)
+              </td>
+              <td><span class="badge bg-secondary">{{ t.exit_reason }}</span></td>
+              <td>{{ "%.0f"|format(t.confidence * 100) }}%</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">No trades yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const equityData = {{ equity_data | safe }};
+if (equityData.length > 0) {
+  const ts = equityData.map(d => new Date(d.ts * 1000).toISOString());
+  const eq = equityData.map(d => d.equity);
+  const dd = equityData.map(d => -d.daily_dd);
+  Plotly.newPlot('equity-chart', [
+    {x: ts, y: eq, type: 'scatter', name: 'Equity', line: {color: '#00e676', width: 2}, fill: 'tozeroy', fillcolor: 'rgba(0,230,118,0.05)'},
+  ], {
+    paper_bgcolor: '#151820', plot_bgcolor: '#151820',
+    font: {color: '#e0e0e0', size: 11},
+    xaxis: {gridcolor: '#2a2f3d', showgrid: true},
+    yaxis: {gridcolor: '#2a2f3d', showgrid: true, tickprefix: '$'},
+    margin: {t: 10, b: 40, l: 60, r: 20},
+    hovermode: 'x unified',
+  });
+} else {
+  document.getElementById('equity-chart').innerHTML = '<p class="text-center text-muted pt-5">No equity data yet</p>';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %} — Signals{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <span>Sentinel Triggers (last 100)</span>
+        <span class="badge bg-secondary">Auto-refresh {{ refresh_sec }}s</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Time</th><th>Dir</th><th>Signals</th><th>Count</th><th>Tier-S</th>
+              <th>Decision</th><th>Conf</th><th>OBI</th><th>Fund Z</th><th>Vol</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in signals %}
+            <tr>
+              <td class="text-muted" style="font-size:0.75rem">
+                {{ (s.ts|int)|timestamp_to_str }}
+              </td>
+              <td>
+                <span class="badge {% if s.direction == 'LONG' %}bg-success{% elif s.direction == 'SHORT' %}bg-danger{% else %}bg-secondary{% endif %}">
+                  {{ s.direction }}
+                </span>
+              </td>
+              <td style="max-width:300px">
+                {% for sig in s.signals %}
+                <span class="signal-badge">{{ sig }}</span>
+                {% endfor %}
+              </td>
+              <td>{{ s.count }}</td>
+              <td>{% if s.tier_s %}<span class="badge bg-warning text-dark">S</span>{% else %}—{% endif %}</td>
+              <td>
+                {% if s.decision %}
+                <span class="badge {% if s.decision == 'LONG' %}bg-success{% elif s.decision == 'SHORT' %}bg-danger{% elif s.decision == 'NO_TRADE' %}bg-secondary{% else %}bg-secondary{% endif %}">
+                  {{ s.decision }}
+                </span>
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ "%.0f"|format(s.confidence * 100) if s.confidence else '—' }}%</td>
+              <td>{{ "%.3f"|format(s.values.obi) if s.values.obi is defined else '—' }}</td>
+              <td>{{ "%.2f"|format(s.values.funding_zscore) if s.values.funding_zscore is defined else '—' }}</td>
+              <td><small>{{ s.values.vol_regime if s.values.vol_regime is defined else '—' }}</small></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10" class="text-center text-muted py-4">No signals yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Signal Direction Distribution</div>
+      <div class="card-body"><div id="sig-dir-chart" style="height:220px"></div></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Signal Count Histogram</div>
+      <div class="card-body"><div id="sig-count-chart" style="height:220px"></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const signals = {{ signals | tojson }};
+const dirCounts = {LONG:0, SHORT:0, MIXED:0};
+const countVals = [];
+signals.forEach(s => { dirCounts[s.direction] = (dirCounts[s.direction]||0)+1; countVals.push(s.count); });
+
+Plotly.newPlot('sig-dir-chart', [{
+  values: Object.values(dirCounts), labels: Object.keys(dirCounts), type: 'pie',
+  marker: {colors: ['#00e676','#ff5252','#ffd740']}, hole: 0.4
+}], {paper_bgcolor:'#151820',plot_bgcolor:'#151820',font:{color:'#e0e0e0'},margin:{t:10,b:10,l:10,r:10}});
+
+Plotly.newPlot('sig-count-chart', [{x: countVals, type:'histogram', marker:{color:'#448aff'}}],
+{paper_bgcolor:'#151820',plot_bgcolor:'#151820',font:{color:'#e0e0e0'},xaxis:{gridcolor:'#2a2f3d',title:'Active Signals'},yaxis:{gridcolor:'#2a2f3d',title:'Count'},margin:{t:10,b:40,l:50,r:20}});
+</script>
+{% endblock %}

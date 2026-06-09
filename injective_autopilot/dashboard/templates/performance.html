@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %} — Performance{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% set ratios = [
+    ("Profit Factor", metrics.profit_factor, 1.5, "x"),
+    ("Sharpe Ratio", metrics.sharpe_ratio, 1.5, ""),
+    ("Sortino Ratio", metrics.sortino_ratio, 2.0, ""),
+    ("Calmar Ratio", metrics.calmar_ratio, 1.0, ""),
+    ("Expectancy", metrics.expectancy, 0, "$"),
+    ("Win Rate", metrics.win_rate, 50, "%"),
+  ] %}
+  {% for label, val, threshold, suffix in ratios %}
+  <div class="col-md-2">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if val >= threshold %}positive{% else %}negative{% endif %}">
+        {{ suffix if suffix in ['$'] }}{{ "%.2f"|format(val) }}{{ suffix if suffix not in ['$'] }}
+      </div>
+      <div class="metric-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Win / Loss Distribution</div>
+      <div class="card-body"><div id="win-loss-chart" style="height:250px"></div></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Long vs Short</div>
+      <div class="card-body"><div id="dir-chart" style="height:250px"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Risk Metrics</div>
+      <div class="card-body">
+        <table class="table table-dark table-sm">
+          <tr><td>Max Drawdown</td><td class="negative">{{ "%.1f"|format(metrics.max_drawdown_pct) }}%</td></tr>
+          <tr><td>Recovery Factor</td><td>{{ "%.2f"|format(metrics.recovery_factor) }}</td></tr>
+          <tr><td>Risk of Ruin</td><td class="{% if metrics.risk_of_ruin < 1 %}positive{% else %}negative{% endif %}">{{ "%.2f"|format(metrics.risk_of_ruin) }}%</td></tr>
+          <tr><td>Avg Win</td><td class="positive">${{ "%.2f"|format(metrics.avg_win) }}</td></tr>
+          <tr><td>Avg Loss</td><td class="negative">${{ "%.2f"|format(metrics.avg_loss) }}</td></tr>
+          <tr><td>Total Trades</td><td>{{ metrics.total_trades }}</td></tr>
+          <tr><td>Winning</td><td class="positive">{{ metrics.winning_trades }}</td></tr>
+          <tr><td>Losing</td><td class="negative">{{ metrics.losing_trades }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Directional Breakdown</div>
+      <div class="card-body">
+        <table class="table table-dark table-sm">
+          <tr><th></th><th>Count</th><th>Win Rate</th></tr>
+          <tr><td>LONG</td><td>{{ metrics.long_trades }}</td><td>{{ "%.1f"|format(metrics.long_win_rate) }}%</td></tr>
+          <tr><td>SHORT</td><td>{{ metrics.short_trades }}</td><td>{{ "%.1f"|format(metrics.short_win_rate) }}%</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const m = {{ metrics | tojson }};
+// Win/Loss pie
+Plotly.newPlot('win-loss-chart', [{
+  values: [m.winning_trades, m.losing_trades],
+  labels: ['Wins', 'Losses'],
+  type: 'pie',
+  marker: {colors: ['#00e676', '#ff5252']},
+  hole: 0.4,
+}], {paper_bgcolor:'#151820', plot_bgcolor:'#151820', font:{color:'#e0e0e0'}, margin:{t:10,b:10,l:10,r:10}, showlegend:true});
+
+// Long vs Short bars
+Plotly.newPlot('dir-chart', [
+  {x: ['LONG', 'SHORT'], y: [m.long_win_rate, m.short_win_rate], type: 'bar',
+   marker: {color: ['#00e676', '#ff5252']}, name: 'Win Rate %'}
+], {paper_bgcolor:'#151820', plot_bgcolor:'#151820', font:{color:'#e0e0e0'}, yaxis:{gridcolor:'#2a2f3d', ticksuffix:'%'}, margin:{t:10,b:40,l:50,r:20}});
+</script>
+{% endblock %}

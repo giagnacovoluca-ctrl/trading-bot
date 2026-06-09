@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %} — Trade Journal{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">Trade Journal</h5>
+  <div class="d-flex gap-2">
+    <a href="/journal" class="btn btn-sm {% if not mode_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+    <a href="/journal?mode=PAPER" class="btn btn-sm {% if mode_filter == 'PAPER' %}btn-warning{% else %}btn-outline-secondary{% endif %}">Paper</a>
+    <a href="/journal?mode=LIVE" class="btn btn-sm {% if mode_filter == 'LIVE' %}btn-danger{% else %}btn-outline-secondary{% endif %}">Live</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-dark table-sm table-hover mb-0">
+      <thead class="sticky-top">
+        <tr>
+          <th>Date</th><th>ID</th><th>Mode</th><th>Dir</th>
+          <th>Entry</th><th>Exit</th><th>SL</th><th>TP</th>
+          <th>Qty</th><th>PnL $</th><th>PnL %</th>
+          <th>Exit</th><th>Conf</th><th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in trades %}
+        <tr class="{% if t.pnl_usdt > 0 %}table-success bg-opacity-10{% elif t.pnl_usdt < 0 %}table-danger bg-opacity-10{% endif %}">
+          <td class="text-muted" style="font-size:0.75rem">
+            {% if t.entry_ts %}{{ (t.entry_ts|int)|timestamp_to_str }}{% endif %}
+          </td>
+          <td><small>{{ t.id }}</small></td>
+          <td><span class="badge {% if t.mode == 'LIVE' %}bg-danger{% elif t.mode == 'PAPER' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ t.mode }}</span></td>
+          <td><span class="badge {% if t.direction == 'LONG' %}bg-success{% else %}bg-danger{% endif %}">{{ t.direction }}</span></td>
+          <td>{{ "%.4f"|format(t.entry_price) }}</td>
+          <td>{{ "%.4f"|format(t.exit_price) if t.exit_price else '—' }}</td>
+          <td class="negative">{{ "%.4f"|format(t.stop_loss) }}</td>
+          <td class="positive">{{ "%.4f"|format(t.take_profit) }}</td>
+          <td>{{ "%.4f"|format(t.quantity) }}</td>
+          <td class="{% if t.pnl_usdt >= 0 %}positive{% else %}negative{% endif %} fw-bold">
+            {% if t.pnl_usdt %}${{ "%.2f"|format(t.pnl_usdt) }}{% else %}—{% endif %}
+          </td>
+          <td class="{% if t.pnl_pct >= 0 %}positive{% else %}negative{% endif %}">
+            {% if t.pnl_pct %}{{ "%.1f"|format(t.pnl_pct) }}%{% else %}—{% endif %}
+          </td>
+          <td><span class="badge bg-secondary">{{ t.exit_reason or 'OPEN' }}</span></td>
+          <td>{{ "%.0f"|format(t.confidence * 100) }}%</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ t.reason }}">
+            <small class="text-muted">{{ t.reason[:60] }}{% if t.reason|length > 60 %}...{% endif %}</small>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="14" class="text-center text-muted py-4">No trades found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

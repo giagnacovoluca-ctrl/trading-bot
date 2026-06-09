@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %} — AI Analysis{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card metric-card p-3">
+      <div class="metric-value">{{ total_calls }}</div>
+      <div class="metric-label">Total Claude Calls</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card metric-card p-3">
+      <div class="metric-value">{{ approved }}</div>
+      <div class="metric-label">Approved Trades</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if accuracy >= 55 %}positive{% elif accuracy >= 45 %}neutral{% else %}negative{% endif %}">
+        {{ "%.1f"|format(accuracy) }}%
+      </div>
+      <div class="metric-label">Decision Accuracy</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card metric-card p-3">
+      <div class="metric-value {% if avg_pnl >= 0 %}positive{% else %}negative{% endif %}">
+        ${{ "%.2f"|format(avg_pnl) }}
+      </div>
+      <div class="metric-label">Avg PnL / Decision</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Confidence Distribution</div>
+      <div class="card-body"><div id="conf-chart" style="height:250px"></div></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Decision Latency (ms)</div>
+      <div class="card-body"><div id="lat-chart" style="height:250px"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">All Claude Decisions</div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-sm table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Time</th><th>Action</th><th>Conf</th><th>Entry</th><th>SL</th><th>TP</th>
+          <th>Risk</th><th>Latency</th><th>Outcome</th><th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in decisions %}
+        <tr>
+          <td class="text-muted" style="font-size:0.75rem">{{ (d.ts|int)|timestamp_to_str }}</td>
+          <td>
+            <span class="badge {% if d.action == 'LONG' %}bg-success{% elif d.action == 'SHORT' %}bg-danger{% else %}bg-secondary{% endif %}">
+              {{ d.action }}
+            </span>
+            {% if d.was_approved %}<span class="badge bg-primary ms-1">✓</span>{% endif %}
+          </td>
+          <td>
+            <span class="{% if d.confidence >= 0.75 %}positive{% elif d.confidence >= 0.65 %}neutral{% else %}negative{% endif %}">
+              {{ "%.0f"|format(d.confidence * 100) }}%
+            </span>
+          </td>
+          <td>{{ "%.4f"|format(d.entry) if d.entry else '—' }}</td>
+          <td class="negative">{{ "%.4f"|format(d.stop_loss) if d.stop_loss else '—' }}</td>
+          <td class="positive">{{ "%.4f"|format(d.take_profit) if d.take_profit else '—' }}</td>
+          <td class="{% if d.risk_score < 0.4 %}positive{% elif d.risk_score < 0.7 %}neutral{% else %}negative{% endif %}">
+            {{ "%.2f"|format(d.risk_score) }}
+          </td>
+          <td class="text-muted">{{ "%.0f"|format(d.latency_ms) }}ms</td>
+          <td class="{% if d.outcome_pnl > 0 %}positive{% elif d.outcome_pnl < 0 %}negative{% else %}text-muted{% endif %}">
+            {% if d.outcome_pnl %}${{ "%.2f"|format(d.outcome_pnl) }}{% else %}—{% endif %}
+          </td>
+          <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ d.reason }}">
+            <small class="text-muted">{{ d.reason[:70] }}{% if d.reason|length > 70 %}...{% endif %}</small>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-4">No AI decisions yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const decisions = {{ decisions | tojson }};
+const confs = decisions.map(d => d.confidence * 100);
+const lats = decisions.map(d => d.latency_ms);
+
+Plotly.newPlot('conf-chart', [{x:confs, type:'histogram', marker:{color:'#448aff'}, xbins:{size:5}}],
+{paper_bgcolor:'#151820',plot_bgcolor:'#151820',font:{color:'#e0e0e0'},xaxis:{title:'Confidence %', gridcolor:'#2a2f3d'},yaxis:{gridcolor:'#2a2f3d'},margin:{t:10,b:40,l:50,r:20}});
+
+Plotly.newPlot('lat-chart', [{x:lats, type:'histogram', marker:{color:'#ffd740'}, xbins:{size:500}}],
+{paper_bgcolor:'#151820',plot_bgcolor:'#151820',font:{color:'#e0e0e0'},xaxis:{title:'Latency (ms)', gridcolor:'#2a2f3d'},yaxis:{gridcolor:'#2a2f3d'},margin:{t:10,b:40,l:50,r:20}});
+</script>
+{% endblock %}
