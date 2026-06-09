@@ -114,10 +114,10 @@ class BinanceSpotExecutor:
         Apre una posizione LONG spot con OCO order (SL+TP).
         Skippa i segnali SHORT (non eseguibili su spot senza margin).
         """
-        from structural_bot import Signal
-
-        is_long  = signal_enum == Signal.LONG
-        is_short = signal_enum == Signal.SHORT
+        # Confronto per nome (non identità): `from structural_bot import Signal` qui
+        # creerebbe una classe Enum diversa da __main__.Signal → confronto sempre False.
+        is_long  = signal_enum.name == "LONG"
+        is_short = signal_enum.name == "SHORT"
 
         if is_short and not MARGIN_MODE:
             log.warning(

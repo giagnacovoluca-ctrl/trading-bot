@@ -1,6 +1,6 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
-Aggiornato: 2026-06-03
+Aggiornato: 2026-06-09
 
 ---
 
@@ -57,27 +57,50 @@ Aggiornato: 2026-06-03
         .env                ← chiavi private (SOLANA_PRIVATE_KEY, HELIUS_API_KEY, BASE_PRIVATE_KEY, EXECUTOR_CHAINS) + SMTP/CoinGecko/CMC (migrati dal sorgente 04/06)
     bot_telegram/           ← Signal SaaS Telegram (read-only sui CSV, processo isolato — NUOVO 04/06)
         config.py           ← env (riusa executor/.env per RPC); mappa SIGNAL_FILES→sistema; routing canali
+                               NUOVO: BOT_USERNAME, FREE_CHANNEL_USERNAME, PREMIUM_CHANNEL_USERNAME
         csv_tail.py         ← tail incrementale CSV, offset-byte persistente (anti-repost, skip backlog)
-        formatter.py        ← messaggi HTML: format_full (Premium) / format_teaser (Free, NO entry price)
+        formatter.py        ← messaggi HTML: format_full (Premium) / format_teaser (Free)
+                               AGGIORNATO: format_teaser ora mostra entry price storico con label "⏱ Entry al segnale (15m fa)"
         telegram_api.py     ← Bot API via requests, retry 429
         publisher.py        ← daemon: full su Premium/VIP, teaser FREE ritardato 15m
         bot.py              ← comandi /start /plans /subscribe /status /referral + admin /grant /stats /broadcast
         subscriptions.py    ← store abbonati (tier/scadenza/referral) in state/subscribers.json
         payments.py         ← verifica USDC on-chain (Base+Solana) via invoice a importo univoco; settle→grant
         track_record.py     ← P&L da live_trades.csv → recap FREE + state/stats.json (landing)
+                               AGGIORNATO: post_recap() chiama landing.generate() dopo ogni ciclo daily
+        landing.py          ← NUOVO: genera landing/index.html statico con stats baked-in (dark theme, WR%/P&L/by_system/best_worst/CTA)
+                               Se LANDING_PAGES_REPO_PATH impostato: auto-commit+push su repo GitHub Pages dopo ogni rigenerazione
         run_bot.py          ← orchestratore thread daemon + gating scadenze (--no-publisher/bot/payments/track)
         store.py            ← persistenza JSON atomica
+        landing/            ← output HTML generato (gitignored nel repo principale, pushato su repo separato)
         state/              ← offsets, subscribers, invoices, stats, ecc. (gitignored)
         .env / .env.example ← TELEGRAM_BOT_TOKEN, channel id, PAY_WALLET_*, prezzi tier
+                               NUOVO: LANDING_PAGES_REPO_PATH, TELEGRAM_BOT_USERNAME, TELEGRAM_FREE/PREMIUM_CHANNEL_USERNAME
     trade/
         structural_bot.py          ← bot strutturale BTC (multi-timeframe EMA/RSI/ADX + S/R + bounce)
+                                      NUOVO 09/06: lock file in run() — impedisce doppia istanza (fcntl LOCK_EX)
         run_demo.py                ← launcher aggressivo su Bitget Demo (SUSDT-FUTURES, $1000, 15% risk)
         bitget_futures_executor.py ← executor Bitget Futures (live USDT-FUTURES + demo SUSDT-FUTURES)
         bybit_futures_executor.py  ← executor Bybit Futures
         binance_futures_executor.py← executor Binance Futures
         binance_spot_executor.py   ← executor Binance Spot
-        reports/                   ← stato e log bot live
+        reports bot strutturale/   ← stato e log bot live (state.json, trades_log.json, structural_bot.log)
         reports_demo/              ← stato e log bot demo (separato)
+    injective_autopilot/           ← NUOVO 09/06: bot multi-market su Injective Protocol perps
+        main.py                    ← entry point (PAPER/LIVE/BACKTEST mode)
+        config/settings.py         ← config Pydantic (INJ_ env prefix); claude_timeout=90s, rate_limit=20/h
+        core/sentinel.py           ← scansiona 29 market ogni 60s, trigger composito (≥2 segnali Tier A/B o 1 Tier S)
+        core/decision_engine.py    ← chiama claude CLI (--bare --print --max-turns 1) per decisione finale JSON
+                                      AGGIORNATO 09/06: --bare + stdin=DEVNULL + timeout 45→90s
+        core/risk_engine.py        ← risk management (max DD, margin, position sizing)
+        core/executor.py           ← esecuzione ordini su Injective
+        paper_trading/engine.py    ← paper trading engine (PAPER mode default)
+        signals/                   ← orderbook.py, volume.py, derivatives.py, volatility.py, anomaly.py
+        data/injective_client.py   ← client gRPC/REST Injective mainnet
+        data/cache.py              ← buffer rolling (prezzi, funding, OI)
+        backtest/engine.py         ← backtest walk-forward + live gate (500 trades, PF>1.5, Sharpe>1.5)
+        dashboard/app.py           ← FastAPI dashboard http://127.0.0.1:8080 (auto-refresh 10s)
+        database/repository.py     ← SQLite async (aiosqlite)
 ```
 
 ---
@@ -189,9 +212,12 @@ def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippar
 # Anti-dump filter: change_1h<-2% AND bsr<0.50 → skip
 # Trail drop adattivo: peak<20%→8%, 20-40%→11%, >40%→15%
 # Sanity oracle: chg>5000% → ignora
+# _RugWatcher: WS logsSubscribe (RPC standard Helius, NON Atlas premium) su pool pump_grad
+#   FAST_CHECK_WINDOW_MIN=15, FAST_CHECK_DEBOUNCE_SEC=5 — fetch fuori-turno su attività pool (gap risk rug)
 class LiveEngine:
     def _load_new_signals()    # filtri cooldown differenziati + prezzo re-entry + anti-dump
     def _process_position(sid, pos)
+    def _on_pool_activity(pa)  # callback _RugWatcher → fetch immediato prezzo (fast-check)
 ```
 
 ### `executor/base_executor.py`
@@ -222,18 +248,43 @@ RPC_URL = HELIUS_RPC if HELIUS_API_KEY else "https://api.mainnet-beta.solana.com
 
 ### `trade/structural_bot.py`
 ```python
-# S/R levels (NUOVO):
+# S/R levels:
 def detect_sr_levels(df_4h) → list      # pivot high/low, merge 0.8%, min 2 tocchi
 def _nearest_opposing_sr(price, signal, levels) → float
 def _blocking_sr(entry, tp, signal, levels) → float
 # Entry filter S/R: SHORT bloccato se <1.5% da supporto, LONG se <1.5% da resistenza
 # TP snap: porta TP a livello S/R ± ATR×0.5 se c'è un muro tra entry e TP
-# Bounce signal (NUOVO):
 def bounce_signal(df_5m, df_1h, sr_levels, funding, fng) → Signal
 def fetch_fear_greed() → int   # cache 1h, alternative.me
 def fetch_funding_rate() → float  # cache 15min, Binance futures
 # Trail activate: 12% (era 6%), trail drop adattivo
-# defi config: bsr_exit_threshold=0.45, bsr_confirm_count=7
+# NUOVO 09/06: lock file fcntl all'avvio di run() → SystemExit(1) se già in esecuzione
+# Lock path: reports bot strutturale/structural_bot.lock
+```
+
+### `injective_autopilot/core/sentinel.py`
+```python
+class Sentinel:
+    async def run(on_trigger)   # loop ogni 60s su 29 market Injective
+    async def _tick_all()       # asyncio.gather su tutti i market
+    async def _tick_market(ctx) # fetch orderbook+market+trades → segnali → trigger
+# Segnali Tier A/B: OBI, CVD_DIV, ZSCORE, VOL_BREAKOUT, OI_DIV
+# Segnali Tier S: FUNDING_EXTREME (z>2.5) → trigger con 1 solo segnale
+# Rate limit globale: sentinel_max_triggers_per_hour=20 (era 10)
+# Trigger = ≥2 segnali attivi oppure 1 Tier S
+```
+
+### `injective_autopilot/core/decision_engine.py`
+```python
+class DecisionEngine:
+    async def decide(trigger, positions, margin_available) → TradeDecision
+    async def _call_subprocess(prompt) → str  # claude --bare --print --max-turns 1 --system-prompt ...
+    async def _call_sdk(prompt) → str         # Anthropic SDK (richiede API key, non usato)
+# use_subprocess=True (default): chiama CLI claude, NON SDK (utente non ha API key)
+# AGGIORNATO 09/06: aggiunto --bare (no CLAUDE.md/hooks overhead), stdin=DEVNULL
+# timeout: 45→90s (config settings.py)
+# Risposta attesa: JSON con action/confidence/entry/sl/tp/position_size/risk_score/reason
+@dataclass TradeDecision: action, confidence, entry, stop_loss, take_profit, position_size, risk_score, reason
 ```
 
 ### `trade/bitget_futures_executor.py`
@@ -297,10 +348,17 @@ base_real_state.json + base_executions.csv
 
 ---
 
-## 9. Note Importanti / Bug Fix Recenti (04/06/2026)
+## 9. Note Importanti / Bug Fix Recenti (09/06/2026)
+
+- **structural_bot doppia istanza (09/06)**: due processi in parallelo (uno avviato da Claude con nohup in sessione precedente) causavano trade duplicati (-5.9$ stimati) e cooldown dimezzato. Fix: lock file fcntl in `run()` → SystemExit(1) se già in esecuzione. Istanza spuria (PID 134862) killata manualmente.
+- **injective_autopilot (NUOVO 09/06)**: sistema multi-market Injective Protocol perps. Sentinel scansiona 29 market ogni 60s, decision engine chiama `claude` CLI (subprocess, NON SDK — utente non ha API key Anthropic). Fix applicati: `--bare` elimina overhead 10-20s di cold start CLI, `stdin=DEVNULL` previene hang, timeout 45→90s, rate limit 10→20/h.
+
+## 9b. Note Importanti / Bug Fix Precedenti (04/06/2026)
 
 - **AUDIT SEGRETI (04/06)**: rimossi segreti hardcoded dal sorgente → migrati in `executor/.env` (caricato da run.py via dotenv PRIMA degli import, quindi risolti a import-time). Coinvolti: password SMTP Gmail (era in 8 file), 2 chiavi CoinGecko (3 file), chiave CMC (gemmeV3). Var aggiunte: SMTP_USER/PASSWORD/FROM/TO, COINGECKO_API_KEY, COINGECKO_API_KEY_SIM, CMC_API_KEY. Creato `.gitignore` (mancava; la cartella NON è ancora un git repo). Fix: `signal_tracker.py` ora importa `os`. ⚠️ Scanner lanciati standalone (non via run.py) non vedono executor/.env → email disabilitata (nessun crash).
-- **bot_telegram (NUOVO 04/06)**: modulo Signal SaaS Telegram, processo isolato, read-only sui CSV. Tier Free(ritardo 15m, no entry price)/Premium($49)/VIP($149). Avvio `python bot_telegram/run_bot.py`. Pagamenti USDC on-chain via invoice a importo univoco (riusa RPC executor); finché non validato usare `/grant` manuale. Tutto testato.
+- **bot_telegram (NUOVO 04/06)**: modulo Signal SaaS Telegram, processo isolato, read-only sui CSV. Tier Free(ritardo 15m)/Premium($49)/VIP($149). Avvio `python bot_telegram/run_bot.py`. Pagamenti USDC on-chain via invoice a importo univoco (riusa RPC executor); finché non validato usare `/grant` manuale. Tutto testato.
+- **format_teaser aggiornato (04/06)**: canale FREE ora mostra l'entry price storico al momento del segnale con label "⏱ Entry al segnale (15m fa)" — hook per upgrade Premium (utente vede quanto ha mancato).
+- **landing.py (NUOVO 04/06)**: genera `bot_telegram/landing/index.html` dark-theme con WR%, P&L totale, ultime 24h, media/trade, breakdown per sistema, best/worst trade, CTA Premium/VIP. Rigenerata automaticamente da `post_recap()` ogni 24h. Se `LANDING_PAGES_REPO_PATH` impostato in .env: auto-commit+push su repo GitHub Pages separato (URL pubblico: `https://USERNAME.github.io/signals-landing`).
 - **EXECUTOR_CHAINS**: variabile .env per abilitare selettivamente gli executor (es. `base` only)
 - **Re-entry price filter**: nuovo in trade_simulator — blocca re-entry se prezzo < 75% del prev entry (FOUR -59% → -42€ evitato)
 - **Cooldown differenziati**: hard_sl=12h, bsr_collapse=4h, entry=8h — VVVeity non rientra più 5 min dopo hard_sl

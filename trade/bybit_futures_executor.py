@@ -140,9 +140,10 @@ class BybitFuturesExecutor:
         Apre posizione LONG o SHORT con SL e TP inclusi nell'ordine.
         size_contracts = quantità BTC (calcolata da calculate_trade in structural_bot)
         """
-        from structural_bot import Signal
-
-        is_long  = signal_enum == Signal.LONG
+        # Confronto per nome (non identità): `from structural_bot import Signal` qui
+        # creerebbe una classe Enum diversa da __main__.Signal → confronto sempre False
+        # e ogni LONG verrebbe inviato all'exchange come SHORT.
+        is_long  = signal_enum.name == "LONG"
         side     = "Buy" if is_long else "Sell"
         direction = "LONG" if is_long else "SHORT"
 

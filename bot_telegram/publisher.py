@@ -1,8 +1,8 @@
 """
 publisher.py — daemon read-only che pubblica i segnali su Telegram.
 - Tail dei *_signals.csv esistenti (offset persistente, anti-repost).
-- PREMIUM/VIP: invio immediato e completo.
-- FREE: teaser ritardato di FREE_DELAY_MIN, senza entry price, solo prob >= soglia.
+- PREMIUM: invio immediato e completo.
+- FREE: solo chiusure positive (importo + % + guadagno), da live_trades.csv.
 
 Processo ISOLATO dal core di trading: un crash qui non tocca scanner/executor.
 Avvio standalone:  python bot_telegram/publisher.py
@@ -14,13 +14,72 @@ import time
 
 import config
 import formatter
-import store
 import telegram_api as tg
 from csv_tail import CsvTailer
 
 log = logging.getLogger("publisher")
 
-_QUEUE_FILE = "free_queue.json"   # teaser FREE schedulati (persistenti)
+class _TradeClosureTracker:
+    """Accumula pnl per signal_id; quando remaining→0 restituisce info chiusura."""
+
+    def __init__(self):
+        self._open: dict = {}
+
+    def feed(self, row: dict) -> dict | None:
+        sid = row.get("signal_id") or row.get("token_symbol") or "?"
+        action = (row.get("action") or "").strip()
+        pnl = _to_float(row.get("pnl_eur"))
+        remaining = _to_float(row.get("remaining"))
+        change_pct = _to_float(row.get("change_pct"))
+
+        if action == "entry":
+            self._open[sid] = {
+                "pnl": 0.0, "invested_eur": None,
+                "symbol": row.get("token_symbol", "?"),
+                "system": row.get("system", ""),
+                "chain": row.get("chain", ""),
+                "prev_remaining": 1.0,
+            }
+            return None
+
+        if pnl is None:
+            return None
+
+        state = self._open.setdefault(sid, {
+            "pnl": 0.0, "invested_eur": None,
+            "symbol": row.get("token_symbol", "?"),
+            "system": row.get("system", ""),
+            "chain": row.get("chain", ""),
+            "prev_remaining": 1.0,
+        })
+
+        state["pnl"] += pnl
+
+        # Deriva capitale investito dalla prima uscita con pnl != 0
+        if state["invested_eur"] is None and pnl and change_pct:
+            fraction = state["prev_remaining"] - (remaining or 0.0)
+            if fraction > 0.01:
+                derived = pnl / ((change_pct / 100.0) * fraction)
+                if 20.0 <= derived <= 2000.0:
+                    state["invested_eur"] = derived
+
+        if remaining is not None:
+            state["prev_remaining"] = remaining
+
+        if remaining is not None and remaining <= 0.001:
+            total_pnl = state["pnl"]
+            invested = state["invested_eur"] or 100.0
+            closure = {
+                "symbol": state["symbol"], "system": state["system"],
+                "chain": state["chain"],
+                "pnl_eur": total_pnl,
+                "invested_eur": invested,
+                "pct": total_pnl / invested * 100.0 if invested > 0 else None,
+            }
+            self._open.pop(sid, None)
+            return closure if total_pnl > 0 else None
+
+        return None
 
 
 class Publisher:
@@ -30,48 +89,17 @@ class Publisher:
             for fname in config.SIGNAL_FILES
         ]
         self.file_system = dict(config.SIGNAL_FILES)
+        self._trades_tailer = CsvTailer(config.TRADES_CSV, key="_live_trades", skip_backlog=True)
+        self._closure_tracker = _TradeClosureTracker()
 
-    # ── coda teaser FREE (persistente su disco) ────────────────────────────────
-    def _load_queue(self) -> list:
-        return store.load(_QUEUE_FILE, [])
-
-    def _save_queue(self, q: list) -> None:
-        store.save(_QUEUE_FILE, q)
-
-    def _schedule_free(self, row: dict, system: str):
-        if not config.FREE_CHANNEL_ID:
-            return
-        prob = _to_float(row.get("pump_probability"))
-        if prob is not None and prob < config.FREE_MIN_PROBABILITY:
-            return
-        q = self._load_queue()
-        q.append({
-            "send_at": time.time() + config.FREE_DELAY_MIN * 60,
-            "text": formatter.format_teaser(row, system),
-        })
-        self._save_queue(q)
-
-    def _flush_free_due(self):
-        q = self._load_queue()
-        if not q:
-            return
-        now = time.time()
-        due = [item for item in q if item.get("send_at", 0) <= now]
-        if not due:
-            return
-        remaining = [item for item in q if item.get("send_at", 0) > now]
-        for item in due:
-            tg.send_message(config.FREE_CHANNEL_ID, item["text"])
-        self._save_queue(remaining)
-
-    # ── pubblicazione segnale full su PREMIUM/VIP ──────────────────────────────
+    # ── pubblicazione segnale full su PREMIUM ──────────────────────────────────
     def _publish_full(self, row: dict, system: str):
         prob = _to_float(row.get("pump_probability"))
         if prob is not None and prob < config.PREMIUM_MIN_PROBABILITY:
             return
         chan = config.channel_for_system(system)
         if not chan:
-            log.warning("[pub] nessun canale Premium/VIP configurato — segnale non inviato")
+            log.warning("[pub] nessun canale Premium configurato — segnale non inviato")
             return
         tg.send_message(chan, formatter.format_full(row, system))
 
@@ -86,8 +114,11 @@ class Publisher:
                     system = self.file_system.get(tailer.key, tailer.key)
                     for row in tailer.new_rows():
                         self._publish_full(row, system)
-                        self._schedule_free(row, system)
-                self._flush_free_due()
+                for row in self._trades_tailer.new_rows():
+                    closure = self._closure_tracker.feed(row)
+                    if closure and config.FREE_CHANNEL_ID:
+                        tg.send_message(config.FREE_CHANNEL_ID,
+                                        formatter.format_closure_free(closure))
             except Exception as e:  # daemon resiliente
                 log.exception("[pub] errore nel loop: %s", e)
             _sleep(config.POLL_INTERVAL_SEC, stop_event)

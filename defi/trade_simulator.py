@@ -29,6 +29,7 @@ Capitale per trade: 100 EUR (simulazione, nessun costo reale).
 """
 
 import csv
+import html
 import json
 import logging
 import os
@@ -44,6 +45,14 @@ warnings.filterwarnings("ignore")
 
 import pandas as pd
 import requests
+
+try:
+    import websocket   # websocket-client — usato da _RugWatcher (monitor real-time pump_grad)
+    WS_OK = True
+except ImportError:
+    WS_OK = False
+
+HELIUS_API_KEY = os.getenv("HELIUS_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -71,6 +80,7 @@ BF_SIGNALS    = os.path.join(BASE, "reports", "binance_futures_signals.csv")
 MIRROR_SIGNALS    = os.path.join(BASE, "reports", "mirror_signals.csv")
 PRE_GRAD_SIGNALS  = os.path.join(BASE, "reports", "pre_grad_signals.csv")
 BASE_PUMP_SIGNALS = os.path.join(BASE, "reports", "base_pump_signals.csv")
+MIDCAP_SIGNALS    = os.path.join(BASE, "reports", "midcap_signals.csv")
 V3_EXIT_SIGNALS   = os.path.join(BASE, "reports", "v3_exit_signals.csv")
 
 LIVE_LOG_CSV  = os.path.join(BASE, "reports", "live_trades.csv")
@@ -89,6 +99,13 @@ CAPITAL_BY_TIER = {
 
 # Blacklist hard post-SL: token_address → expiry datetime (48h)
 _hard_sl_blacklist: dict = {}
+
+# Circuit breaker: blocca nuovi segnali se perdita 24h supera soglia
+MAX_DAILY_LOSS_EUR = float(os.getenv("MAX_DAILY_LOSS_EUR", "-80"))
+_daily_pnl_cache: dict = {"val": 0.0, "ts": 0.0}
+_DAILY_PNL_CACHE_TTL = 120  # secondi
+
+
 
 # ---------------------------------------------------------------------------
 # Configs ottimizzati post-analisi risultati storici
@@ -220,6 +237,24 @@ CONFIGS = {
         vol_crash_grace_min  = 25.0,
         bsr_exit_threshold   = 0.45,
     ),
+    "midcap": dict(
+        # midcap_scanner: BB Squeeze su candele DAILY, CEX spot (binance/mexc/gateio)
+        # mid/large cap già quotati → no rug risk, book reali, mosse lente su giorni.
+        # Stessa filosofia di v3_midcap (no hard_sl, trailing stretto) ma orizzonte
+        # di hold più lungo (segnale daily, non intraday): vedi MAX_SIGNAL_AGE_H.
+        tp1_pct              = 12.0,   # mid-cap muovono piano: TP1 conservativo
+        tp2_pct              = 30.0,
+        tp1_fraction         = 0.50,
+        adaptive_snap1_exit  = -15.0,
+        trail_activate_pct   = 8.0,
+        trail_drop_pct       = 5.0,
+        sl_consecutive_neg   = 5,
+        sl_threshold_pct     = -12.0,
+        hard_sl_pct          = None,   # no hard SL: CEX spot mid/large-cap non rugga
+        vol_drop_exit_ratio  = 0.20,
+        vol_crash_grace_min  = 25.0,
+        bsr_exit_threshold   = 0.45,   # non usato (bsr fisso a 1.0 su CEX spot)
+    ),
     # ── Base chain new pool listing — Uniswap V3 + Aerodrome ─────────────────
     # Stesso pattern di pump_grad: token freschi, liquidità appena creata,
     # potenziale pump breve. Stessi parametri di pump_grad come baseline.
@@ -239,6 +274,28 @@ CONFIGS = {
         bsr_exit_threshold   = 0.45,
     ),
 }
+
+def _compute_daily_pnl() -> float:
+    """Somma pnl_eur delle ultime 24h da live_trades.csv (cache 2 min)."""
+    now = time.time()
+    if now - _daily_pnl_cache["ts"] < _DAILY_PNL_CACHE_TTL:
+        return _daily_pnl_cache["val"]
+    total = 0.0
+    try:
+        with open(LIVE_LOG_CSV, "r", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                try:
+                    pnl = float((row.get("pnl_eur") or "0").replace("+", ""))
+                    ts  = datetime.fromisoformat(row["ts"]).timestamp()
+                    if now - ts <= 86400:
+                        total += pnl
+                except (ValueError, KeyError):
+                    continue
+    except OSError:
+        pass
+    _daily_pnl_cache.update({"val": total, "ts": now})
+    return total
+
 
 # ---------------------------------------------------------------------------
 # Struttura risultato trade (backtest + live)
@@ -480,13 +537,15 @@ def run_backtest():
 #         Ridotto da 12h → 3h: cattura freschi + marginali 1-3h, blocca stantii 3h+.
 #   V2:   TP1 mediano 17.5h, p90 60h         → 48h
 #   V3:   TP1 mediano 12.5h, SL lento 10h    → 48h
-MAX_SIGNAL_AGE_H: dict = {"defi": 3, "v2": 48, "v3": 48, "bnf": 6, "v3_large": 168, "v3_midcap": 24, "pump_grad": 1, "mirror": 1, "pre_grad": 0.33}
+MAX_SIGNAL_AGE_H: dict = {"defi": 3, "v2": 48, "v3": 48, "bnf": 6, "v3_large": 168, "v3_midcap": 24, "pump_grad": 1, "mirror": 1, "pre_grad": 0.33, "midcap": 48}
+# midcap: segnale daily (scanner ogni 4h, breakout su candela giornaliera) → validità
+# entry più larga (48h, ~12 cicli scanner) e max hold = 48h*3 = 144h (6gg, vedi riga ~1718)
 MAX_SIGNAL_AGE_H_DEFAULT = 24   # fallback
 REFRESH_SEC      = 30    # frequenza aggiornamento prezzi (era 60s → dimezza latenza entry)
 
 # Catene abilitate — BSC/ETH disabilitati; BASE abilitato al loro posto.
 # Per riabilitare: ALLOWED_CHAINS = {"solana", "bsc", "ethereum", "base"}
-ALLOWED_CHAINS: set = {"solana", "base"}
+ALLOWED_CHAINS: set = {"solana", "base", "cex_spot"}
 MAX_CLOSED_SHOW  = 100   # trade chiusi mostrati nel report
 
 LIVE_COLUMNS = [
@@ -513,6 +572,257 @@ def _fetch_price_binance(symbol: str, timeout: int = 8):
         return price, vol1h, 1.0, float("inf")
     except Exception:
         return None
+
+
+def _fetch_price_cex_spot(symbol: str, timeout: int = 8):
+    """Fetch prezzo spot CEX con cascata binance → mexc → gateio (stesso ordine
+    e simboli di midcap_scanner: i token possono migrare tra i tre exchange nel
+    tempo, da qui il retry in cascata anche in fase di tracking).
+    `symbol` nel formato ccxt "SOON/USDT". Ritorna (price, vol_1h_usd, bsr, liq)
+    o None. bsr=1.0 e liq=inf: non disponibili/non applicabili su CEX spot
+    (book reali con profondità propria, non pool DEX da monitorare per rug)."""
+    base_quote = symbol.replace("/", "")
+    pair_gate  = symbol.replace("/", "_")
+    attempts = [
+        ("binance", "https://api.binance.com/api/v3/ticker/24hr",
+         {"symbol": base_quote}, "lastPrice", "quoteVolume"),
+        ("mexc", "https://api.mexc.com/api/v3/ticker/24hr",
+         {"symbol": base_quote}, "lastPrice", "quoteVolume"),
+        ("gateio", "https://api.gateio.ws/api/v4/spot/tickers",
+         {"currency_pair": pair_gate}, "last", "quote_volume"),
+    ]
+    for ex_id, url, params, price_key, vol_key in attempts:
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+            t = data[0] if isinstance(data, list) else data
+            if not t:
+                continue
+            price = float(t.get(price_key, 0) or 0)
+            vol24 = float(t.get(vol_key, 0) or 0)
+            if price > 0:
+                return price, vol24 / 24.0, 1.0, float("inf")
+        except Exception:
+            continue
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Rug watcher — monitor real-time via Helius WS dei pool pump_grad appena aperti.
+#
+# Perché: brainfry/Taylor/SHIBURAI (07/06, -89%/-73%/-70%) sono "rug" che drenano
+# liquidità e prezzo nella stessa transazione atomica — tra un poll e l'altro
+# (REFRESH_SEC=30s) il prezzo "salta" da vicino-entry a -70/-90%, scavalcando
+# hard_sl (-12%) che non fa in tempo a vedere i livelli intermedi.
+# Soluzione: sottoscriviamo le transazioni sui pool pump_grad appena aperti
+# (transactionSubscribe, stesso pattern di wallet_mirror_bot) e ad ogni tx che
+# tocca il pool scateniamo un _process_position immediato invece di aspettare
+# il prossimo poll — la latenza di rilevazione scende da ~30s a ~1-5s.
+#
+# Costo/rischio chiamate DexScreener: limitato a)nei primi FAST_CHECK_WINDOW_MIN
+# (dove avvengono i rug osservati: 17-18 min), b) con debounce per pool, c) solo
+# sui pool effettivamente toccati dalla tx (parsing accountKeys, non "tutti i
+# pool aperti" — evita di moltiplicare i fetch per N posizioni simultanee).
+# ---------------------------------------------------------------------------
+
+FAST_CHECK_WINDOW_MIN   = 15.0   # entro quanti minuti dall'apertura attivare il WS fast-check
+FAST_CHECK_DEBOUNCE_SEC = 5.0    # min secondi tra due fetch innescati da WS sullo stesso pool
+
+
+class _RugWatcher:
+    """Sottoscrizione dinamica via `logsSubscribe` (RPC Solana standard, non
+    l'Atlas Enhanced di Helius — quello richiede piano "developer o superiore",
+    indisponibile sul piano attuale: vedi errore -32403 osservato in produzione)
+    ai pool pump_grad appena aperti. Una sub per pool con filtro `mentions`:
+    ogni notifica corrisponde univocamente a quel pool, niente parsing di
+    accountKeys/transazioni. Notifica via callback quale pool è stato toccato,
+    cosicché LiveEngine rifaccia subito il fetch del prezzo invece di aspettare
+    il prossimo poll a 30s. Nessun impatto se HELIUS_API_KEY/websocket-client
+    mancano o se l'RPC nega le subscription: resta inattivo, polling normale."""
+
+    _SILENCE_MAX     = 90    # secondi senza messaggi con pool attivi → forza reconnect
+    _RECONNECT_S     = 10
+    _MAX_SUB_ERRORS  = 3     # subscription rifiutate consecutive → disabilita (piano non supportato)
+
+    def __init__(self, on_pool_activity):
+        self._on_activity  = on_pool_activity   # callback(pair_address: str)
+        self._watched: set = set()
+        self._sub_by_pool: dict = {}   # pair_address → subscription_id
+        self._pool_by_sub: dict = {}   # subscription_id → pair_address
+        self._pending: dict = {}       # request_id → pair_address (in attesa di conferma)
+        self._lock         = threading.Lock()
+        self._ws           = None
+        self._last_msg_ts  = time.time()
+        self._stop         = threading.Event()
+        self._sub_errors   = 0
+        self._enabled      = bool(HELIUS_API_KEY and WS_OK)
+
+    def start(self):
+        if not self._enabled:
+            log.debug("[rug_watch] disattivo (manca HELIUS_API_KEY o websocket-client)")
+            return
+        threading.Thread(target=self._watchdog_loop, daemon=True).start()
+        threading.Thread(target=self._run_forever, daemon=True).start()
+        log.info("[rug_watch] avviato — fast-check WS attivo per pump_grad nei primi "
+                 f"{FAST_CHECK_WINDOW_MIN:.0f} min dall'apertura")
+
+    def stop(self):
+        self._stop.set()
+        if self._ws:
+            try: self._ws.close()
+            except Exception: pass
+
+    def sync(self, pools: set):
+        """Aggiorna l'insieme dei pool da monitorare (chiamato ad ogni ciclo da
+        LiveEngine): sottoscrive i nuovi, disiscrive quelli non più aperti."""
+        if not self._enabled:
+            return
+        with self._lock:
+            if pools == self._watched:
+                return
+            added   = pools - self._watched
+            removed = self._watched - pools
+            self._watched = set(pools)
+        for pa in added:
+            self._subscribe_pool(pa)
+        for pa in removed:
+            self._unsubscribe_pool(pa)
+
+    # -- WS lifecycle ------------------------------------------------------
+    def _run_forever(self):
+        url = f"wss://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
+        while not self._stop.is_set():
+            try:
+                ws = websocket.WebSocketApp(
+                    url,
+                    on_open=self._on_open, on_message=self._on_message,
+                    on_error=self._on_error, on_close=self._on_close,
+                )
+                ws.run_forever(reconnect=self._RECONNECT_S, ping_interval=30, ping_timeout=10)
+            except Exception as e:
+                log.debug(f"[rug_watch] WS crash: {e}")
+            if not self._stop.is_set() and self._enabled:
+                time.sleep(self._RECONNECT_S)
+
+    def _watchdog_loop(self):
+        """Pattern ripreso da pre_grad_monitor: forza reconnect se il WS resta
+        silenzioso troppo a lungo mentre ci sono pool attivi da monitorare."""
+        while not self._stop.is_set():
+            time.sleep(20)
+            with self._lock:
+                _has_watched = bool(self._watched)
+            if (self._enabled and self._ws and _has_watched
+                    and (time.time() - self._last_msg_ts) > self._SILENCE_MAX):
+                log.warning(f"[rug_watch] WS silenzioso >{self._SILENCE_MAX}s con pool attivi → reconnect")
+                try: self._ws.close()
+                except Exception: pass
+
+    def _disable(self, reason: str):
+        if not self._enabled:
+            return
+        self._enabled = False
+        log.warning(f"[rug_watch] disattivato definitivamente: {reason} — "
+                    "si torna al solo polling a 30s, nessun impatto sul resto del sistema")
+        self.stop()
+
+    # -- subscription management -------------------------------------------
+    def _subscribe_pool(self, pair_address: str):
+        if not self._ws:
+            return
+        req_id = int(time.time() * 1000) % 1_000_000
+        with self._lock:
+            self._pending[req_id] = pair_address
+        try:
+            self._ws.send(json.dumps({
+                "jsonrpc": "2.0", "id": req_id, "method": "logsSubscribe",
+                "params": [{"mentions": [pair_address]}, {"commitment": "processed"}],
+            }))
+        except Exception as e:
+            log.debug(f"[rug_watch] subscribe {pair_address[:8]}…: {e}")
+
+    def _unsubscribe_pool(self, pair_address: str):
+        if not self._ws:
+            return
+        with self._lock:
+            sub_id = self._sub_by_pool.pop(pair_address, None)
+            if sub_id is not None:
+                self._pool_by_sub.pop(sub_id, None)
+        if sub_id is None:
+            return
+        try:
+            self._ws.send(json.dumps({
+                "jsonrpc": "2.0",
+                "id": int(time.time() * 1000) % 1_000_000,
+                "method": "logsUnsubscribe", "params": [sub_id],
+            }))
+        except Exception as e:
+            log.debug(f"[rug_watch] unsubscribe {pair_address[:8]}…: {e}")
+
+    def _resubscribe_all(self):
+        """Dopo una riconnessione le subscription precedenti sono perse: ripristina."""
+        with self._lock:
+            self._sub_by_pool.clear()
+            self._pool_by_sub.clear()
+            self._pending.clear()
+            pools = list(self._watched)
+        for pa in pools:
+            self._subscribe_pool(pa)
+
+    # -- callbacks ----------------------------------------------------------
+    def _on_open(self, ws):
+        self._ws = ws
+        self._last_msg_ts = time.time()
+        self._resubscribe_all()
+
+    def _on_message(self, ws, raw):
+        self._last_msg_ts = time.time()
+        try:
+            msg = json.loads(raw)
+        except Exception:
+            return
+
+        # Conferma/errore di subscribe (risposta con stesso "id" della richiesta)
+        if "id" in msg:
+            req_id = msg.get("id")
+            with self._lock:
+                pa = self._pending.pop(req_id, None)
+            if pa is None:
+                return
+            err = msg.get("error")
+            if err is not None:
+                with self._lock:
+                    self._sub_errors += 1
+                    n_err = self._sub_errors
+                code = err.get("code") if isinstance(err, dict) else err
+                log.debug(f"[rug_watch] subscribe rifiutata per {pa[:8]}… ({code})")
+                if code == -32403 or n_err >= self._MAX_SUB_ERRORS:
+                    self._disable("logsSubscribe non disponibile su questo piano Helius (-32403)")
+                return
+            with self._lock:
+                self._sub_errors = 0
+                sub_id = msg.get("result")
+                if isinstance(sub_id, int):
+                    self._sub_by_pool[pa] = sub_id
+                    self._pool_by_sub[sub_id] = pa
+            return
+
+        # Notifica logsNotification: {"params": {"subscription": <id>, "result": {...}}}
+        try:
+            params = msg.get("params") or {}
+            sub_id = params.get("subscription")
+            with self._lock:
+                pa = self._pool_by_sub.get(sub_id)
+            if pa:
+                self._on_activity(pa)
+        except Exception:
+            pass
+
+    def _on_error(self, ws, err):
+        log.debug(f"[rug_watch] WS errore: {err}")
+
+    def _on_close(self, ws, code, msg):
+        log.debug(f"[rug_watch] WS chiuso (code={code})")
 
 
 def _parse_dex_pair(pair: dict):
@@ -790,10 +1100,17 @@ class LiveEngine:
         self._lock  = threading.Lock()
         self._stop  = threading.Event()
         self._v3_flagged: Dict[str, str] = {}   # signal_id → severity ("warn"|"exit")
+        # ── Rug watcher (fast-check WS pump_grad, vedi _RugWatcher) ────────
+        self._fast_lock          = threading.Lock()
+        self._fast_check_pending: set  = set()   # pair_address con attività rilevata
+        self._fast_check_last:    dict = {}      # pair_address → ts ultimo fetch innescato
+        self._rug_watcher = _RugWatcher(on_pool_activity=self._on_pool_activity)
         if not self._load_state():    # prova prima il JSON di stato
             self._load_existing()     # fallback: ricostruzione da CSV
         self._purge_stale()           # rimuovi fantasmi senza pair_address
         self._load_new_signals()
+        self._rug_watcher.start()
+        threading.Thread(target=self._fast_check_loop, daemon=True).start()
 
     # ── Persistenza stato JSON ─────────────────────────────────────────────
 
@@ -1033,7 +1350,7 @@ class LiveEngine:
         # Traccia entry, loss exits e liq_collapse con cooldown differenziati.
         TOKEN_COOLDOWN_H        = 8    # dopo entry normale
         LIQ_COLLAPSE_COOLDOWN_H = 24   # dopo liq_collapse (token ruggato/DLMM)
-        HARD_SL_COOLDOWN_H      = 12   # dopo hard_sl (perdita secca)
+        HARD_SL_COOLDOWN_H      = 24   # dopo hard_sl: 24h evita ri-entrata lo stesso giorno (era 12h)
         LOSS_EXIT_COOLDOWN_H    = 4    # dopo bsr_collapse/vol_crash/exit_adaptive
 
         # Azioni che avviano cooldown con relativo numero di ore
@@ -1041,6 +1358,8 @@ class LiveEngine:
             "entry":               TOKEN_COOLDOWN_H,
             "liq_collapse":        LIQ_COLLAPSE_COOLDOWN_H,
             "hard_sl":             HARD_SL_COOLDOWN_H,
+            "sl_adaptive":         HARD_SL_COOLDOWN_H,   # 08/06: 币安人生 ri-entrato 3x in ~30h con
+                                                          # setup invariato (ADX~59, expand_bars 8-9) → -39€
             "exit_bsr_collapse":   LOSS_EXIT_COOLDOWN_H,
             "exit_vol_crash":      LOSS_EXIT_COOLDOWN_H,
             "exit_adaptive":       LOSS_EXIT_COOLDOWN_H,
@@ -1124,8 +1443,18 @@ class LiveEngine:
             except Exception:
                 pass
 
+        # ── Circuit breaker: ferma nuovi ingressi se P&L 24h sotto soglia ──────
+        if MAX_DAILY_LOSS_EUR:
+            _dpnl = _compute_daily_pnl()
+            if _dpnl < MAX_DAILY_LOSS_EUR:
+                log.warning(
+                    f"[circuit] P&L 24h={_dpnl:+.2f}€ < soglia {MAX_DAILY_LOSS_EUR:+.2f}€ "
+                    "→ nuovi segnali bloccati fino a recupero"
+                )
+                return
+
         new_count = 0
-        for system, path in [("defi", DEFI_SIGNALS), ("v3", V3_SIGNALS), ("pump_grad", PUMP_GRAD_SIGNALS), ("mirror", MIRROR_SIGNALS), ("pre_grad", PRE_GRAD_SIGNALS), ("base_pump", BASE_PUMP_SIGNALS)]:
+        for system, path in [("defi", DEFI_SIGNALS), ("v3", V3_SIGNALS), ("pump_grad", PUMP_GRAD_SIGNALS), ("mirror", MIRROR_SIGNALS), ("pre_grad", PRE_GRAD_SIGNALS), ("base_pump", BASE_PUMP_SIGNALS), ("midcap", MIDCAP_SIGNALS)]:
         # BNF (Binance Futures) disabilitato: logica futures incompatibile con bot spot
             if not os.path.exists(path):
                 continue
@@ -1148,6 +1477,13 @@ class LiveEngine:
                         continue
                     # Skip se stesso token_address già aperto (cross-sistema: es. EUP/v3 = ReelRush/defi)
                     tok_addr_check = str(row.get("token_address","") or "").strip().lower()
+                    if tok_addr_check == "nan":
+                        # pandas legge la cella vuota (token_address="" su CEX spot,
+                        # es. midcap_scanner) come NaN float → str(nan or "")="nan":
+                        # ogni segnale CEX-spot collassa sulla stessa fake-key "nan"
+                        # in active_taddrs/recent_taddrs → blocco cross-sistema silenzioso
+                        # (vedi caso "solo CC ha aperto fra ~12 segnali midcap" 07/06)
+                        tok_addr_check = ""
                     if tok_addr_check and tok_addr_check in active_taddrs:
                         log.debug(f"[live/{system}] {sid}: token_address {tok_addr_check[:12]}… già in portafoglio (altro sistema) → skip")
                         known.add(sid)
@@ -1217,8 +1553,22 @@ class LiveEngine:
                                 log.info(
                                     f"[live/v3] {sym_log}: dato Dune stale "
                                     f"(inflow_2h={float(_i2h_new):,.0f} buyers_2h={_b2h_new} "
-                                    f"identico a segnale precedente) → skip"
+                                    f"identico a segnale precedente) → skip definitivo"
                                 )
+                                _log_trade({
+                                    "ts": now.isoformat(),
+                                    "signal_id": sid, "system": "v3",
+                                    "token_symbol": sym_log, "chain": str(row.get("chain", "")),
+                                    "pair_address": pair_addr_check, "action": "skip_stale",
+                                    "price": str(row.get("price_usd", row.get("price", "0"))),
+                                    "change_pct": "0", "vol_h1": "0", "bsr": "0",
+                                    "remaining": "0.00", "pnl_eur": "+0.00",
+                                    "exit_reason": "skip_stale",
+                                    "note": (
+                                        f"dato Dune invariato (inflow_2h={_i2h_new} buyers_2h={_b2h_new}) "
+                                        "rispetto a un segnale già processato per lo stesso token"
+                                    ),
+                                })
                                 known.add(sid)
                                 continue
 
@@ -1260,7 +1610,12 @@ class LiveEngine:
 
                     ts_str = str(row.get("timestamp_entry", row.get("timestamp", "")))
                     try:
-                        ts    = datetime.fromisoformat(ts_str)
+                        ts = datetime.fromisoformat(ts_str)
+                        if ts.tzinfo is not None:
+                            # midcap_scanner scrive timestamp UTC tz-aware (es. "+00:00"),
+                            # gli altri sistemi naive locale: senza normalizzazione "now - ts"
+                            # solleva TypeError, intercettato dal bare except → retry infinito silenzioso
+                            ts = ts.astimezone().replace(tzinfo=None)
                         age_h = (now - ts).total_seconds() / 3600
                         max_age = MAX_SIGNAL_AGE_H.get(effective_system, MAX_SIGNAL_AGE_H_DEFAULT)
                         if age_h > max_age:
@@ -1269,6 +1624,10 @@ class LiveEngine:
                         continue
                     entry_price = float(row.get("price_entry_usd", row.get("price_usd", 0)) or 0)
                     if entry_price <= 0:
+                        # Prezzo non valido già al momento del segnale (es. API origine giù) —
+                        # non cambierà ai cicli successivi: marca come noto per evitare retry infiniti.
+                        log.debug(f"[live/{system}] {sid}: price_entry_usd<=0 nel segnale → skip definitivo (non tracciabile)")
+                        known.add(sid)
                         continue
                     pair_addr = str(row.get("pair_address", "") or "")
                     # Blocca segnali v2/defi senza pair_address: non possiamo tracciarne il prezzo
@@ -1341,6 +1700,8 @@ class LiveEngine:
                                 continue
 
                     token_address = str(row.get("token_address", "") or "")
+                    if token_address.lower() == "nan":
+                        token_address = ""  # vedi normalizzazione tok_addr_check sopra
 
                     # ── Blacklist hard post-SL ─────────────────────────────────────────────
                     # Salta se il token_address è stato blacklistato dopo un hard_sl > -25%
@@ -1363,8 +1724,23 @@ class LiveEngine:
                             if drift < -_entry_drop_max:
                                 log.info(
                                     f"[live/{effective_system}] {sid}: prezzo calato "
-                                    f"{drift*100:.1f}% dal segnale (>{_entry_drop_max*100:.0f}%) → skip (stantio)"
+                                    f"{drift*100:.1f}% dal segnale (>{_entry_drop_max*100:.0f}%) → skip definitivo (stantio)"
                                 )
+                                # persiste lo skip su CSV: senza questo, _load_new_signals lo
+                                # ritenta ad ogni ciclo finché un singolo tick anomalo (spike
+                                # transitorio su pool a bassa liquidità) lo fa rientrare nella
+                                # soglia → entry "a coltello che cade" (vedi caso FPU 07/06).
+                                _log_trade({
+                                    "ts": now.isoformat(),
+                                    "signal_id": sid, "system": effective_system,
+                                    "token_symbol": str(row.get("token_symbol", "?")),
+                                    "chain": chain, "pair_address": str(row.get("pair_address", "")),
+                                    "action": "skip_stale", "price": f"{entry_price}",
+                                    "change_pct": f"{drift*100:+.2f}", "vol_h1": "0", "bsr": "0",
+                                    "remaining": "0.00", "pnl_eur": "+0.00",
+                                    "exit_reason": "skip_stale",
+                                    "note": f"prezzo già calato {drift*100:.1f}% prima dell'entry, tesi pre-pump invalidata",
+                                })
                                 known.add(sid)
                                 continue
                             entry_price = live_price  # usa prezzo live come entry
@@ -1400,7 +1776,13 @@ class LiveEngine:
                     if pair_addr and pair_addr not in ("", "0"*len(pair_addr) if pair_addr else ""):
                         active_pairs.add(pair_addr)
                     new_count += 1
-                    recent_tokens[sym_check] = (now, "entry")
+                    if sym_check:
+                        # guardia "": senza, un token_symbol mancante (es. CSV scritto
+                        # prima che lo scanner aggiungesse il campo) avvelena la chiave
+                        # "" in recent_tokens — ogni segnale successivo con token_symbol
+                        # vuoto, di QUALSIASI sistema, collassa sullo stesso cooldown
+                        # 8h "entry" e viene scartato in silenzio (log.debug invisibile)
+                        recent_tokens[sym_check] = (now, "entry")
                     if tok_addr_check:
                         recent_taddrs[tok_addr_check] = (now, "entry")
                     with self._lock:
@@ -1453,6 +1835,62 @@ class LiveEngine:
         except Exception as e:
             log.debug(f"[v3_flags] {e}")
 
+    # ── Rug watcher: fast-check pump_grad via WS (vedi _RugWatcher) ─────────
+
+    def _on_pool_activity(self, pair_address: str):
+        """Callback dal _RugWatcher: una tx ha toccato questo pool pump_grad
+        sotto osservazione → marca per un refresh immediato (con debounce)."""
+        with self._fast_lock:
+            self._fast_check_pending.add(pair_address)
+
+    def _sync_rug_watcher(self):
+        """Allinea l'insieme dei pool monitorati via WS: solo pump_grad aperti
+        e ancora entro FAST_CHECK_WINDOW_MIN dall'apertura — è lì che si sono
+        consumati tutti i rug osservati (brainfry 18min, SHIBURAI 17min).
+        Fuori da quella finestra si torna al solo poll a 30s, zero overhead extra."""
+        now = datetime.now()
+        pools = set()
+        with self._lock:
+            for pos in self.positions.values():
+                if (pos.get("system") == "pump_grad" and pos.get("remaining", 0) > 0
+                        and pos.get("pair_address")):
+                    try:
+                        ts = datetime.fromisoformat(pos.get("position_open_ts") or pos["entry_ts"])
+                        age_min = (now - ts).total_seconds() / 60
+                    except Exception:
+                        age_min = 0.0
+                    if age_min <= FAST_CHECK_WINDOW_MIN:
+                        pools.add(pos["pair_address"])
+        self._rug_watcher.sync(pools)
+
+    def _fast_check_loop(self):
+        """Consuma le notifiche del _RugWatcher: rifà subito _process_position
+        sui pool toccati da una tx (con debounce per evitare di moltiplicare
+        i fetch DexScreener su pool molto attivi)."""
+        while not self._stop.is_set():
+            time.sleep(1.0)
+            with self._fast_lock:
+                if not self._fast_check_pending:
+                    continue
+                pending = self._fast_check_pending
+                self._fast_check_pending = set()
+            now_t = time.time()
+            due = [pa for pa in pending
+                   if now_t - self._fast_check_last.get(pa, 0.0) >= FAST_CHECK_DEBOUNCE_SEC]
+            if not due:
+                continue
+            for pa in due:
+                self._fast_check_last[pa] = now_t
+            with self._lock:
+                targets = [(sid, pos) for sid, pos in self.positions.items()
+                           if pos.get("system") == "pump_grad" and pos.get("remaining", 0) > 0
+                           and pos.get("pair_address") in due]
+            for sid, pos in targets:
+                try:
+                    self._process_position(sid, pos)
+                except Exception as e:
+                    log.debug(f"[rug_watch] fast-check {sid}: {e}")
+
     # ── Logica di exit ──────────────────────────────────────────────────────
 
     def _process_position(self, sid: str, pos: dict):
@@ -1490,6 +1928,8 @@ class LiveEngine:
 
         if pos.get("chain") == "binance_futures":
             fetch = _fetch_price_binance(pos["pair_address"])
+        elif pos.get("system") == "midcap":
+            fetch = _fetch_price_cex_spot(pos["pair_address"])
         elif pos.get("system") == "pre_grad" and not pos.get("pair_address"):
             # ── Pre-grad: token ancora sulla bonding curve ────────────────────
             # Usa pump.fun API; quando gradua → aggiorna pair_address e passa a DexScreener
@@ -1951,6 +2391,8 @@ class LiveEngine:
                 except Exception as e: log.warning(f"[live] HTML: {e}")
                 try: self._load_new_signals()
                 except Exception as e: log.debug(f"[live] nuovi segnali: {e}")
+                try: self._sync_rug_watcher()
+                except Exception as e: log.debug(f"[live] rug_watch sync: {e}")
                 try: self._save_state()
                 except Exception as e: log.warning(f"[live] salvataggio stato: {e}")
             except Exception as e:
@@ -1960,6 +2402,7 @@ class LiveEngine:
     def stop(self):
         self._save_state()
         self._stop.set()
+        self._rug_watcher.stop()
 
     def pause_all_positions(self):
         """
@@ -2207,6 +2650,8 @@ def _build_exit_quality_html() -> str:
                     except: pnl = 0.0
                     sym = r.get("token_symbol", "?")
                     pair = r.get("pair_address", "")
+                    note = r.get("note", "")
+                    zeroed = (pnl == 0.0 and abs(exit_chg) > 1.0)
                     dex_link = f"https://dexscreener.com/solana/{pair}" if pair else "#"
                     # Verdetto basato sul tipo di exit
                     if action in ("tp1_trail", "trail_exit"):
@@ -2226,6 +2671,7 @@ def _build_exit_quality_html() -> str:
                         "exit_ts": exit_ts, "exit_min": exit_min,
                         "exit_chg": exit_chg, "pnl": pnl,
                         "verdict": verdict, "vcolor": vcolor, "dex_link": dex_link,
+                        "zeroed": zeroed, "note": note,
                     })
         except Exception:
             pass
@@ -2335,7 +2781,7 @@ def _build_exit_quality_html() -> str:
             f'❌{p} ✅{c} <span style="color:#f85149">({pct})</span></span>'
         )
 
-    sys_colors = {"defi":"#1f6feb","v3":"#e3b341","v2":"#8b949e","v3_large":"#a371f7","v3_midcap":"#8b949e","pump_grad":"#f0883e","pre_grad":"#58a6ff","mirror":"#bc8cff"}
+    sys_colors = {"defi":"#1f6feb","v3":"#e3b341","v2":"#8b949e","v3_large":"#a371f7","v3_midcap":"#8b949e","midcap":"#3fb950","pump_grad":"#f0883e","pre_grad":"#58a6ff","mirror":"#bc8cff"}
 
     table_rows = ""
     for r in rows:
@@ -2372,6 +2818,8 @@ def _build_exit_quality_html() -> str:
         try: date_str = r["exit_ts"].strftime("%m-%d %H:%M")
         except: date_str = "?"
         action_short = r["action"].replace("exit_", "").replace("_collapse", "_coll")
+        zero_mark = (f' <span title="P&amp;L azzerato retroattivamente — {html.escape(r["note"])}" '
+                     f'style="cursor:help;color:#8b949e;font-size:.7rem">ⓘ</span>') if r["zeroed"] else ""
         pump_table_rows += (
             f'<tr>'
             f'<td><a href="{r["dex_link"]}" target="_blank" style="color:#58a6ff;font-weight:600">{r["sym"]}</a></td>'
@@ -2379,7 +2827,7 @@ def _build_exit_quality_html() -> str:
             f'<td style="color:{dur_color}">{dur_str}</td>'
             f'<td style="color:#f0883e;font-size:.8rem">{action_short}</td>'
             f'<td style="color:{chg_color}">{r["exit_chg"]:+.1f}%</td>'
-            f'<td style="color:{pnl_color};font-weight:600">{r["pnl"]:+.2f}€</td>'
+            f'<td style="color:{pnl_color};font-weight:600">{r["pnl"]:+.2f}€{zero_mark}</td>'
             f'<td style="color:{r["vcolor"]};font-weight:600">{r["verdict"]}</td>'
             f'</tr>\n'
         )
@@ -2410,10 +2858,11 @@ def _build_exit_quality_html() -> str:
     now_str    = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _bsr_parts = " · ".join(
         f"{s}={CONFIGS[s].get('bsr_exit_threshold', 0.50):.2f}"
-        for s in ("defi", "v3", "v3_midcap", "v3_large", "pump_grad", "pre_grad")
+        for s in ("defi", "v3", "v3_midcap", "v3_large", "midcap", "pump_grad", "pre_grad")
         if s in CONFIGS
     )
     bsr_thresh_note = _bsr_parts or "0.50"
+    _defi_confirm   = CONFIGS.get("defi", {}).get("bsr_confirm_count", 7)
     return f"""<!DOCTYPE html>
 <html lang="it"><head><meta charset="UTF-8">
 <meta http-equiv="refresh" content="600">
@@ -2465,7 +2914,7 @@ tr:hover td{{background:#161b2280}}
   ❌ <strong>Prematuro</strong>: prezzo &gt;+{PREMATURE_GAP:.0f}% oltre Δ exit entro {LOOK_AHEAD_H}h.
   ⚠️ <strong>Dubbio</strong>: recupero 0–{PREMATURE_GAP:.0f}%.
   ✅ <strong>Corretto</strong>: nessun recupero.
-  — Impostazioni correnti: grace <strong>{ENTRY_GRACE_MIN:.0f} min</strong> · BSR conferme <strong>5 (DEFI) / 4 (altri)</strong> · vol_crash guard BSR≤0.65<br>
+  — Impostazioni correnti: grace <strong>{ENTRY_GRACE_MIN:.0f} min</strong> · BSR conferme <strong>{_defi_confirm:.0f} (DEFI) / 2 (pump_grad) / 2-3 (v3 flag) / 4 (altri)</strong> · vol_crash guard BSR≤0.65<br>
   — BSR soglie per sistema: <strong>{bsr_thresh_note}</strong>
   — <span style="color:#f85149">Tempo in rosso</span> = uscita entro 10 min.
 </div>
@@ -2489,11 +2938,12 @@ def _fmt_price(p_str: str) -> str:
     """Formatta un prezzo stringa per la visualizzazione (notazione compatta)."""
     try:
         v = float(p_str or 0)
-        if v <= 0: return "—"
-        if v < 0.0001:  return f"{v:.3e}"
-        if v < 0.01:    return f"{v:.6f}"
-        if v < 1:       return f"{v:.4f}"
-        if v < 10000:   return f"{v:,.2f}"
+        if v <= 0:        return "—"
+        if v < 0.000001:  return f"{v:.2e}"   # < $0.000001 → notazione scientifica
+        if v < 0.0001:    return f"{v:.8f}"   # $0.00005995 invece di 5.995e-05
+        if v < 0.01:      return f"{v:.6f}"
+        if v < 1:         return f"{v:.4f}"
+        if v < 10000:     return f"{v:,.2f}"
         return f"{v:,.0f}"
     except: return "—"
 
@@ -2503,7 +2953,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
 
     # ── Stats per sistema ───────────────────────────────────────────────────
     sys_stats = {}
-    for sys_name in ("defi", "v3", "v3_large", "pump_grad", "pre_grad", "mirror"):
+    for sys_name in ("defi", "v3", "v3_large", "midcap", "pump_grad", "pre_grad", "mirror"):
         open_n   = sum(1 for _, s in open_list if s.get("system") == sys_name)
         closed_s = [(sid, s) for sid, s in all_states.items()
                     if s.get("system") == sys_name and float(s.get("remaining", 0) or 0) <= 0]
@@ -2630,8 +3080,8 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         else:
             tp_status = '<span style="color:#3fb950">●TP1 ●TP2</span>'
 
-        dex_link = f"https://dexscreener.com/{chain}/{pair}" if pair else "#"
-        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
+        dex_link = f"https://dexscreener.com/{chain}/{pair}" if pair and chain != "cex_spot" else "#"
+        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
         sc = sys_colors.get(sys_name, "#8b949e")
         chg_c = chg_color(live_pct)
         pnl_c = pnl_color(pnl)
@@ -2699,7 +3149,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             age   = f"{h}h{m:02d}m"
         except: age = "?"
         chg_c = chg_color(chg); pnl_c = pnl_color(pnl)
-        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
+        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
         sc = sys_colors.get(sys_name, "#8b949e")
         # Estrai data e ora di apertura da signal_id (SYM_YYYYMMDD_HHMMSS)
         sig_date = ""; entry_time = ""
@@ -2711,7 +3161,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         except: pass
         # Escludi righe con exit_reason da non mostrare
         EXCL = {"purged_stale","archiviato_pre_2026-05-20","duplicate_pair",
-                "no_pair_address","expired_max_age"}
+                "no_pair_address","expired_max_age","skip_stale"}
         if reason in EXCL:
             return ""
         sym_lower = sym.lower()
@@ -2854,6 +3304,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    <button class="sys-btn" onclick="setSys(this,\'v3\')">V3</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'v3_large\')">V3L</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'v3_midcap\')">V3M</button>\n'
+        f'    <button class="sys-btn" onclick="setSys(this,\'midcap\')">MIDCAP</button>\n'
         f'    <button class="sys-btn pump-btn" onclick="setSys(this,\'pump_grad\')">🚀 PUMP</button>\n'
         f'    <button class="sys-btn pre-btn" onclick="setSys(this,\'pre_grad\')">⚡ PRE</button>\n'
         f'  </div>\n'
@@ -3033,7 +3484,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    sp.textContent=(tot_pnl>=0?"+":"")+Math.round(tot_pnl)+"\u20ac";\n'
         f'    sp.style.color=tot_pnl>=0?"#3fb950":"#f85149";\n'
         f'  }}\n'
-        f'  ["defi","v3","v3_large","bnf","pump_grad","pre_grad","mirror"].forEach(function(sys){{\n'
+        f'  ["defi","v3","v3_large","v3_midcap","midcap","bnf","pump_grad","pre_grad","mirror"].forEach(function(sys){{\n'
         f'    var st=sysStat[sys];\n'
         f'    var eo=document.getElementById("sc-"+sys+"-open"); if(eo) eo.textContent=st.o;\n'
         f'    var ec=document.getElementById("sc-"+sys+"-closed"); if(ec) ec.textContent=st.c;\n'

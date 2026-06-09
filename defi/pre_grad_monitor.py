@@ -103,21 +103,24 @@ except ImportError:
 
 log = logging.getLogger("pre_grad")
 
-PUMPPORTAL_WS  = "wss://pumpportal.fun/api/data"
+_PUMPPORTAL_APIKEY = os.environ.get("PUMPPORTAL_APIKEY", "")
+PUMPPORTAL_WS  = (
+    f"wss://pumpportal.fun/api/data?api-key={_PUMPPORTAL_APIKEY}"
+    if _PUMPPORTAL_APIKEY else "wss://pumpportal.fun/api/data"
+)
 DEXSCREENER    = "https://api.dexscreener.com"
 
 # ── Configurazione ────────────────────────────────────────────────────────────
 CFG = {
     # Filtra new token: solo se l'initial buy >= questa soglia (SOL)
-    # Evita token di test / spam creati senza interesse reale
-    # 0.1 SOL (~$18): cattura token come Brainrot che iniziano piccoli ma pompano
-    "INITIAL_BUY_SOL":    0.1,
+    # 0.01 SOL: soglia minima anti-spam puro, cattura token con buy piccolo che poi pompano
+    "INITIAL_BUY_SOL":    0.01,
 
     # Inizia a tracciare il token quando vSolInBondingCurve supera questa soglia
     "TRACK_WARN_SOL":    55.0,
 
     # Soglia "prossimo alla graduation" → rugcheck preventivo
-    "TRACK_HOT_SOL":     72.0,
+    "TRACK_HOT_SOL":     60.0,  # era 72 — più margine prima di graduation (88 SOL)
 
     # Graduation avviene intorno a questa soglia (varia 79-85 SOL)
     "GRAD_SOL":          80.0,
@@ -127,7 +130,7 @@ CFG = {
     "MAX_TRACKED":       150,
 
     # Dopo quanto tempo rimuovere token dalla watchlist senza graduation
-    "WATCHLIST_TTL_SEC": 600,    # 10 minuti
+    "WATCHLIST_TTL_SEC": 5400,   # 90 minuti — bonding curve può richiedere ore
 
     # Retry Jupiter per verificare che la pool esista (ogni N sec, max tentativi)
     "JUPITER_RETRY_SEC":  4,
@@ -315,8 +318,15 @@ def _get_sol_price_usd() -> float:
     return _pf_sol_price_cache["price"] or 180.0
 
 
-def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min: float):
-    """Scrive segnale pre-graduation su pre_grad_signals.csv."""
+def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min: float,
+                          dex_pair: Optional[dict] = None):
+    """Scrive segnale pre-graduation su pre_grad_signals.csv.
+
+    `dex_pair`: oggetto pair DexScreener già disponibile (path "scoperto da poll
+    via pair su DEX") — usato come fonte prezzo/liq/pair_address al posto della
+    pump.fun API (morta, sempre 404 → price_usd=0 → simulator scarta il segnale
+    come non tracciabile, vedi caso BILLY 07/06).
+    """
     if not PRE_GRAD_ENABLED:
         return
     with _lock:
@@ -324,10 +334,17 @@ def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min
             return
         _pre_grad_signaled.add(mint)
 
-    pf = _fetch_pumpfun_price(mint)
-    price_usd = pf["price_usd"] if pf else 0.0
-    liq_usd   = pf["liq_usd"]   if pf else v_sol * _get_sol_price_usd() * 2
-    mcap_usd  = pf["mcap_usd"]  if pf else 0.0
+    pair_address = ""
+    if dex_pair:
+        price_usd    = float(dex_pair.get("priceUsd") or 0)
+        liq_usd      = float((dex_pair.get("liquidity") or {}).get("usd", 0) or 0)
+        mcap_usd     = float(dex_pair.get("marketCap") or dex_pair.get("fdv") or 0)
+        pair_address = str(dex_pair.get("pairAddress") or "")
+    else:
+        pf = _fetch_pumpfun_price(mint)
+        price_usd = pf["price_usd"] if pf else 0.0
+        liq_usd   = pf["liq_usd"]   if pf else v_sol * _get_sol_price_usd() * 2
+        mcap_usd  = pf["mcap_usd"]  if pf else 0.0
 
     sid = f"PG_{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     row = {
@@ -337,7 +354,7 @@ def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min
         "token_name":        symbol,
         "token_address":     mint,
         "chain":             "solana",
-        "pair_address":      "",       # non ancora graduato
+        "pair_address":      pair_address,  # popolato solo se scoperto già su DEX
         "price_entry_usd":   f"{price_usd:.10g}" if price_usd else "0",
         "volume_1h_usd":     "0",
         "liquidity_usd":     f"{liq_usd:.2f}",
@@ -529,16 +546,17 @@ class PreGradMonitor:
         self._sig_queue   = queue.Queue()
         self._subscribed  : set[str] = set()   # mint già iscritti a tokenTrade
         self._ws          = None
+        self._last_ws_msg = time.time()        # watchdog: ultima volta che il WS ha parlato
 
     def start(self):
         if not WS_AVAILABLE:
             log.warning("[pre_grad] websocket-client non installato → disabilitato")
             return
         _load_watchlist()   # ripristina token tracciati prima del restart
-        threading.Thread(target=self._ws_loop,       daemon=True, name="pregrd_ws").start()
-        threading.Thread(target=self._sig_loop,      daemon=True, name="pregrd_sig").start()
-        threading.Thread(target=self._persist_loop,  daemon=True, name="pregrd_persist").start()
-        threading.Thread(target=self._poll_vsol_loop, daemon=True, name="pregrd_poll").start()
+        threading.Thread(target=self._ws_loop,           daemon=True, name="pregrd_ws").start()
+        threading.Thread(target=self._sig_loop,          daemon=True, name="pregrd_sig").start()
+        threading.Thread(target=self._persist_loop,      daemon=True, name="pregrd_persist").start()
+        threading.Thread(target=self._poll_vsol_loop,    daemon=True, name="pregrd_poll").start()
         log.info("[pre_grad] Monitor pre-graduation avviato")
 
     def stop(self):
@@ -549,7 +567,10 @@ class PreGradMonitor:
     # ── WebSocket ─────────────────────────────────────────────────────────────
 
     def _ws_loop(self):
+        WS_SILENCE_MAX = 90   # secondi: se nessun messaggio → forza riconnessione
+
         while not self._stop.is_set():
+            self._last_ws_msg = time.time()
             try:
                 ws = websocket.WebSocketApp(
                     PUMPPORTAL_WS,
@@ -559,6 +580,21 @@ class PreGradMonitor:
                     on_close=lambda ws, c, m: log.info(f"[pre_grad] WS chiuso (code={c})"),
                 )
                 self._ws = ws
+
+                # Watchdog in thread separato: chiude il WS se silenzio > WS_SILENCE_MAX
+                def _watchdog(ws_ref):
+                    while not self._stop.is_set():
+                        time.sleep(15)
+                        silence = time.time() - self._last_ws_msg
+                        if silence > WS_SILENCE_MAX:
+                            log.warning(f"[pre_grad] WS silenzio da {silence:.0f}s → forzo riconnessione")
+                            try:
+                                ws_ref.close()
+                            except Exception:
+                                pass
+                            return
+
+                threading.Thread(target=_watchdog, args=(ws,), daemon=True).start()
                 ws.run_forever(ping_interval=30, ping_timeout=10)
             except Exception as e:
                 log.warning(f"[pre_grad] WS crash: {e}")
@@ -583,6 +619,7 @@ class PreGradMonitor:
         log.info(f"[pre_grad] WS connesso — subscribeNewToken + subscribeMigration + {len(tracked)} token ri-sottoscritti")
 
     def _on_message(self, ws, raw: str):
+        self._last_ws_msg = time.time()
         try:
             msg = json.loads(raw)
         except Exception:
@@ -625,6 +662,7 @@ class PreGradMonitor:
         # Converti lamports → SOL se il valore è >> 1 (lamports tipici: milioni)
         initial_buy = _raw / 1_000_000_000 if _raw > 1_000 else _raw
         if initial_buy < CFG["INITIAL_BUY_SOL"]:
+            log.debug(f"[pre_grad] skip {symbol}: initial_buy={initial_buy:.4f} SOL < soglia {CFG['INITIAL_BUY_SOL']}")
             return
         # Valori >300 SOL = vSolInBondingCurve inviato per errore da PumpPortal
         # (token già quasi-graduati o campo sbagliato) → skip, non tracciare
@@ -651,6 +689,9 @@ class PreGradMonitor:
                 del _watchlist[evict]
                 if evict in self._subscribed:
                     self._subscribed.discard(evict)
+
+            if mint in _watchlist:
+                return  # già tracciato, ignora duplicate WS events per lo stesso token
 
             if mint not in _watchlist:
                 _raw_vsol = float(msg.get("vSolInBondingCurve", 0) or 0)
@@ -801,7 +842,9 @@ class PreGradMonitor:
                         try:
                             r = requests.get(api_url, timeout=5)
                             if r.status_code == 200:
-                                d = r.json()
+                                raw_d = r.json()
+                                # DexScreener /tokens/v1 restituisce una lista di pair, non un dict
+                                d = {"pairs": raw_d} if isinstance(raw_d, list) else raw_d
                                 break
                             log.debug(f"[pre_grad] poll {symbol}: {api_url.split('/')[2]} → {r.status_code}")
                         except Exception as e:
@@ -809,25 +852,33 @@ class PreGradMonitor:
                     if d is None:
                         continue
 
-                    # Già graduato (pump.fun campo "complete") → rimuovi
+                    # Già graduato (pump.fun campo "complete") → rimuovi senza segnale.
+                    # Niente "segnale tardivo": a questo punto il token è già su DEX,
+                    # entrare ora significa comprare nel graduation dump (vedi pump_grad
+                    # MIN_AGE_MIN=4min). pump_graduation_scanner lo intercetta in autonomia
+                    # via il proprio evento WS con il filtro anti-dump già applicato.
                     if d.get("complete", False):
                         with _lock:
-                            _watchlist.pop(mint, None)
-                        log.info(f"[pre_grad] {symbol}: già graduato → rimosso watchlist")
+                            entry_snap = _watchlist.pop(mint, None)
+                        if entry_snap:
+                            v_snap = entry_snap.get("v_sol", 0)
+                            log.info(f"[pre_grad] {symbol}: già graduato (vSol={v_snap:.1f}) → rimosso, demandato a pump_graduation_scanner")
                         continue
 
                     # pump.fun: virtual_sol_reserves in lamports
                     # DexScreener: nested pairs → usa liquidità come proxy
                     raw = float(d.get("virtual_sol_reserves", 0) or 0)
                     if raw <= 0:
-                        # Fallback DexScreener: se esiste un pair con liq → quasi-graduato
+                        # Fallback DexScreener: se esiste un pair con liq → già graduato su DEX.
+                        # Stesso discorso: niente segnale tardivo, demandato a pump_grad.
                         pairs = d.get("pairs") or []
                         if pairs:
                             liq = float((pairs[0].get("liquidity") or {}).get("usd", 0) or 0)
                             if liq >= CFG["MIN_LIQ_USD"]:
                                 with _lock:
-                                    _watchlist.pop(mint, None)
-                                log.info(f"[pre_grad] {symbol}: pair su DEX (liq=${liq:,.0f}) → già graduato, rimosso")
+                                    entry_snap = _watchlist.pop(mint, None)
+                                if entry_snap:
+                                    log.info(f"[pre_grad] {symbol}: pair su DEX (liq=${liq:,.0f}) → già graduato, rimosso, demandato a pump_graduation_scanner")
                         continue
                     v_sol = raw / 1_000_000_000 if raw > 1_000 else raw
 
@@ -842,8 +893,8 @@ class PreGradMonitor:
                         entry["v_sol_history"].append((now_t, v_sol))
 
                     polled += 1
-                    if v_sol > old_vsol + 0.5:
-                        log.debug(f"[pre_grad] poll {symbol}: vSol {old_vsol:.1f}→{v_sol:.1f}")
+                    if v_sol > old_vsol + 1.0:
+                        log.info(f"[pre_grad] poll {symbol}: vSol {old_vsol:.1f}→{v_sol:.1f} (+{v_sol-old_vsol:.1f})")
 
                     # Soglia HOT → avvia rugcheck se non già fatto
                     if v_sol >= CFG["TRACK_HOT_SOL"]:
@@ -882,8 +933,8 @@ class PreGradMonitor:
                                 daemon=True,
                             ).start()
 
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning(f"[pre_grad] poll {symbol}: errore — {e}")
 
             if polled > 0:
                 log.debug(f"[pre_grad] poll loop: {polled}/{len(to_poll)} token aggiornati")

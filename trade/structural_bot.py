@@ -22,6 +22,7 @@ import os
 import time
 import json
 import logging
+import logging.handlers
 import pandas as pd
 import requests
 from datetime import datetime, timezone
@@ -74,8 +75,8 @@ FNG_LONG_THRESH       = 20      # F&G ≤ 20 → paura estrema → contrarian lo
 FNG_SHORT_THRESH      = 75      # F&G ≥ 75 → greed estrema → contrarian short
 
 # Trailing stop
-TRAIL_ACTIVATE_PCT     = 0.65       # era 0.50 — attende 65% verso TP prima di armarsi
-TRAIL_ATR_DIST         = 1.0        # era 0.50 — 2× spazio, meno trail premature
+TRAIL_ACTIVATE_PCT     = 0.90       # era 0.65 — backtest 60gg: PF SHORT 1.55→1.80, R_tot +47% (validato su split 30/30gg)
+TRAIL_ATR_DIST         = 0.30       # era 1.0  — trail più stretto una volta armato, lascia correre i trend forti
 
 MIN_LOT_BTC            = 0.001  # lotto minimo Bitget BTCUSDT — trade rifiutati se size < questo valore
 INITIAL_CAPITAL        = 21.0   # €20 ≈ $21 USDT su Bitget
@@ -200,6 +201,9 @@ def load_state() -> BotState:
                 f"{raw_trade['signal'].name} entry={raw_trade['entry']}"
             )
 
+        # Riconcilia wins/losses/total_trades dal log storico (sopravvivono ai reset dello stato)
+        _reconcile_counters(state)
+
         logging.info(
             f"[State] Stato caricato — "
             f"capitale=${state.capital:.2f} | "
@@ -208,7 +212,40 @@ def load_state() -> BotState:
         return state
     except Exception as e:
         logging.warning(f"[State] Errore caricamento stato: {e} — parto da zero.")
-        return BotState()
+        s = BotState()
+        _reconcile_counters(s)
+        return s
+
+
+def _reconcile_counters(state: BotState):
+    """Ricalcola wins/losses/total_trades dal trades_log.json (fonte di verità).
+    Lascia intatti capital, consecutive_losses, cooldown e open_trade.
+    """
+    if not TRADES_LOG_FILE.exists():
+        return
+    try:
+        trades = json.loads(TRADES_LOG_FILE.read_text())
+        wins = sum(1 for t in trades if "WIN" in t.get("result", ""))
+        losses = sum(1 for t in trades if "LOSS" in t.get("result", ""))
+        total = len(trades)
+        total_win_pnl  = sum(t["pnl"] for t in trades if t.get("pnl", 0) > 0)
+        total_loss_pnl = sum(abs(t["pnl"]) for t in trades if t.get("pnl", 0) < 0)
+        best  = max((t["pnl"] for t in trades), default=0.0)
+        worst = min((t["pnl"] for t in trades), default=0.0)
+        if total > state.total_trades:
+            state.wins          = wins
+            state.losses        = losses
+            state.total_trades  = total
+            state.total_win_pnl  = round(total_win_pnl, 4)
+            state.total_loss_pnl = round(total_loss_pnl, 4)
+            state.best_trade    = best
+            state.worst_trade   = worst
+            logging.info(
+                f"[State] Contatori riconciliati dal log: "
+                f"W/L={wins}/{losses} ({total} trade totali)"
+            )
+    except Exception as e:
+        logging.warning(f"[State] Riconciliazione fallita: {e}")
 
 def append_closed_trade(trade: dict, pnl: float, close_price: float, result: str, bars: int):
     """Aggiunge il trade chiuso al log storico."""
@@ -502,9 +539,15 @@ def detect_sr_levels(*dfs: pd.DataFrame) -> list:
 
     result = [m for m in merged if m["touches"] >= SR_MIN_TOUCHES]
     result.sort(key=lambda x: x["price"])
-    logging.info(f"[SR] {len(result)} livelli (1W+1D+4h+1h+static): "
-                 + ", ".join(f"{m['price']:.0f}({m['touches']}t)" for m in result))
+    sig = tuple((round(m["price"]), m["touches"]) for m in result)
+    if sig != detect_sr_levels._last_sig:
+        detect_sr_levels._last_sig = sig
+        logging.info(f"[SR] {len(result)} livelli (1W+1D+4h+1h+static): "
+                     + ", ".join(f"{m['price']:.0f}({m['touches']}t)" for m in result))
     return result
+
+
+detect_sr_levels._last_sig = ()
 
 
 def _nearest_opposing_sr(price: float, signal: "Signal", sr_levels: list) -> Optional[float]:
@@ -1211,13 +1254,31 @@ def run(executor=None):
 
     Senza executor (default): modalità simulazione pura.
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
     ensure_reports_dir()
+
+    # ── Lock file: impedisce due istanze simultanee ───────────────────────────
+    import fcntl
+    _lock_path = REPORTS_DIR / "structural_bot.lock"
+    _lock_fh   = open(_lock_path, "w")
+    try:
+        fcntl.flock(_lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print(f"[ERRORE] Un'altra istanza di structural_bot è già in esecuzione (lock: {_lock_path}). Uscita.")
+        raise SystemExit(1)
+    _lock_fh.write(str(os.getpid()))
+    _lock_fh.flush()
+    # ─────────────────────────────────────────────────────────────────────────
+    _fmt = logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s",
+                             datefmt="%Y-%m-%d %H:%M:%S")
+    _fh = logging.handlers.RotatingFileHandler(
+        REPORTS_DIR / "structural_bot.log",
+        maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8",
+    )
+    _fh.setFormatter(_fmt)
+    _ch = logging.StreamHandler()
+    _ch.setFormatter(_fmt)
+    logging.basicConfig(level=logging.INFO, handlers=[_ch, _fh], force=True)
+
     state = load_state()  # recupera stato da disco se esiste
 
     # Sync capitale reale all'avvio (indipendente da open_trade)

@@ -120,19 +120,19 @@ def compute() -> dict:
 def recap_text(stats: dict | None = None) -> str:
     stats = stats or compute()
     if not stats.get("available") or stats.get("trades_closed", 0) == 0:
-        return "📊 Track record: dati insufficienti per ora."
+        return "📊 Track record: not enough data yet."
     s = stats
     sign = "🟢" if s["total_pnl_eur"] >= 0 else "🔴"
     lines = [
         "📊 <b>Track record</b> (auto)",
-        f"Trade chiusi: <b>{s['trades_closed']}</b> · Win-rate: <b>{s['win_rate']}%</b>",
-        f"{sign} P&L totale: <b>{s['total_pnl_eur']:+.2f}€</b> · ultime 24h: {s['pnl_24h_eur']:+.2f}€",
-        f"Media/trade: {s['avg_pnl_eur']:+.2f}€",
+        f"Closed trades: <b>{s['trades_closed']}</b> · Win-rate: <b>{s['win_rate']}%</b>",
+        f"{sign} Total P&L: <b>{s['total_pnl_eur']:+.2f}€</b> · last 24h: {s['pnl_24h_eur']:+.2f}€",
+        f"Avg/trade: {s['avg_pnl_eur']:+.2f}€",
         f"🏆 Best: ${_e(s['best']['symbol'])} {s['best']['pnl_eur']:+.2f}€  ·  "
         f"Worst: ${_e(s['worst']['symbol'])} {s['worst']['pnl_eur']:+.2f}€",
         "",
-        "💎 Segnali real-time: /plans",
-        f"<i>Aggiornato {s['updated_iso']}</i>",
+        "💎 Real-time signals: /plans",
+        f"<i>Updated {s['updated_iso']}</i>",
     ]
     return "\n".join(lines)
 
@@ -143,11 +143,16 @@ def _e(x) -> str:
 
 
 def post_recap():
-    """Calcola e posta il recap sul canale FREE."""
+    """Calcola, posta il recap sul canale FREE e rigenera la landing page."""
     stats = compute()
     text = recap_text(stats)
     if config.FREE_CHANNEL_ID:
         tg.send_message(config.FREE_CHANNEL_ID, text)
+    try:
+        import landing
+        landing.generate(stats)
+    except Exception as e:
+        log.warning("[track] landing non generata: %s", e)
     return text
 
 

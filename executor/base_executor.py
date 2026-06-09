@@ -559,6 +559,18 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
             log.error("[BUY] Wallet o Web3 non disponibili")
             return False
 
+        # 0. Verifica route PRIMA di qualsiasi tx on-chain (wrap/approve)
+        _pool_info = _find_pool(token_address)
+        pool_type  = _pool_info[1] if _pool_info else "unknown"
+        if _pool_info is None:
+            log.error(f"[BUY] {token_symbol}: nessun pool trovato su V3/Aerodrome — skip (no approve)")
+            log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                           "token_symbol": token_symbol, "action": "buy_failed",
+                           "token_address": token_address, "tokens_amount": "0",
+                           "eth_amount": TRADE_SIZE_ETH, "tx_hash": "", "status": "error",
+                           "note": "no_route"})
+            return False
+
         # Controllo saldo: gas reserve sempre in ETH nativo
         GAS_RESERVE = int(0.001 * 10**18)
         weth_abi    = _ABI_ERC20 + _ABI_WETH_EXTRA
@@ -597,11 +609,8 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         else:
             log.info(f"[BUY] WETH disponibile ({weth_balance/1e18:.5f}) — skip wrap")
 
-        # Pool dal token_address via factory (pair_address DexScreener è 64-char, non EVM)
-        _pool_info = _find_pool(token_address)
-        pool_type  = _pool_info[1] if _pool_info else "unknown"
-        fee        = 3000   # default 0.3%
-        if pool_type == "v3" and _pool_info:
+        fee = 3000   # default 0.3%
+        if pool_type == "v3":
             try:
                 pool_c = w3.eth.contract(address=_pool_info[0], abi=_ABI_V3_POOL)
                 fee    = pool_c.functions.fee().call()
@@ -613,17 +622,15 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         if tokens_est > 0:
             min_out = int(tokens_est * (10**decimals) * (1 - slippage))
 
-        # 2. Approva WETH per i router
-        if not _ensure_approval(WETH_BASE, UNIV3_ROUTER, eth_wei, acc.address):
-            log.error("[BUY] Approve WETH→V3Router fallito")
-            return False
-
-        # 3. Prova V3
+        # 2. Approva solo il router necessario e prova lo swap
         tx_hash_res = None
         if pool_type == "v3":
+            if not _ensure_approval(WETH_BASE, UNIV3_ROUTER, eth_wei, acc.address):
+                log.error("[BUY] Approve WETH→V3Router fallito")
+                return False
             tx_hash_res = _swap_v3(WETH_BASE, token_address, eth_wei, min_out, fee, acc, w3)
 
-        # 4. Fallback Aerodrome
+        # Fallback Aerodrome (anche se pool_type == "v3" e lo swap V3 ha fallito)
         if tx_hash_res is None:
             if not _ensure_approval(WETH_BASE, AERO_ROUTER, eth_wei, acc.address):
                 log.error("[BUY] Approve WETH→AeroRouter fallito")

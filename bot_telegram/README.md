@@ -55,3 +55,25 @@ usa il path manuale affidabile: `/grant <chat_id> <premium|vip> [giorni]` (solo 
 ## Stato runtime (`state/`, gitignored)
 `offsets.json` (tail), `free_queue.json` (teaser schedulati), `subscribers.json`,
 `invoices.json`, `paywatch.json`, `update_offset.json`, `stats.json`.
+
+
+------
+● Fatto. Setup che devi fare una volta sola (10 minuti):
+
+  1. Crea il repo su GitHub
+  Vai su github.com → New repository → nome es. signals-landing → Public → crea.
+
+  2. Clonalo sul tuo PC e abilita GitHub Pages
+  git clone https://github.com/TUO_USER/signals-landing ~/signals-landing
+  Su GitHub → Settings del repo → Pages → Source: main branch, cartella /root.
+
+  3. Aggiungi nel bot_telegram/.env
+  LANDING_PAGES_REPO_PATH=/home/magic/signals-landing
+  TELEGRAM_BOT_USERNAME=NomeDelTuoBot
+  TELEGRAM_FREE_CHANNEL_USERNAME=nome_canale_free
+  
+  4. Genera la prima landing
+  python3 bot_telegram/landing.py
+  
+  Da quel momento ogni 24h il bot aggiorna il file, fa git push in automatico, e GitHub Pages serve la pagina aggiornata all'URL https://TUO_USER.github.io/signals-landing.
+

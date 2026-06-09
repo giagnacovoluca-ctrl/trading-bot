@@ -134,10 +134,13 @@ class BinanceFuturesExecutor:
         signal_enum: Signal.LONG o Signal.SHORT (dall'enum di structural_bot)
         size_contracts: dimensione in BTC (calcolata da calculate_trade)
         """
-        from structural_bot import Signal
-        side = SIDE_BUY if signal_enum == Signal.LONG else SIDE_SELL
-        sl_side = SIDE_SELL if signal_enum == Signal.LONG else SIDE_BUY
-        direction = "LONG" if signal_enum == Signal.LONG else "SHORT"
+        # Confronto per nome (non identità): `from structural_bot import Signal` qui
+        # creerebbe una classe Enum diversa da __main__.Signal → confronto sempre False
+        # e ogni LONG verrebbe inviato all'exchange come SHORT.
+        is_long = signal_enum.name == "LONG"
+        side = SIDE_BUY if is_long else SIDE_SELL
+        sl_side = SIDE_SELL if is_long else SIDE_BUY
+        direction = "LONG" if is_long else "SHORT"
 
         # Arrotonda la quantità a 3 decimali (step size BTCUSDT = 0.001)
         qty = round(size_contracts, 3)
@@ -224,7 +227,6 @@ class BinanceFuturesExecutor:
                     pass   # potrebbe essere già eseguito
 
             # Piazza nuovo SL
-            from structural_bot import Signal
             sl_side = SIDE_SELL if self._position_side == "LONG" else SIDE_BUY
             resp = self._client.futures_create_order(
                 symbol        = SYMBOL,

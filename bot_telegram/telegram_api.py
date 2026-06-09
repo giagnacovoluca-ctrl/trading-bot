@@ -64,6 +64,13 @@ def get_updates(offset: int | None = None, timeout: int = 25):
     return _call("getUpdates", params, timeout=timeout + 10) or []
 
 
+def answer_callback_query(callback_query_id: str, text: str | None = None):
+    params = {"callback_query_id": callback_query_id}
+    if text:
+        params["text"] = text
+    return _call("answerCallbackQuery", params)
+
+
 def create_invite_link(chat_id: str, member_limit: int = 1, expire_seconds: int = 86400):
     params = {"chat_id": chat_id, "member_limit": member_limit,
               "expire_date": int(time.time()) + expire_seconds}

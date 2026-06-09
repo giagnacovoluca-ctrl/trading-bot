@@ -1,7 +1,7 @@
 """
 run_bot.py — orchestratore del modulo Telegram (ISOLATO dal core di trading).
 Avvia in thread daemon:
-  1. publisher       — feed segnali su Premium/VIP + teaser FREE ritardati
+  1. publisher       — feed segnali su Premium + teaser FREE ritardati
   2. bot             — comandi utente/admin (long-polling)
   3. payments        — verifica pagamenti on-chain (opzionale)
   4. track_record    — recap performance giornaliero sul canale FREE
@@ -51,9 +51,7 @@ def _gating_loop(stop_event):
     while not stop_event.is_set():
         try:
             for chat_id, rec in subs.expired_since(grace_sec=3600):
-                tier = rec.get("tier")
-                chan = (config.VIP_CHANNEL_ID if tier == config.TIER_VIP and config.VIP_CHANNEL_ID
-                        else config.PREMIUM_CHANNEL_ID)
+                chan = config.PREMIUM_CHANNEL_ID
                 if chan:
                     tg.ban_member(chan, chat_id)
                     tg.unban_member(chan, chat_id)   # ban+unban = kick (può rientrare)

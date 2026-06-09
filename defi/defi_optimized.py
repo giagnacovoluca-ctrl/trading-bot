@@ -27,6 +27,7 @@ import time
 import logging
 import warnings
 import random
+from collections import deque
 from datetime import datetime, timedelta
 from typing import Optional
 from pathlib import Path
@@ -310,6 +311,46 @@ def _blacklist_token(token_address: str, symbol: str = "") -> None:
         _token_blacklist[token_address] = expiry
     log.info(f"[blacklist] 🚫 {symbol or token_address[:8]} blacklistato per {hours}h (dump massiccio rilevato)")
 
+# ── Storico BSR per token (per calcolare un trend "leading", non solo il valore puntuale) ──
+# Struttura: { pair_address: deque[(timestamp_unix, buy_sell_ratio_1h)] }
+# Permette di rilevare un BSR in calo nei cicli precedenti anche quando al momento
+# del segnale è ancora >= soglia (1.0) — l'ipotesi è che questo possa anticipare i dump
+# che il dump_risk_score puntuale non riesce a vedere (vedi memoria project_dumprisk_no_predictive_power).
+_BSR_HISTORY_MAXLEN = 12  # ~36 minuti a LOOP_INTERVAL_SEC=180s
+_token_bsr_history: dict = {}
+
+def _update_bsr_history(df: pd.DataFrame) -> None:
+    """Accumula una lettura BSR per ogni pair scansionato in questo ciclo (per il trend del prossimo)."""
+    if "pair_address" not in df.columns or "buy_sell_ratio_1h" not in df.columns:
+        return
+    now = time.time()
+    for addr, bsr in zip(df["pair_address"], df["buy_sell_ratio_1h"]):
+        addr = str(addr or "")
+        if not addr or addr == "nan":
+            continue
+        try:
+            bsr_f = float(bsr)
+        except (TypeError, ValueError):
+            continue
+        buf = _token_bsr_history.setdefault(addr, deque(maxlen=_BSR_HISTORY_MAXLEN))
+        buf.append((now, bsr_f))
+
+def _bsr_trend(pair_address: str) -> tuple:
+    """
+    Trend del BSR (variazione/minuto) calcolato SOLO sulle letture dei cicli
+    precedenti — non include la lettura corrente, per restare una feature "leading".
+    Ritorna (trend_per_minuto, numero_campioni_storici_disponibili).
+    """
+    buf = _token_bsr_history.get(str(pair_address or ""))
+    if not buf or len(buf) < 2:
+        return 0.0, (len(buf) if buf else 0)
+    t0, b0 = buf[0]
+    t1, b1 = buf[-1]
+    minutes = (t1 - t0) / 60.0
+    if minutes <= 0:
+        return 0.0, len(buf)
+    return (b1 - b0) / minutes, len(buf)
+
 def _check_followup_blacklist() -> None:
     """
     Legge price_followup.csv e blacklista token che hanno mostrato
@@ -564,13 +605,19 @@ def _gecko_pool_to_dexscreener(pool: dict, chain: str) -> dict | None:
         # ── Liquidità ──
         liq_usd = float(attr.get("reserve_in_usd", 0) or 0)
 
-        # ── Transazioni 1h ──
+        # ── Transazioni multi-timeframe (m5/h1/h6/h24) ──
         txns  = attr.get("transactions", {}) or {}
+        txn5m = txns.get("m5", {}) or {}
+        buys5m       = int(txn5m.get("buys",  0) or 0)
+        sells5m      = int(txn5m.get("sells", 0) or 0)
         txn1h = txns.get("h1", {}) or {}
         buys1h       = int(txn1h.get("buys",   0) or 0)
         sells1h      = int(txn1h.get("sells",  0) or 0)
         buyers1h     = int(txn1h.get("buyers", 0) or 0)   # Phase 1: unique wallet buyers
         sellers1h    = int(txn1h.get("sellers",0) or 0)   # Phase 1: unique wallet sellers
+        txn6h = txns.get("h6", {}) or {}
+        buys6h       = int(txn6h.get("buys",  0) or 0)
+        sells6h      = int(txn6h.get("sells", 0) or 0)
         txn24h  = txns.get("h24", {}) or {}
         buys24h  = int(txn24h.get("buys",  0) or 0)
         sells24h = int(txn24h.get("sells", 0) or 0)
@@ -605,8 +652,10 @@ def _gecko_pool_to_dexscreener(pool: dict, chain: str) -> dict | None:
             "volume":      {"m5": v_m5, "m1": 0, "h1": v_h1, "h6": v_h6, "h24": v_h24},
             "liquidity":   {"usd": liq_usd},
             "txns": {
+                "m5":  {"buys": buys5m,  "sells": sells5m},
                 "h1":  {"buys": buys1h,  "sells": sells1h,
                         "buyers": buyers1h, "sellers": sellers1h},   # unique wallets
+                "h6":  {"buys": buys6h,  "sells": sells6h},
                 "h24": {"buys": buys24h, "sells": sells24h},
             },
             "fdv":            float(attr.get("fdv_usd", 0) or 0),
@@ -1424,7 +1473,9 @@ def fetch_onchain_and_market_data(chain: str = "ethereum") -> pd.DataFrame:
         volume    = pair.get("volume", {})
         liquidity = pair.get("liquidity", {})
         change    = pair.get("priceChange", {})
+        txns_5m   = pair.get("txns", {}).get("m5", {})
         txns_1h   = pair.get("txns", {}).get("h1", {})
+        txns_6h   = pair.get("txns", {}).get("h6", {})
         txns_24h  = pair.get("txns", {}).get("h24", {})
 
         riga = {
@@ -1451,6 +1502,10 @@ def fetch_onchain_and_market_data(chain: str = "ethereum") -> pd.DataFrame:
             # Transazioni (tx count)
             "buys_1h":        int(txns_1h.get("buys",  0) or 0),
             "sells_1h":       int(txns_1h.get("sells", 0) or 0),
+            "buys_5m":        int(txns_5m.get("buys",  0) or 0),
+            "sells_5m":       int(txns_5m.get("sells", 0) or 0),
+            "buys_6h":        int(txns_6h.get("buys",  0) or 0),
+            "sells_6h":       int(txns_6h.get("sells", 0) or 0),
             "buys_24h":       int(txns_24h.get("buys",  0) or 0),
             "sells_24h":      int(txns_24h.get("sells", 0) or 0),
             # Wallet unici (solo GeckoTerminal, 0 per Dexscreener)
@@ -2027,6 +2082,28 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         _total_trades = df["total_trades_1h"]
 
     df["vol_per_trade"] = vol1h / (_total_trades + 1.0)
+
+    # BSR SHIFT ISTANTANEO — confronta il BSR delle ultime 5 minuti con quello dell'ultima ora.
+    # Disponibile SUBITO nello stesso snapshot (txns.m5 vs txns.h1 di Dexscreener/GeckoTerminal),
+    # niente da raccogliere nel tempo: cattura un cambio di pressione compratori/venditori
+    # iniziato negli ultimi minuti, prima che si rifletta nella media cumulata oraria.
+    if "buys_5m" in df.columns and "sells_5m" in df.columns:
+        _b5m = df["buys_5m"].fillna(0)
+        _s5m = df["sells_5m"].fillna(0)
+        df["bsr_5m"] = _b5m / (_s5m + 1.0)
+    else:
+        df["bsr_5m"] = df["buy_sell_ratio_1h"]
+    df["bsr_recent_shift"] = df["bsr_5m"] - df["buy_sell_ratio_1h"]
+
+    # BSR TREND — variazione del buy/sell ratio nei cicli precedenti (feature "leading",
+    # cattura un BSR in calo anche mentre è ancora >= soglia d'ingresso)
+    if "pair_address" in df.columns:
+        _trend = df["pair_address"].apply(_bsr_trend)
+        df["bsr_trend_per_min"] = _trend.apply(lambda t: t[0])
+        df["bsr_trend_samples"] = _trend.apply(lambda t: t[1])
+    else:
+        df["bsr_trend_per_min"] = 0.0
+        df["bsr_trend_samples"] = 0
 
     # ═══════════════════════════════════════════════════════════════
     # GRUPPO 3 — PRESSIONE ACQUISTI
@@ -2983,6 +3060,16 @@ def generate_signals(
         tax_total  = float(riga.get("total_tax_cost", 0) or 0)
         dump_risk  = float(riga.get("dump_risk_score", 0) or 0)
         sell_press = float(riga.get("sell_pressure_momentum", 0) or 0)
+        bsr_trend     = float(riga.get("bsr_trend_per_min", 0) or 0)
+        bsr_trend_n   = int(riga.get("bsr_trend_samples", 0) or 0)
+        bsr_5m        = float(riga.get("bsr_5m", 0) or 0)
+        bsr_shift     = float(riga.get("bsr_recent_shift", 0) or 0)
+        # Persistito in top_features (stringa libera già presente nello schema signals_log.csv)
+        # per poter fare backtest futuri senza migrare lo schema CSV.
+        top_features_str = (
+            f"bsr_trend_per_min={bsr_trend:+.4f} | bsr_trend_samples={bsr_trend_n} | "
+            f"bsr_5m={bsr_5m:.3f} | bsr_recent_shift={bsr_shift:+.4f}"
+        )
 
         segnale = {
             # Identificatori
@@ -3012,9 +3099,13 @@ def generate_signals(
             # Anti-dump signals (NUOVO)
             "dump_risk_score":         round(dump_risk, 3),
             "sell_pressure_momentum":  round(sell_press, 3),
+            "bsr_trend_per_min":       round(bsr_trend, 4),
+            "bsr_trend_samples":       bsr_trend_n,
+            "bsr_5m":                  round(bsr_5m, 3),
+            "bsr_recent_shift":        round(bsr_shift, 4),
             # Output modello
             "pump_probability":        round(float(riga.get("pump_probability", 0) or 0), 4),
-            "top_features":            riga.get("top_features", ""),
+            "top_features":            top_features_str,
             # Flag sicurezza
             "buy_tax":                 float(riga.get("buy_tax", 0) or 0),
             "sell_tax":                float(riga.get("sell_tax", 0) or 0),
@@ -3294,6 +3385,13 @@ def stampa_segnale(segnale: dict) -> None:
     dump_risk = segnale.get('dump_risk_score', 0)
     dump_icon = "✅ Basso" if dump_risk < 0.3 else ("⚠️  Medio" if dump_risk < 0.6 else "🔴 ALTO")
     log.info(f"  DumpRisk   : {dump_risk:.3f} — {dump_icon}")
+    bsr_trend   = segnale.get('bsr_trend_per_min', 0)
+    bsr_trend_n = segnale.get('bsr_trend_samples', 0)
+    bsr_trend_icon = "📉 in calo" if bsr_trend < -0.01 else ("📈 in salita" if bsr_trend > 0.01 else "➡️  stabile")
+    log.info(f"  BSR trend  : {bsr_trend:+.4f}/min su {bsr_trend_n} letture — {bsr_trend_icon} (sperimentale, in raccolta dati)")
+    bsr_shift = segnale.get('bsr_recent_shift', 0)
+    shift_icon = "📉 venditori in aumento ORA" if bsr_shift < -0.15 else ("📈 compratori in aumento ORA" if bsr_shift > 0.15 else "➡️  coerente con la media oraria")
+    log.info(f"  BSR shift  : 5m={segnale.get('bsr_5m', 0):.2f} vs 1h={segnale.get('buy_sell_ratio_1h', 0):.2f} ({bsr_shift:+.3f}) — {shift_icon} (sperimentale)")
     log.info(f"  ── Sicurezza ────────────────────────────────────────")
     log.info(f"  Tax (B/S)  : {segnale['buy_tax']:.1f}% / {segnale['sell_tax']:.1f}%")
     log.info(f"  LP locked  : {'🔒 Sì' if segnale['lp_locked'] else '❌ No'}")
@@ -3383,6 +3481,10 @@ def main():
                 signals = generate_signals(df_raw, model, scaler)
                 for sig in signals:
                     stampa_segnale(sig)
+
+                # Aggiorna lo storico BSR DOPO aver generato i segnali (il trend usato
+                # nei segnali di questo ciclo riflette solo i cicli precedenti — leading)
+                _update_bsr_history(df_raw)
 
             except Exception as e:
                 import traceback

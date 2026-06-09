@@ -23,7 +23,7 @@ import csv
 import time
 import requests
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -42,21 +42,24 @@ log = logging.getLogger("midcap")
 MIN_MCAP_USD        = 50_000_000        # $50M mcap minimo
 MAX_MCAP_USD        = 10_000_000_000    # $10B mcap massimo
 MIN_VOLUME_24H      = 3_000_000         # $3M volume 24h minimo (liquidità)
-SCORE_MIN           = 60                # soglia per email/CSV
+SCORE_MIN           = 35                # soglia per email/CSV — ricalibrato 07/06: distribuzione reale ha max 42, p99 38 (60 era irraggiungibile, 0 segnali in 1 settimana)
 SCAN_INTERVAL_H     = 4                 # ogni 4h → ~900 call/mese base (tot. ~4.200/10.000 con enrich)
 CANDLES_LIMIT       = 180              # ~6 mesi di daily
 FETCH_CONCURRENCY   = 20               # richieste parallele max (rispetta rate limit)
 TOP_N_EMAIL         = 10               # top N coin nell'email
 CG_PAGES            = 8               # pagine CoinGecko (100 coin/pagina → 800 coin universo)
-ENRICH_MIN_SCORE    = 50              # score minimo per fetchare /coins/{id} (enrich fondamentali)
+ENRICH_MIN_SCORE    = 25              # score minimo per fetchare /coins/{id} (enrich fondamentali) — ricalibrato 07/06: ~p90 della distribuzione reale (era 50, mai raggiunto)
 ENRICH_MAX          = 25              # max coin da enrichire per ciclo (cap call budget)
+MAX_EXPAND_BARS     = 7               # 08/06: backtest n=15 chiusi — expand_bars>=7 = 0/3 win (-39€),
+                                      # espansione già matura/esaurita (vedi caso 币安人生 ADX~59, ret_30d~150%)
 
 BB_PERIOD           = 20
 BB_STD              = 2.0
 BB_SQUEEZE_PCTILE   = 0.20             # bottom 20% band width storici = squeeze
 BB_LOOKBACK         = 60               # finestra percentile band width
 
-EXCLUDE_SYMBOLS = {"USDT", "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDP",
+EXCLUDE_SYMBOLS = {"USDT", "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDP", "USDD",
+                   "USDE", "PYUSD", "GHO", "CRVUSD", "FRAX", "GUSD",
                    "WBTC", "WETH", "STETH", "WSTETH"}
 EXCLUDE_CATEGORIES = {"meme-token", "meme", "fan-token"}
 
@@ -133,6 +136,9 @@ def fetch_coingecko_universe() -> dict:
 # FETCH OHLCV ASYNC — ccxt.async_support + semaforo per rate limit
 # ─────────────────────────────────────────────────────────────────────────────
 
+FALLBACK_EXCHANGES = ["binance", "mexc", "gateio"]   # cascata: copre i token assenti su Binance (~40% top mover settimanali)
+
+
 async def _fetch_one(exchange: ccxt.Exchange, symbol: str,
                      sem: asyncio.Semaphore) -> tuple[str, Optional[list]]:
     async with sem:
@@ -140,22 +146,36 @@ async def _fetch_one(exchange: ccxt.Exchange, symbol: str,
             ohlcv = await exchange.fetch_ohlcv(symbol, "1d", limit=CANDLES_LIMIT)
             return symbol, ohlcv
         except Exception as e:
-            log.debug(f"[OHLCV] {symbol} skip: {e}")
+            log.debug(f"[OHLCV {exchange.id}] {symbol} skip: {e}")
             return symbol, None
 
 
 async def fetch_all_ohlcv(symbols: list[str]) -> dict[str, list]:
-    """Fetch parallelo OHLCV daily per tutti i simboli. Ritorna {symbol: ohlcv}."""
-    exchange = ccxt.binance({"enableRateLimit": True})
-    sem      = asyncio.Semaphore(FETCH_CONCURRENCY)
-    try:
-        results = await asyncio.gather(
-            *[_fetch_one(exchange, s, sem) for s in symbols],
-            return_exceptions=False,
-        )
-    finally:
-        await exchange.close()
-    return {sym: data for sym, data in results if data}
+    """Fetch parallelo OHLCV daily con cascata di exchange (binance → mexc → gateio).
+    Per ogni simbolo prova il primo exchange della lista; i simboli non trovati
+    vengono ritentati sul successivo. Ritorna {symbol: ohlcv}."""
+    sem = asyncio.Semaphore(FETCH_CONCURRENCY)
+    remaining = list(symbols)
+    out: dict[str, list] = {}
+    for ex_id in FALLBACK_EXCHANGES:
+        if not remaining:
+            break
+        exchange = getattr(ccxt, ex_id)({"enableRateLimit": True})
+        try:
+            results = await asyncio.gather(
+                *[_fetch_one(exchange, s, sem) for s in remaining],
+                return_exceptions=False,
+            )
+            found = {sym: data for sym, data in results if data}
+            out.update(found)
+            remaining = [s for s in remaining if s not in found]
+            if found:
+                log.info(f"[midcap] {ex_id}: +{len(found)} OHLCV (residui {len(remaining)})")
+        except Exception as e:
+            log.warning(f"[midcap] fetch su {ex_id} fallito: {e}")
+        finally:
+            await exchange.close()
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -212,6 +232,15 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
         df[["open", "high", "low", "close", "volume"]].astype(float)
     df = df.dropna().reset_index(drop=True)
     if len(df) < 80:
+        return None
+
+    # ── Filtro stablecoin/pegged ──────────────────────────────────────────────
+    # Prezzo "intrappolato" vicino a $1 con escursione minima (es. USDD, FDUSD,
+    # USDe): il BB squeeze su un peg produce falsi segnali "BB Squeeze breakout"
+    # senza significato — non è un setup tradabile (vedi caso USDD score 43).
+    _close_recent = df["close"].iloc[-BB_LOOKBACK:]
+    _c_min, _c_max, _c_mean = float(_close_recent.min()), float(_close_recent.max()), float(_close_recent.mean())
+    if 0.9 <= _c_mean <= 1.1 and _c_min > 0 and (_c_max / _c_min - 1) < 0.03:
         return None
 
     # Indicatori
@@ -359,6 +388,19 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     if breakout_up and ema_bull:  score += 5
     elif breakout_up:             score += 2
 
+    # 9. Aggiustamento "freschezza" trend (±8 pt) — backtest 08/06 (n=15 chiusi):
+    # i vincenti (GWEI, VELVET: 100% WR) avevano ret_30d/ADX bassi (breakout fresco
+    # da consolidamento), i perdenti (币安人生: 0/3, -39€) ret_30d~150%+ADX~59
+    # (pump già maturo/esaurito, mean-reversion). Penalizza setup esausti, premia
+    # quelli "early stage".
+    chg7d_val = float(cg.get("change_7d", 0) or 0)
+    if ret_30d < 0.10 and adx_val < 30:
+        score += 8    # trend fresco: poco movimento nei 30gg + trend non ancora maturo
+    elif ret_30d > 1.0 and adx_val > 50:
+        score -= 8    # pump già esteso (30d>100%) + trend maturo: rischio mean-reversion
+    elif chg7d_val > 80 and adx_val > 50:
+        score -= 5    # variante: pump recente molto spinto + trend maturo
+
     # Direzione
     if (ema_bull or price_lean > 0.6) and not breakout_dn:
         direction = "LONG"
@@ -373,6 +415,14 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
         "score":         score,
         "direction":     direction,
         "price":         round(float(last["close"]), 6),
+        # Wiring per trade_simulator (sistema "midcap" — CEX spot, no DEX pool)
+        "signal_id":     f"MC_{symbol.replace('/', '')}_{datetime.now(timezone.utc):%Y%m%d_%H%M%S}",
+        "token_symbol":  symbol.split("/")[0],   # es. "CC" — il simulator lo mostra in dashboard al posto del system name
+        "chain":         "cex_spot",
+        "pair_address":  symbol,           # es. "SOON/USDT" — simbolo CEX, fetch a cascata binance→mexc→gateio
+        "token_address": "",
+        "timestamp":     datetime.now(timezone.utc).isoformat(),
+        "price_usd":     round(float(last["close"]), 6),
         # BB pre-breakout
         "bb_wpct":       round(bb_wpct_val * 100, 1),
         "sq_duration":   sq_duration,
@@ -412,7 +462,7 @@ def _send_email(signals: list[dict]) -> bool:
     try:
         rows = ""
         for s in signals:
-            sq_icon = "🔴" if s["bb_squeeze"] else ""
+            sq_icon = "🔴" if s["sq_duration"] >= 2 else ""
             bo_icon = "⚡" if s["bb_breakout"] else ""
             rows += (
                 f"<tr>"
@@ -472,6 +522,7 @@ def _send_email(signals: list[dict]) -> bool:
 
 _CSV_FIELDS = [
     "ts", "symbol", "name", "score", "direction", "price",
+    "signal_id", "token_symbol", "chain", "pair_address", "token_address", "timestamp", "price_usd",
     "bb_wpct", "sq_duration", "expand_bars", "price_lean", "bb_breakout",
     "rsi_divergence", "vol_accum", "vol_spike",
     "ema_bull", "hh_hl", "rsi", "adx",
@@ -479,6 +530,43 @@ _CSV_FIELDS = [
     "mcap_m", "volume_24h_m", "change_7d",
     "dev_score", "comm_score", "age_days", "fund_delta",
 ]
+
+# Setup BB-Squeeze daily persiste per giorni: ri-segnalare lo stesso simbolo
+# a ogni ciclo (ogni 4h, o subito dopo un restart) è ridondante — il simulator
+# lo aprirebbe comunque una sola volta (re-entry/cooldown), ma intasa email/CSV.
+SIGNAL_DEDUP_H = 24
+
+def _filter_recent_duplicates(signals: list[dict]) -> list[dict]:
+    """Scarta segnali per simboli già segnalati nelle ultime SIGNAL_DEDUP_H ore."""
+    if not signals or not SIGNALS_CSV.exists():
+        return signals
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=SIGNAL_DEDUP_H)
+    recent_symbols = set()
+    try:
+        with open(SIGNALS_CSV, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                ts_str = row.get("timestamp") or row.get("ts") or ""
+                try:
+                    ts = datetime.fromisoformat(ts_str)
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    continue
+                if ts >= cutoff:
+                    recent_symbols.add(row.get("symbol", ""))
+    except Exception:
+        return signals
+
+    filtered = [s for s in signals if s["symbol"] not in recent_symbols]
+    skipped = len(signals) - len(filtered)
+    if skipped:
+        log.info(
+            f"[midcap] {skipped} segnali scartati (stesso token già segnalato "
+            f"nelle ultime {SIGNAL_DEDUP_H}h): "
+            f"{', '.join(s['symbol'] for s in signals if s['symbol'] in recent_symbols)}"
+        )
+    return filtered
+
 
 def _append_csv(signals: list[dict]):
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -538,10 +626,10 @@ def enrich_fundamentals(candidates: list[dict], universe: dict) -> list[dict]:
             r.raise_for_status()
             data = r.json()
 
-            dev_score  = data.get("developer_score")   or 0.0
-            comm_score = data.get("community_score")   or 0.0
-            genesis    = data.get("genesis_date")      or ""
-            cg_rank    = data.get("coingecko_rank")    or 999
+            dev_score_raw  = data.get("developer_score")
+            comm_score_raw = data.get("community_score")
+            genesis        = data.get("genesis_date")      or ""
+            cg_rank        = data.get("coingecko_rank")    or 999
 
             age_days = None
             if genesis:
@@ -552,19 +640,28 @@ def enrich_fundamentals(candidates: list[dict], universe: dict) -> list[dict]:
                 except Exception:
                     pass
 
-            sig["dev_score"]   = round(float(dev_score),  1)
-            sig["comm_score"]  = round(float(comm_score), 1)
+            sig["dev_score"]   = round(float(dev_score_raw),  1) if dev_score_raw  is not None else None
+            sig["comm_score"]  = round(float(comm_score_raw), 1) if comm_score_raw is not None else None
             sig["age_days"]    = age_days
             sig["cg_rank"]     = cg_rank
 
-            # Bonus/malus fondamentali (max ±15 pt)
+            # Bonus/malus fondamentali (max ±15 pt).
+            # CoinGecko non restituisce più developer_score/community_score a livello
+            # aggregato (sempre None, verificato 07/06 anche su 'bitcoin' e 'kaito) —
+            # senza dato reale NON applichiamo bonus/malus dev/comm (era un Δ-8 cieco
+            # su ~96% dei candidati, trattando "dato assente" come "progetto zombie").
             fund_delta = 0
-            if dev_score  >= 70:  fund_delta += 8
-            elif dev_score >= 50: fund_delta += 4
-            elif dev_score <  20: fund_delta -= 8   # progetto zombie
+            dev_score  = dev_score_raw
+            comm_score = comm_score_raw
 
-            if comm_score >= 60:  fund_delta += 4
-            elif comm_score >= 40: fund_delta += 2
+            if dev_score is not None:
+                if dev_score  >= 70:  fund_delta += 8
+                elif dev_score >= 50: fund_delta += 4
+                elif dev_score <  20: fund_delta -= 8   # progetto zombie
+
+            if comm_score is not None:
+                if comm_score >= 60:  fund_delta += 4
+                elif comm_score >= 40: fund_delta += 2
 
             if age_days is not None:
                 if age_days >= 730:   fund_delta += 3   # >2 anni: progetto maturo
@@ -573,9 +670,11 @@ def enrich_fundamentals(candidates: list[dict], universe: dict) -> list[dict]:
             sig["score"]      = max(0, sig["score"] + fund_delta)
             sig["fund_delta"] = fund_delta
 
+            dev_str  = f"{dev_score:.0f}"  if dev_score  is not None else "n/d"
+            comm_str = f"{comm_score:.0f}" if comm_score is not None else "n/d"
             log.info(
-                f"[enrich] {coin_sym}: dev={dev_score:.0f} "
-                f"comm={comm_score:.0f} age={age_days}d → Δ{fund_delta:+d}"
+                f"[enrich] {coin_sym}: dev={dev_str} "
+                f"comm={comm_str} age={age_days}d → Δ{fund_delta:+d}"
             )
             time.sleep(0.4)   # 30 req/min CoinGecko Demo
 
@@ -616,11 +715,11 @@ async def _scan_once() -> list[dict]:
         if MIN_MCAP_USD <= data["mcap"] <= MAX_MCAP_USD
         and data["volume_24h"] >= MIN_VOLUME_24H
     }
-    binance_symbols = [f"{sym}/USDT" for sym in valid_cg]
-    log.info(f"[midcap] {len(binance_symbols)} simboli candidati dopo filtro mcap/vol")
+    symbols = [f"{sym}/USDT" for sym in valid_cg]
+    log.info(f"[midcap] {len(symbols)} simboli candidati dopo filtro mcap/vol")
 
-    # 3. Fetch OHLCV async in parallelo
-    ohlcv_map = await fetch_all_ohlcv(binance_symbols)
+    # 3. Fetch OHLCV async in parallelo (cascata binance → mexc → gateio)
+    ohlcv_map = await fetch_all_ohlcv(symbols)
     log.info(f"[midcap] {len(ohlcv_map)} OHLCV scaricati in {time.time()-t0:.1f}s")
 
     # 4. Analizza ogni coin → candidati sopra soglia pre-enrich
@@ -629,7 +728,8 @@ async def _scan_once() -> list[dict]:
         coin_sym = b_sym.replace("/USDT", "")
         cg_data  = valid_cg.get(coin_sym, {})
         result   = analyze_coin(b_sym, ohlcv, cg_data)
-        if result and result["score"] >= ENRICH_MIN_SCORE and result["direction"] == "LONG":
+        if (result and result["score"] >= ENRICH_MIN_SCORE and result["direction"] == "LONG"
+                and result["expand_bars"] < MAX_EXPAND_BARS):
             candidates.append(result)
 
     candidates.sort(key=lambda x: x["score"], reverse=True)
@@ -645,6 +745,8 @@ async def _scan_once() -> list[dict]:
 
     # 6. Filtro finale: score ≥ SCORE_MIN dopo enrich
     signals = [s for s in enriched if s["score"] >= SCORE_MIN]
+    # 6b. Anti-duplicati: scarta token già segnalati nelle ultime SIGNAL_DEDUP_H ore
+    signals = _filter_recent_duplicates(signals)
     signals.sort(key=lambda x: x["score"], reverse=True)
 
     elapsed = time.time() - t0

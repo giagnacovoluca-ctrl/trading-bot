@@ -158,9 +158,11 @@ class BitgetFuturesExecutor:
 
     def enter(self, signal_enum, entry_price: float, sl: float, tp: float,
               size_contracts: float, atr: float = 0.0) -> bool:
-        from structural_bot import Signal
-
-        is_long   = signal_enum == Signal.LONG
+        # Confronto per nome: signal_enum arriva da __main__.Signal quando lo script
+        # gira come `python structural_bot.py`, mentre un `from structural_bot import Signal`
+        # qui importerebbe una classe Enum diversa (stesso nome, identità diversa) →
+        # `signal_enum == Signal.LONG` sarebbe sempre False e ogni LONG verrebbe aperto come SHORT.
+        is_long   = signal_enum.name == "LONG"
         side      = "buy" if is_long else "sell"
         direction = "LONG" if is_long else "SHORT"
 

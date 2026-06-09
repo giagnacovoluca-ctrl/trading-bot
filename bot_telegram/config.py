@@ -37,8 +37,10 @@ def _envf(key: str, default: float) -> float:
 BOT_TOKEN          = _env("TELEGRAM_BOT_TOKEN")
 FREE_CHANNEL_ID    = _env("TELEGRAM_FREE_CHANNEL_ID")
 PREMIUM_CHANNEL_ID = _env("TELEGRAM_PREMIUM_CHANNEL_ID")
-VIP_CHANNEL_ID     = _env("TELEGRAM_VIP_CHANNEL_ID")        # opzionale; fallback su premium
 ADMIN_CHAT_ID      = _env("TELEGRAM_ADMIN_CHAT_ID")
+BOT_USERNAME              = _env("TELEGRAM_BOT_USERNAME")          # es. MySignalBot
+FREE_CHANNEL_USERNAME     = _env("TELEGRAM_FREE_CHANNEL_USERNAME") # es. mysignals_free
+PREMIUM_CHANNEL_USERNAME  = _env("TELEGRAM_PREMIUM_CHANNEL_USERNAME")
 
 # ── Sorgenti dati (read-only) ───────────────────────────────────────────────────
 SIGNALS_DIR = Path(_env("SIGNALS_DIR", str(ROOT_DIR / "defi" / "reports")))
@@ -53,9 +55,6 @@ SIGNAL_FILES = {
     "midcap_signals.csv":     "midcap",
 }
 
-# Sistemi "alpha" → solo VIP (più early/rischiosi)
-VIP_ONLY_SYSTEMS = {"pre_grad", "mirror"}
-
 # ── Publisher ───────────────────────────────────────────────────────────────────
 FREE_DELAY_MIN        = _envf("FREE_DELAY_MIN", 15.0)
 FREE_MIN_PROBABILITY  = _envf("FREE_MIN_PROBABILITY", 0.65)
@@ -64,7 +63,6 @@ POLL_INTERVAL_SEC     = _envf("POLL_INTERVAL_SEC", 5.0)
 
 # ── Monetizzazione ──────────────────────────────────────────────────────────────
 PRICE_PREMIUM_USD = _envf("PRICE_PREMIUM_USD", 49.0)
-PRICE_VIP_USD     = _envf("PRICE_VIP_USD", 149.0)
 SUB_DAYS          = int(_envf("SUB_DAYS", 30))
 PAY_WALLET_SOL    = _env("PAY_WALLET_SOL")
 PAY_WALLET_EVM    = _env("PAY_WALLET_EVM")
@@ -75,16 +73,13 @@ HELIUS_API_KEY = _env("HELIUS_API_KEY")
 BASE_RPC_URL   = _env("BASE_RPC_URL", "https://mainnet.base.org")
 
 TIER_PREMIUM = "premium"
-TIER_VIP     = "vip"
 TIER_FREE    = "free"
 
-TIER_PRICES = {TIER_PREMIUM: PRICE_PREMIUM_USD, TIER_VIP: PRICE_VIP_USD}
+TIER_PRICES = {TIER_PREMIUM: PRICE_PREMIUM_USD}
 
 
 def channel_for_system(system: str) -> str:
-    """Canale di destinazione per un segnale 'full' in base al sistema."""
-    if system in VIP_ONLY_SYSTEMS and VIP_CHANNEL_ID:
-        return VIP_CHANNEL_ID
+    """Canale di destinazione per un segnale 'full' (tutti i sistemi → Premium)."""
     return PREMIUM_CHANNEL_ID
 
 

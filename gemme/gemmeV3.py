@@ -382,7 +382,32 @@ def save_persistent_state() -> None:
 # ── Cooldown e blacklist ──────────────────────────────────────────────────
 _gem_last_signal: dict = {}
 _gem_blacklist:   dict = {}
+_gem_dune_fingerprint: dict = {}  # pair_addr → (inflow_last_2h, buyers_last_2h) ultimo segnale emesso
 _gem_lock = threading.Lock()
+_DUNE_FP_PATH = os.path.join(_BASE_DIR, "reports", "dune_fingerprint.json")
+
+
+def _load_dune_fingerprint():
+    try:
+        p = Path(_DUNE_FP_PATH)
+        if p.exists():
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            # Stored as {"pair_key": [inflow, buyers]} → convert values to tuple
+            _gem_dune_fingerprint.update({k: tuple(v) for k, v in raw.items()})
+            log.info(f"[gemV3] Dune fingerprint caricato: {len(_gem_dune_fingerprint)} entry")
+    except Exception as e:
+        log.warning(f"[gemV3] Dune fingerprint load error: {e}")
+
+
+def _save_dune_fingerprint():
+    try:
+        os.makedirs(os.path.dirname(_DUNE_FP_PATH), exist_ok=True)
+        Path(_DUNE_FP_PATH).write_text(
+            json.dumps({k: list(v) for k, v in _gem_dune_fingerprint.items()}, indent=2),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        log.warning(f"[gemV3] Dune fingerprint save error: {e}")
 
 
 def _gem_cooldown_ok(pair_addr: str) -> bool:
@@ -3166,6 +3191,15 @@ class GemFilter:
         if _src != "coingecko_trending" and not _gem_cooldown_ok(pair_key):
             return False, f"{sym} in cooldown ({FILTER_CONFIG['TOKEN_COOLDOWN_MIN']}min)"
 
+        # ── Dune stale check ─────────────────────────────────────────────────
+        inflow = p.get("inflow_last_2h", 0)
+        buyers = p.get("buyers_last_2h", 0)
+        if inflow > 0 and buyers > 0:
+            with _gem_lock:
+                last_fp = _gem_dune_fingerprint.get(pair_key)
+            if (inflow, buyers) == last_fp:
+                return False, f"{sym} dato Dune stale (inflow_2h/buyers_2h invariati)"
+
         return True, "ok"
 
 # ==============================================================================
@@ -3647,10 +3681,16 @@ def stampa_gemma(gem: dict) -> None:
         except Exception as e:
             log.warning(f"[tracker] {e}")
 
-    # Cooldown
+    # Cooldown + aggiorna fingerprint Dune
     pair_key = gem.get("pair_address") or gem.get("token_address", "")
     if pair_key:
         _set_gem_cooldown(pair_key)
+        inflow = gem.get("inflow_last_2h", 0)
+        buyers = gem.get("buyers_last_2h", 0)
+        if inflow > 0 and buyers > 0:
+            with _gem_lock:
+                _gem_dune_fingerprint[pair_key] = (inflow, buyers)
+            _save_dune_fingerprint()
 
     # Email
     try:
@@ -3664,7 +3704,7 @@ def stampa_gemma(gem: dict) -> None:
         try:
             _tier_prob = {"DIAMOND": 0.90, "GOLD": 0.72, "SILVER": 0.55, "BRONZE": 0.40}
             gem_wl = dict(gem)
-            gem_wl["gem_probability"] = _tier_prob.get(gem.get("gem_class", ""), 0.40)
+            gem_wl["gem_probability"] = _tier_prob.get(gem.get("tier", ""), 0.40)
             write_gem_to_watchlist(gem_wl)
         except Exception as e:
             log.warning(f"[watchlist] {e}")
@@ -4153,6 +4193,8 @@ def _monitor_open_v3_positions():
 
 def main_loop() -> None:
     from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    _load_dune_fingerprint()
 
     dune       = DuneDataFetcher()
     social     = SocialAnalyzer()
