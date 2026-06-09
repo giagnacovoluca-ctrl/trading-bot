@@ -139,19 +139,6 @@ CONFIG = {
     "MIN_TXNS_1H":          15,   # attività reale
     "MAX_PAIR_AGE_MIN":  1_440,   # pair >24h → non è una graduation fresca
 
-    # Hard minimum: sotto questa età il dev dump è ancora attivo (100% loss rate su age=1min)
-    # Il BSR 1h a graduation riflette la bonding curve, non il post-grad. Aspetta che si stabilizzi.
-    "MIN_AGE_MIN":           4,   # minuti: non segnalare MAI sotto questa soglia
-
-    # Soglie ridotte per token appena graduati (pair_age 4-EARLY_AGE_MIN)
-    # Il bonding curve porta ~$12-14k di liq e vol1h è quasi zero al minuto 4-10
-    "EARLY_AGE_MIN":        10,   # minuti: finestra "graduation fresca"
-    "MIN_LIQ_USD_EARLY":  9_000,  # leggermente alzata: liq < 9k = troppo poca liquidità
-    "MIN_VOL_1H_USD_EARLY": 300,  # alzata: vol troppo basso = nessun interesse reale
-    "MIN_VOL_5M_EARLY":     100,  # alzata: almeno $100 di vol nei 5 min post-grad
-    "MIN_BSR_EARLY":         1.3, # BSR più alto richiesto per token freschi (dev dump = BSR crolla)
-    "MIN_CHANGE_EARLY":     -5.0, # max calo ammesso in early: se già -6% a 4min → dump in corso
-
     # Dedup
     "SEEN_TTL_HOURS":      24,
 
@@ -387,55 +374,17 @@ def _validate_and_signal(event: dict) -> bool:
         age_min = (datetime.now().timestamp() * 1000 - (_pair2.get("pairCreatedAt") or 0)) / 60_000
         pair = _pair2
 
-    # Hard minimum age: sotto questa soglia il dev dump è ancora in corso.
-    # La pipeline fin qui (wait + fetch + stability check) richiede ~1min: age_min
-    # a questo punto è SEMPRE < MIN_AGE_MIN(4) → uno `skip` qui scarterebbe
-    # sistematicamente il 100% dei segnali (bug osservato: 0 segnali pump_grad
-    # dal 06-05 in poi). Aspettiamo che il token raggiunga l'età minima e
-    # ri-valutiamo con i dati freschi, invece di scartarlo a priori.
-    if age_min < cfg.get("MIN_AGE_MIN", 0):
-        _wait_more = (cfg["MIN_AGE_MIN"] - age_min) * 60 + 5
-        log.info(f"[pump_grad] {symbol} [{dex_id}]: età {age_min:.1f}min < {cfg['MIN_AGE_MIN']}min "
-                 f"(graduation dump attivo) — attendo {_wait_more:.0f}s e ri-valuto")
-        time.sleep(_wait_more)
-        _pair3 = _fetch_dex_pair(mint)
-        if not _pair3:
-            log.info(f"[pump_grad] {symbol}: pool sparita dopo l'attesa — skip")
-            return False
-        liq   = float((_pair3.get("liquidity") or {}).get("usd") or 0)
-        vol1h = float((_pair3.get("volume") or {}).get("h1") or 0)
-        bsr   = _bsr(_pair3.get("txns") or {})
-        chg   = float((_pair3.get("priceChange") or {}).get("h1") or 0)
-        price = float(_pair3.get("priceUsd") or 0)
-        mcap  = float(_pair3.get("marketCap") or _pair3.get("fdv") or 0)
-        h1_t  = _pair3.get("txns", {}).get("h1", {})
-        txns  = int(h1_t.get("buys", 0) or 0) + int(h1_t.get("sells", 0) or 0)
-        age_min = (datetime.now().timestamp() * 1000 - (_pair3.get("pairCreatedAt") or 0)) / 60_000
-        pair = _pair3
-
-    vol5m = float((pair.get("volume") or {}).get("m5") or 0)
-    chg5m = float((pair.get("priceChange") or {}).get("m5") or 0)
-
-    # Soglie age-aware: pair appena graduate (4-10 min) hanno liq e vol1h naturalmente bassi
-    early = age_min < cfg["EARLY_AGE_MIN"]
-    min_liq  = cfg["MIN_LIQ_USD_EARLY"] if early else cfg["MIN_LIQ_USD"]
-    min_bsr  = cfg.get("MIN_BSR_EARLY", cfg["MIN_BSR"]) if early else cfg["MIN_BSR"]
-    min_chg  = cfg.get("MIN_CHANGE_EARLY", cfg["MIN_CHANGE_1H_PCT"]) if early else cfg["MIN_CHANGE_1H_PCT"]
-    vol_ok   = (vol1h >= cfg["MIN_VOL_1H_USD_EARLY"] or vol5m >= cfg["MIN_VOL_5M_EARLY"]) if early \
-               else vol1h >= cfg["MIN_VOL_1H_USD"]
-
     rejects = []
-    if liq   < min_liq:                       rejects.append(f"liq=${liq:,.0f}")
-    if not vol_ok:                             rejects.append(f"vol1h=${vol1h:,.0f} vol5m=${vol5m:,.0f}")
-    if bsr   < min_bsr:                       rejects.append(f"bsr={bsr:.2f}<{min_bsr}")
-    if chg   > cfg["MAX_CHANGE_1H_PCT"]:      rejects.append(f"chg={chg:+.0f}% già pompato")
-    if chg   < min_chg:                       rejects.append(f"chg={chg:+.1f}% dump")
-    if txns  < cfg["MIN_TXNS_1H"]:            rejects.append(f"txns={txns}")
-    if age_min > cfg["MAX_PAIR_AGE_MIN"]:     rejects.append(f"age={age_min:.0f}min>{cfg['MAX_PAIR_AGE_MIN']}min (non graduation)")
+    if liq   < cfg["MIN_LIQ_USD"]:           rejects.append(f"liq=${liq:,.0f}")
+    if vol1h < cfg["MIN_VOL_1H_USD"]:        rejects.append(f"vol1h=${vol1h:,.0f}")
+    if bsr   < cfg["MIN_BSR"]:               rejects.append(f"bsr={bsr:.2f}")
+    if chg   > cfg["MAX_CHANGE_1H_PCT"]:     rejects.append(f"chg={chg:+.0f}% già pompato")
+    if chg   < cfg["MIN_CHANGE_1H_PCT"]:     rejects.append(f"chg={chg:+.0f}% dump")
+    if txns  < cfg["MIN_TXNS_1H"]:           rejects.append(f"txns={txns}")
+    if age_min > cfg["MAX_PAIR_AGE_MIN"]:    rejects.append(f"age={age_min:.0f}min>{cfg['MAX_PAIR_AGE_MIN']}min (non graduation)")
 
     if rejects:
-        tag = "early" if early else "standard"
-        log.info(f"[pump_grad] {symbol} [{dex_id}] [{tag}]: filtro → {', '.join(rejects)}")
+        log.info(f"[pump_grad] {symbol} [{dex_id}]: filtro → {', '.join(rejects)}")
         return False
 
     # ── Costruzione segnale ──────────────────────────────────────────────────
