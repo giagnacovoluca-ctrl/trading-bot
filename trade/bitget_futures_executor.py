@@ -166,12 +166,20 @@ class BitgetFuturesExecutor:
         side      = "buy" if is_long else "sell"
         direction = "LONG" if is_long else "SHORT"
 
+        # Guard: posizione ancora aperta (close fallito o orfana da restart) → no stacking
+        if self._position_side:
+            log.error(
+                f"[BITGET] ⛔ Entry {direction} rifiutata: posizione {self._position_side} "
+                f"ancora aperta sull'exchange (close fallito/orfana) — attendo chiusura"
+            )
+            return False
+
         # Bitget: min 0.001 BTC, step 0.001
         qty = max(0.001, round(size_contracts, 3))
 
         # Cap margine: se qty × price / leverage > saldo disponibile → riduci
         if not DRY_RUN:
-            _avail = self._get_balance()
+            _avail = self._get_balance(equity=False)   # margine spendibile, non equity
             if _avail > 0 and entry_price > 0:
                 import math as _math
                 _max_qty = _math.floor((_avail * LEVERAGE) / entry_price * 0.92 * 1000) / 1000  # floor a 0.001 BTC
@@ -449,23 +457,46 @@ class BitgetFuturesExecutor:
             self._position_side = ""
             return
 
-        try:
-            pos = self._get_open_position()
-            if pos and abs(float(pos.get("contracts", 0) or 0)) > 0:
-                close_side = "sell" if self._position_side == "LONG" else "buy"
+        # Hedge mode Bitget v2: il close usa lo STESSO side dell'apertura
+        # (close long: side=buy, close short: side=sell) + tradeSide=close.
+        # Il side invertito causava 22002 "No position to close" → posizione orfana.
+        close_side = "buy" if self._position_side == "LONG" else "sell"
+        closed = False
+        for attempt in range(1, 4):
+            try:
+                pos = self._get_open_position()
+                if not pos or abs(float(pos.get("contracts", 0) or 0)) < 0.001:
+                    closed = True   # già chiusa da SL/TP nativo
+                    break
+                qty = abs(float(pos.get("contracts", 0) or 0)) or self._entry_qty
                 self._exchange.create_order(
                     symbol  = SYMBOL,
                     type    = "market",
                     side    = close_side,
-                    amount  = self._entry_qty,
+                    amount  = qty,
                     params  = {"tradeSide": "close"},
                 )
-                log.info(f"[BITGET] Posizione chiusa manualmente ({reason})")
-        except Exception as e:
-            log.warning(f"[BITGET] on_close: {e}")
-        finally:
-            self._position_side = ""
-            self._entry_qty     = 0.0
+                time.sleep(3)
+                pos2 = self._get_open_position()
+                if not pos2 or abs(float(pos2.get("contracts", 0) or 0)) < 0.001:
+                    log.info(f"[BITGET] Posizione chiusa manualmente ({reason})")
+                    closed = True
+                    break
+                log.warning(f"[BITGET] on_close: posizione ancora aperta dopo close ({attempt}/3)")
+            except Exception as e:
+                log.warning(f"[BITGET] on_close tentativo {attempt}/3: {e}")
+                time.sleep(2)
+
+        if not closed:
+            # NON azzerare lo stato: sync_position continuerà a tracciare la posizione
+            # (SL/TP nativi restano attivi) e enter() rifiuterà nuove entry nel frattempo.
+            log.error(
+                "[BITGET] ⛔ Close fallito dopo 3 tentativi: posizione ANCORA APERTA su Bitget "
+                "— stato executor mantenuto per il sync"
+            )
+            return
+        self._position_side = ""
+        self._entry_qty     = 0.0
 
     # ── Sync ─────────────────────────────────────────────────────────────────
 
@@ -543,7 +574,11 @@ class BitgetFuturesExecutor:
 
         return 0.0
 
-    def _get_balance(self) -> float:
+    def _get_balance(self, equity: bool = True) -> float:
+        """equity=True → accountEquity (saldo + margine impegnato + uPnL): da usare per
+        il capital sync, perché con una posizione aperta l'available crolla del margine
+        bloccato e veniva scambiato per un crollo del saldo ("Delta anomalo" infiniti).
+        equity=False → available: da usare solo per il cap margine in enter()."""
         # Demo usa SUSDT (Simulated USDT) come marginCoin — chiave diversa nel balance
         coin = "SUSDT" if DEMO_MODE else "USDT"
         pt   = "SUSDT-FUTURES" if DEMO_MODE else "USDT-FUTURES"
@@ -551,6 +586,31 @@ class BitgetFuturesExecutor:
             balance = self._exchange.fetch_balance({
                 "type": "swap", "productType": pt, "marginCoin": coin,
             })
+            if equity:
+                # Equity dal payload raw Bitget (ccxt non la normalizza).
+                # info può essere il dict di risposta ({"data": [...]}) o
+                # direttamente la lista account a seconda della versione ccxt.
+                try:
+                    info = balance.get("info")
+                    rows = info.get("data") if isinstance(info, dict) else info
+                    for acct in rows or []:
+                        if not isinstance(acct, dict):
+                            continue
+                        if (acct.get("marginCoin") or "").upper() == coin:
+                            val = float(acct.get("accountEquity")
+                                        or acct.get("usdtEquity") or 0)
+                            if val > 0:
+                                return val
+                except Exception as e:
+                    log.debug(f"[BITGET] equity parse fallito: {e} — fallback su free+used")
+                # Fallback equity ≈ free + used (margine impegnato); manca solo l'uPnL
+                for c in (coin, "USDT"):
+                    d = balance.get(c) or {}
+                    val = float(d.get("total") or 0) or (
+                        float(d.get("free") or 0) + float(d.get("used") or 0))
+                    if val > 0:
+                        return val
+                return 0.0
             val = float(balance.get(coin, {}).get("free", 0) or 0)
             if val == 0:
                 # Fallback: prova anche con USDT nel dict (ccxt normalizza)

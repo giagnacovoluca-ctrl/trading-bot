@@ -39,6 +39,10 @@ SYMBOL                 = "BTCUSDT"
 
 RISK_PCT               = 0.07     # alzato 5%→7%: tra Kelly/4(6%) e Kelly/2(12%), WR=50% PF=1.92 su 49 trade
 MIN_RR                 = 2.0        # reward/risk minimo accettato
+MIN_DYNAMIC_RR         = 4.0        # backtest 10/06 (91 trade, fee taker 0.12% rt incluse):
+                                    # rr=2.0 → net -0.43$/trade (n=49), rr=3.0 → -0.27$ (n=16),
+                                    # rr=4.0 → +0.36$ (n=26). Con SL~2×ATR le fee costano ~30%
+                                    # del risk: sotto ADX 40 + 2h/4h allineati l'edge non le paga.
 MAX_CONSECUTIVE_LOSSES = 3          # scatta il circuit breaker
 COOLDOWN_BARS          = 60         # alzato 20→60: 5h di pausa dopo circuit breaker (invece di 1h40m)
 ADX_MIN_TREND          = 24         # alzato 22→24: filtra zone di trend marginale
@@ -894,6 +898,16 @@ def calculate_trade(signal: Signal, last: pd.Series, capital: float,
     else:
         dynamic_rr = MIN_RR  # default 2R
 
+    # Gate fee-aware: vedi MIN_DYNAMIC_RR — sotto ADX 40 + allineamento 2h/4h
+    # il net atteso è negativo a questa size di conto. Vale anche per i bounce
+    # (3/3 loss nello storico).
+    if dynamic_rr < MIN_DYNAMIC_RR:
+        logging.info(
+            f"[RR SKIP] dynamic_rr={dynamic_rr} < {MIN_DYNAMIC_RR} "
+            f"(ADX={adx:.0f}, aligned={all_aligned}) — edge non copre le fee"
+        )
+        return None
+
     # TP1 (2R) e TP2 (dynamic_rr): chiude 50% a TP1, lascia il resto fino a TP2
     # Se dynamic_rr == MIN_RR non c'è TP2 (singolo TP)
     use_dual_tp = dynamic_rr > MIN_RR
@@ -1311,6 +1325,10 @@ def run(executor=None):
     )
     logging.info(f"Reports → {REPORTS_DIR}")
 
+    # Capital sync: contatori per delta anomalo persistente (vedi loop)
+    _anom_count = 0
+    _anom_last  = None
+
     while True:
         try:
             now   = datetime.now(timezone.utc)
@@ -1349,11 +1367,30 @@ def run(executor=None):
                     delta = real_bal - state.capital
                     max_delta = state.capital * 0.50
                     if abs(delta) > max_delta:
-                        logging.warning(
-                            f"[CAPITAL SYNC] Delta anomalo ignorato: "
-                            f"{state.capital:.2f} → {real_bal:.2f} USDT (Δ={delta:+.2f}, cap=±{max_delta:.2f})"
-                        )
+                        # Anti-deadlock: se il valore "anomalo" è stabile per 6 cicli
+                        # consecutivi (±10%) non è uno spike API ma il saldo reale
+                        # (es. prelievo, perdita non tracciata) → accettalo, altrimenti
+                        # il bot resta per sempre con un capitale fantasma e size errate.
+                        stable = (_anom_last is not None
+                                  and abs(real_bal - _anom_last) <= max(0.50, abs(_anom_last) * 0.10))
+                        _anom_count = _anom_count + 1 if stable else 1
+                        _anom_last  = real_bal
+                        if _anom_count >= 6:
+                            logging.warning(
+                                f"[CAPITAL SYNC] Delta anomalo PERSISTENTE ({_anom_count} cicli stabili): "
+                                f"{state.capital:.2f} → {real_bal:.2f} USDT — accettato come saldo reale"
+                            )
+                            state.capital = real_bal
+                            _anom_count = 0
+                            _anom_last  = None
+                        else:
+                            logging.warning(
+                                f"[CAPITAL SYNC] Delta anomalo ignorato ({_anom_count}/6): "
+                                f"{state.capital:.2f} → {real_bal:.2f} USDT (Δ={delta:+.2f}, cap=±{max_delta:.2f})"
+                            )
                     else:
+                        _anom_count = 0
+                        _anom_last  = None
                         if abs(delta) > 0.05:
                             logging.info(f"[CAPITAL SYNC] {state.capital:.2f} → {real_bal:.2f} USDT (delta={delta:+.2f})")
                         state.capital = real_bal
@@ -1430,7 +1467,18 @@ def run(executor=None):
             # ── Hook 1: sync posizione da Bitget (SL/TP hit in background) ──
             if executor and executor.has_open_position:
                 bnx_pnl = executor.sync_position()
-                if bnx_pnl is not None and state.open_trade is not None:
+                if bnx_pnl is not None and state.open_trade is None:
+                    # Posizione orfana (close fallito in passato, trade già chiuso
+                    # internamente): SL/TP nativo l'ha chiusa ora → registra solo il
+                    # P&L reale sul capitale, niente statistiche (trade già contato).
+                    state.capital   += bnx_pnl
+                    state.daily_pnl += bnx_pnl
+                    logging.warning(
+                        f"[SYNC ORFANA] Bitget ha chiuso una posizione orfana | "
+                        f"P&L={bnx_pnl:+.2f} USDT | Cap=${state.capital:.2f}"
+                    )
+                    save_state(state)
+                elif bnx_pnl is not None and state.open_trade is not None:
                     pnl_usdt = bnx_pnl
                     state.capital    += pnl_usdt
                     state.daily_pnl  += pnl_usdt
