@@ -1,6 +1,6 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
-Aggiornato: 2026-06-09
+Aggiornato: 2026-06-10 (sessione mattina — riattivazione sistema wallet mirror)
 
 ---
 
@@ -25,6 +25,8 @@ Aggiornato: 2026-06-09
         midcap_scanner.py   ← scanner mid/large cap con BB Squeeze (NUOVO)
         pump_graduation_scanner.py ← token appena graduati da pump.fun → Raydium (Solana)
         base_pump_scanner.py       ← token nuovi su Base: polling Uniswap V3 + Aerodrome factory
+                               FIX 10/06: RPC giù all'avvio uccideva il poll thread per sempre
+                               (return) → retry con backoff 15s→5min; start() non fa più bail su RPC
         pre_grad_monitor.py ← intercetta token PRE-graduation sulla bonding curve
         signal_tracker.py   ← snapshot prezzi per segnali defi (followup)
         gem_watchlist.py    ← watchlist condivisa tra scanner
@@ -48,7 +50,25 @@ Aggiornato: 2026-06-09
         bsc_executor.py     ← executor BSC/PancakeSwap (BSC disabilitato)
         executor_report.py  ← report HTML esecuzioni reali vs simulator
         wallet_alpha_finder.py ← analizza wallet compratori early per alpha
-        wallet_mirror_bot.py   ← mirror trade da alpha wallet via Helius WS
+                               AGGIORNATO 10/06: seed win-only (join live_trades.csv su signal_id), seed extra
+                               da live_trades (mint via DexScreener — pump_grad_signals.csv viene ruotato),
+                               paginazione firme con `before` fino a signal_ts (prima solo ultime 200 = mai
+                               i veri early), buy in SOL nativo/wSOL valorizzati (prima solo USDC),
+                               dedup (wallet,mint) nel rank, penalità avg_rank>300 ×0.5 / >100 ×0.8 (anti bot
+                               spray), enrich sui top per score preliminare, fix dead code penalità >60gg,
+                               flag --all-seeds
+        wallet_mirror_bot.py   ← mirror trade da alpha wallet
+                               RISCRITTO 10/06: transactionSubscribe Atlas (403 piano attuale) →
+                               logsSubscribe standard per wallet + fetch Enhanced API on-trigger
+                               (stesso pattern _RugWatcher); dedup mint con TTL 6h (era set permanente);
+                               buy E sell rilevati (anche pagati in SOL); main(stop_event) → avviato da run.py
+                               NUOVO: wallet_events.csv (storico completo buy/sell anche scartati),
+                               confluenza cross-wallet (≥2 alpha stesso mint in 6h → pump_probability
+                               0.80+0.05/wallet cap 0.95 + log 🔥), alert "smart money in uscita" se un
+                               alpha vende un token segnalato di recente, risveglio post-inattività ≥30gg
+                               (mirror_state.json persiste last_seen per wallet)
+        mirror_state.json   ← stato mirror bot (wallet → last_seen_ts)
+        alpha_wallets.json  ← GENERATO 10/06 (prima non esisteva: sistema mirror mai stato attivo)
         real_state.json     ← stato posizioni reali Solana
         base_real_state.json← stato posizioni reali Base
         real_executions.csv ← log swap reali Solana
@@ -63,6 +83,9 @@ Aggiornato: 2026-06-09
                                AGGIORNATO: format_teaser ora mostra entry price storico con label "⏱ Entry al segnale (15m fa)"
         telegram_api.py     ← Bot API via requests, retry 429
         publisher.py        ← daemon: full su Premium/VIP, teaser FREE ritardato 15m
+                               NUOVO 10/06: tail wallet_events.csv → alert whale su PREMIUM
+                               (buy ≥ WHALE_ALERT_MIN_USD=500 | confluence ≥2 | risveglio;
+                               sell solo se sell_after_signal). formatter.format_wallet_event()
         bot.py              ← comandi /start /plans /subscribe /status /referral + admin /grant /stats /broadcast
         subscriptions.py    ← store abbonati (tier/scadenza/referral) in state/subscribers.json
         payments.py         ← verifica USDC on-chain (Base+Solana) via invoice a importo univoco; settle→grant
@@ -86,21 +109,38 @@ Aggiornato: 2026-06-09
         binance_spot_executor.py   ← executor Binance Spot
         reports bot strutturale/   ← stato e log bot live (state.json, trades_log.json, structural_bot.log)
         reports_demo/              ← stato e log bot demo (separato)
-    injective_autopilot/           ← NUOVO 09/06: bot multi-market su Injective Protocol perps
+    injective_autopilot/           ← bot multi-market su Injective Protocol perps
         main.py                    ← entry point (PAPER/LIVE/BACKTEST mode)
+                                      AGGIORNATO 09/06: Ctrl+C doppio con timeout 5s (1°=stop&salva, 2°=chiudi posizioni)
+                                      set_risk_engine(engine._risk) wired al dashboard
+                                      uvicorn install_signal_handlers=lambda: None (no override SIGINT)
         config/settings.py         ← config Pydantic (INJ_ env prefix); claude_timeout=90s, rate_limit=20/h
+                                      AGGIORNATO 09/06: paper_max_daily_drawdown_pct=0.15 (live rimane 0.05)
         core/sentinel.py           ← scansiona 29 market ogni 60s, trigger composito (≥2 segnali Tier A/B o 1 Tier S)
         core/decision_engine.py    ← chiama claude CLI (--bare --print --max-turns 1) per decisione finale JSON
                                       AGGIORNATO 09/06: --bare + stdin=DEVNULL + timeout 45→90s
         core/risk_engine.py        ← risk management (max DD, margin, position sizing)
+                                      AGGIORNATO 09/06: check_kill_switch usa paper_max_daily_drawdown_pct se mode=PAPER/BACKTEST
+                                      reset_kill_switch() disponibile, usata da /admin/reset-kill-switch
         core/executor.py           ← esecuzione ordini su Injective
         paper_trading/engine.py    ← paper trading engine (PAPER mode default)
+                                      BUG FIX 09/06: max_open_positions mai enforced; fetch_positions() restituisce posizioni
+                                      on-chain (vuote in PAPER) → ora usa self._executor.open_trades
         signals/                   ← orderbook.py, volume.py, derivatives.py, volatility.py, anomaly.py
         data/injective_client.py   ← client gRPC/REST Injective mainnet
         data/cache.py              ← buffer rolling (prezzi, funding, OI)
         backtest/engine.py         ← backtest walk-forward + live gate (500 trades, PF>1.5, Sharpe>1.5)
         dashboard/app.py           ← FastAPI dashboard http://127.0.0.1:8080 (auto-refresh 10s)
+                                      AGGIORNATO 09/06: set_risk_engine(engine); GET /admin/kill-switch-status;
+                                      POST /admin/reset-kill-switch (reset DD baseline, log DB, redirect /risk);
+                                      /risk passa dd_limit_pct (15% paper, 5% live) al template
+        dashboard/templates/risk.html ← AGGIORNATO 09/06: pulsante Reset Kill Switch (form POST) quando kill attivo;
+                                      DD Limit dinamico (dd_limit_pct dal backend); traffic light usa soglia corretta
+        dashboard/templates/journal.html ← AGGIORNATO 09/06: colonna Token (ticker+market_id[:12]) aggiunta
+        dashboard/templates/signals.html ← AGGIORNATO 09/06: colonna Market aggiunta; fix OBI/Fund Z/Vol
+                                      (guard s.values and s.values.obi is not none — Jinja2 `is defined` fallisce su None)
         database/repository.py     ← SQLite async (aiosqlite)
+                                      AGGIORNATO 09/06: get_signals include market_id; signal_values or {} (no None)
 ```
 
 ---
@@ -171,6 +211,13 @@ Aggiornato: 2026-06-09
 
 ### `gemme/gemmeV3.py`
 ```python
+# AGGIORNATO 10/06 — FIX DUNE CONGELATO (root cause dei 0 trade v3 dal 02/06):
+#   _get_latest_results ora controlla execution_ended_at: se >1h ritorna (None, stale)
+#   per forzare _execute_and_wait (con fallback alle righe stale se fallisce).
+#   2° bug: POST /execute con {"performance":"large"} SEMPRE rifiutato dal piano
+#   free ("Invalid performance tier") → rimosso il body. Costo ~0.03 crediti/run.
+# AGGIORNATO 10/06: GemFilter BSR 0.1→0.5 (backtest 330 gemme: bsr<0.5 = 0 win,
+#   5 disastri, final mediano -86.6%; fascia 0.5-0.8 ha il 60% WR → non alzare oltre)
 def load_persistent_state() / save_persistent_state()
 def detect_sr_levels(df_4h) → list   # NUOVO: S/R levels per structural_bot
 class GemFilter:
@@ -195,16 +242,77 @@ def enrich_fundamentals(candidates, universe) → list  # /coins/{id} per top ca
 def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippare)
 # CoinGecko key: env COINGECKO_API_KEY (Demo, ~4200/10k call/mese)
 # Score: squeeze intensity(25) + duration(15) + expansion(15) + lean(8) + RSI div(10) + vol(7) + EMA(15) + breakout bonus(5)
+# AGGIORNATO 09/06 (backtest n=28): penalità extra dopo gli elif esistenti:
+#   change_7d > 150% → score -= 12  (BTW/VELVET/BEAT: pump estremo → mean-reversion sistematica)
+#   adx > 55         → score -= 5   (币安人生/DEGEN: trend maturo, adx>50+ret_30d>100% insieme non bastava)
+# Soglia ADX 55 (non 50): evita falsi positivi su MAGMA (51.5) e OMI (53.2) che erano vincenti.
+# entry_score_min=35 (invariato); con le nuove penalità 9/9 loss bloccate, 4/19 win bloccate (tutte su token estremi)
 ```
 
 ### `defi/defi_optimized.py`
 ```python
+# AGGIORNATO 10/06 sera2: condizioni anti-retrace in generate_signals (le metriche
+# 1h sono lagging: pump mediano +12% PRIMA del segnale, upside post +2.2% — il
+# segnale scattava nel retrace; GutGenug/STEPHEN/KINS hard_sl in 4-10min):
+#   c10_notfall: prezzo >= 97% del prezzo all'ultimo ciclo lento (_prev_cycle_px,
+#     aggiornato solo con collect_nearmiss=True). Backtest n=46: precisione 77%.
+#   c11_bsrshift: bsr_recent_shift >= -0.15 (venditori non in surge ora).
+#     PROVVISORIA: backtest n=8 (4 bloccate tutte loss), rivalutare a n>=20.
+# AGGIORNATO 10/06: FAST-POLL WATCHLIST (2-stage entry, anticipa il segnale):
+#   Stage1: generate_signals raccoglie i near-miss (tutte le condizioni OK tranne
+#           comp>=0.55, con comp>=0.45) → _fastpoll_add_candidates()
+#   Stage2: thread fastpoll_loop() (avviato in main, daemon): tick 30s, batch
+#           DexScreener /dex/pairs/{chain}/{addr1,...} (max 30), refresh campi
+#           dinamici, ri-esegue generate_signals(quiet=True), emette al 2° tick
+#           consecutivo sopra soglia (conferma anti-rumore) via stampa_segnale.
+#           Marker "fastpoll=true" in top_features per backtest. TTL 45min.
+#           NON aggiorna _update_bsr_history (bsr_trend resta sul ciclo lento).
+#   generate_signals(df, modello, scaler, threshold, collect_nearmiss=True, quiet=False)
+#   apply_hard_filters(df, quiet=False)
+# AGGIORNATO 10/06: path ancorati al modulo (la CWD del processo era fuori repo):
+#   _REPORTS_DIR = Path(__file__).parent/"reports" (cycle_stats + followup blacklist
+#   che era SILENZIOSAMENTE DISATTIVATA), debug/ idem. Storico migrato.
+# AGGIORNATO 10/06: log "passano ai filtri ML" → "passano alle condizioni pre-pump"
 # NUOVO filtro anti-dump in generate_signals(): change_1h<-2% AND bsr<0.50 → scartato
 # Label watchlist: gemmeV2 → gemmeV3
+# AGGIORNATO 09/06: BSR history persistente su disco (data/bsr_history.json):
+#   _BSR_HISTORY_FILE = Path("data/bsr_history.json")
+#   _BSR_HISTORY_MAX_AGE_SEC = 7200  # scarta entry >2h al caricamento
+#   _save_bsr_history()  # chiamata in _update_bsr_history() dopo ogni update
+#   _load_bsr_history()  # chiamata in main() prima del loop
+#   Fix: bsr_trend_per_min era sempre 0 dopo restart (deque in memoria)
+# AGGIORNATO 09/06: diagnostic log reports/cycle_stats.csv (append ogni ciclo):
+#   colonne: ts, chain, n_raw, n_hard_pass, n_signals, bsr_med, vol_med, chg_med
+#   n_raw=token API pre-filtro; n_raw OK+n_hard_pass basso → filtri troppo restrittivi
+#   n_raw basso → problema mercato/API
+```
+
+### `defi/rugcheck.py`
+```python
+# FIX 11/06: is_safe("pre_grad",...) instradato su _check_pump_grad (top-holder
+#   concentration, blocca se top1>25%) invece di _check_lp_lock — quest'ultimo
+#   per "pre_grad" faceva return True SEMPRE (MIN_LP_LOCKED non ha la chiave
+#   "pre_grad" → min_lp=None → no-op). Causa probabile dei crolli -50/-83% su
+#   hard_sl (40 segnali, WR 2.5%, -426€): rugcheck preventivo non bloccava nulla.
+# ⚠️ DA VERIFICARE: _check_pump_grad è fail-CLOSED se topHolders vuoto dopo 3
+#   retry (15s) — se RugCheck.xyz non indicizza token pre-graduation, TUTTI i
+#   segnali pre_grad potrebbero finire bloccati. Controllare log [RugCheck/pump]
+#   dopo restart. Serve restart run.py.
 ```
 
 ### `defi/trade_simulator.py`
 ```python
+# FIX 11/06: pair_address="nan" poison in active_pairs — pre_grad scrive
+#   pair_address vuoto (NaN, bonding curve senza DEX pair); str(nan or "")="nan"
+#   finiva in active_pairs alla 1a entry pre_grad e bloccava IN SILENZIO (nessun
+#   log) tutti i segnali pre_grad successivi. Fix: pair_addr_check/pair_addr
+#   normalizzati "nan"→"" in _load_new_signals. Serve restart run.py.
+# FIX 11/06 bis: il fix sopra ha reso pair_address="" (falsy) per le posizioni
+#   pre_grad → guard di testa _process_position (`not pos.get("pair_address")`)
+#   ritornava SUBITO per OGNI posizione pre_grad → mai aggiornate (bloccate a
+#   +0.0% per sempre, peggio di prima). Fix: guard ora esclude system=="pre_grad"
+#   senza pair_address (gestito dal ramo bonding-curve _fetch_price_pumpfun).
+#   Serve restart run.py.
 # ALLOWED_CHAINS = {"solana", "base"}
 # ENTRY_GRACE_MIN = 13.0
 # Cooldown differenziati: hard_sl=12h, bsr_collapse/vol_crash=4h, entry=8h, liq_collapse=24h
@@ -214,6 +322,10 @@ def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippar
 # Sanity oracle: chg>5000% → ignora
 # _RugWatcher: WS logsSubscribe (RPC standard Helius, NON Atlas premium) su pool pump_grad
 #   FAST_CHECK_WINDOW_MIN=15, FAST_CHECK_DEBOUNCE_SEC=5 — fetch fuori-turno su attività pool (gap risk rug)
+# NUOVO 10/06: _smart_money_count(token_address) — legge coda wallet_events.csv (cache 60s),
+#   conta wallet alpha distinti che hanno comprato il mint nelle ultime 6h; all'entry di segnali
+#   solana non-mirror aggiunge "smart_money=N" al note + log 🐋. SOLO annotazione: nessun
+#   filtro/boost finché un backtest non valida l'edge
 class LiveEngine:
     def _load_new_signals()    # filtri cooldown differenziati + prezzo re-entry + anti-dump
     def _process_position(sid, pos)
@@ -222,6 +334,9 @@ class LiveEngine:
 
 ### `executor/base_executor.py`
 ```python
+# AGGIORNATO 10/06: in DRY_RUN nessun limite MAX_POS e notional fisso $100
+# (trade_size_eth = 100/weth_usd) — il dry replica il simulator, i limiti
+# proteggono solo capitale reale. In modalità reale invariato.
 # Oracle on-chain diretto Base + WETH unwrap dopo ogni sell
 # Bug fix: WETH unwrap, eth_received corretto, ETH balance check, min_out floor
 # EXIT_ACTIONS: aggiunto exit_adaptive, exit_momentum, exit_max_age, exit_price_timeout, manual_close
@@ -233,6 +348,11 @@ def main(stop_event)   # loop 5s su live_trades.csv, BASE_DRY_RUN=false
 
 ### `executor/solana_executor.py`
 ```python
+# AGGIORNATO 10/06: segnali dry (_is_dry_run(system)) non soggetti a MAX_OPEN_POS
+# e notional fisso $100 (_size_usdc=100; pre_grad: _size_sol=100/sol_px via
+# _get_sol_price_usd). In reale invariato (size da .env, limiti attivi).
+# 10/06: archiviate 6 posizioni STUCK (status=archived_rug, 5 rug reali 01/06
+# valore residuo $0.69 + 1 fantasma dry; backup real_state.json.bak_archive_rug)
 # RPC auto: Helius se HELIUS_API_KEY presente, altrimenti mainnet pubblico
 RPC_URL = HELIUS_RPC if HELIUS_API_KEY else "https://api.mainnet-beta.solana.com"
 ```
@@ -240,10 +360,21 @@ RPC_URL = HELIUS_RPC if HELIUS_API_KEY else "https://api.mainnet-beta.solana.com
 ### `defi/run.py`
 ```python
 # Carica executor/.env per EXECUTOR_CHAINS
-# Flag: --no-solana, --no-base, --no-midcap (separati)
+# Flag: --no-solana, --no-base, --no-midcap, --no-mirror (separati)
 # EXECUTOR_CHAINS env var: "base" | "solana" | "base,solana"
 # Componenti: LiveEngine, PumpGrad, PreGrad, BasePump, defi_optimized,
-#             gemmeV3, solana_executor, base_executor, midcap_scanner
+#             gemmeV3, solana_executor, base_executor, midcap_scanner,
+#             wallet_mirror_bot (NUOVO 10/06: avviato solo se alpha_wallets.json esiste;
+#             SystemExit se piano Helius nega le subscription → no restart-loop)
+# NUOVO 10/06:
+#   _start_component: backoff esponenziale (raddoppia su crash <10min, cap 600s,
+#     reset dopo uptime sano) + _send_alert email dopo 5 crash veloci consecutivi
+#   _send_alert(subject, body): email via SMTP_* env, throttle 6h per soggetto
+#   _thread_watchdog_loop: ogni 5min verifica thread critici scanner
+#     (pump_ws/pump_val/pregrd_ws/pregrd_sig/pregrd_poll/base_pump) — solo quelli
+#     partiti davvero; se uno muore → alert (no auto-restart: duplicherebbe i vivi)
+#   _alpha_refresh_loop: ogni 24h, se alpha_wallets.json >7gg → rigenera via
+#     wallet_alpha_finder.main(min_tokens=2, top=30)
 ```
 
 ### `trade/structural_bot.py`
@@ -260,6 +391,11 @@ def fetch_funding_rate() → float  # cache 15min, Binance futures
 # Trail activate: 12% (era 6%), trail drop adattivo
 # NUOVO 09/06: lock file fcntl all'avvio di run() → SystemExit(1) se già in esecuzione
 # Lock path: reports bot strutturale/structural_bot.lock
+# NUOVO 10/06: MIN_DYNAMIC_RR=4.0 — gate fee-aware in calculate_trade: entra SOLO se
+#   ADX≥40 + bias 2h/4h allineati (dynamic_rr=4). Backtest 91 trade con fee 0.12% rt:
+#   rr=2 net -0.43$/tr (n=49), rr=3 -0.27$ (n=16), rr=4 +0.36$ (n=26). Blocca anche bounce (0/3).
+# NUOVO 10/06: capital sync anti-deadlock (delta anomalo stabile ±10% per 6 cicli → accettato)
+#   + Hook 1 registra P&L di posizioni orfane chiuse dall'exchange (capitale, non W/L)
 ```
 
 ### `injective_autopilot/core/sentinel.py`
@@ -348,12 +484,60 @@ base_real_state.json + base_executions.csv
 
 ---
 
-## 9. Note Importanti / Bug Fix Recenti (09/06/2026)
+## 9. Note Importanti / Bug Fix Recenti (10/06/2026)
 
-- **structural_bot doppia istanza (09/06)**: due processi in parallelo (uno avviato da Claude con nohup in sessione precedente) causavano trade duplicati (-5.9$ stimati) e cooldown dimezzato. Fix: lock file fcntl in `run()` → SystemExit(1) se già in esecuzione. Istanza spuria (PID 134862) killata manualmente.
-- **injective_autopilot (NUOVO 09/06)**: sistema multi-market Injective Protocol perps. Sentinel scansiona 29 market ogni 60s, decision engine chiama `claude` CLI (subprocess, NON SDK — utente non ha API key Anthropic). Fix applicati: `--bare` elimina overhead 10-20s di cold start CLI, `stdin=DEVNULL` previene hang, timeout 45→90s, rate limit 10→20/h.
+- **Bot BTC: close Bitget SEMPRE rotto** (10/06): `on_close` invertiva il side (hedge mode v2: close long=buy, close short=sell, stesso side dell'apertura + tradeSide=close) → 22002 "No position to close" su OGNI chiusura manuale nella storia del log (0 successi). Le posizioni restavano orfane con SL/TP nativi attivi; di solito chiuse da quelli, 4 casi orfani documentati. Fix in bitget_futures_executor.py: side corretto, retry ×3 con verifica post-close, stato executor NON azzerato su fallimento (sync continua a tracciare), guard anti-stacking in enter().
+- **Bot BTC: capital sync leggeva `free` non equity** (10/06): con posizione aperta il margine bloccato faceva crollare il valore → "Delta anomalo ignorato" in loop e bot inoperante (size calcolata su capitale fantasma, executor rifiuta). Fix: `_get_balance(equity=True)` legge accountEquity dal payload raw; `enter()` usa `equity=False` (available) per il cap margine. Anti-deadlock: delta anomalo stabile (±10%) per 6 cicli consecutivi → accettato come saldo reale.
+- **Bot BTC: P&L orfano registrato** (10/06): Hook 1 in structural_bot.py — se sync_position ritorna P&L ma state.open_trade è None (posizione orfana chiusa da SL/TP nativo) → capitale/daily_pnl aggiornati senza toccare W/L (trade già contato). Richiede restart del bot per attivare i fix.
 
-## 9b. Note Importanti / Bug Fix Precedenti (04/06/2026)
+- **Sistema wallet mirror era SPENTO** (10/06): alpha_wallets.json inesistente, bot non avviato da run.py, WS Atlas premium → 403. Riscritto wallet_mirror_bot su logsSubscribe standard + fetch Enhanced API (pattern _RugWatcher), ora componente 8 di run.py (`--no-mirror` per saltarlo). DRY_RUN attivo di default.
+- **alpha_wallets.json generato** (10/06): finder corretto (paginazione firme fino a signal_ts, buy in SOL via nativeTransfers, seed win-only da live_trades.csv, dedup wallet/mint, penalità avg_rank>300/>100 anti bot-spray). Top 30 wallet, token 3-9, avg_rank 8-245. ⚠️ enrich history Helius (/v0/addresses) non restituisce dati → recency "?" uniforme, ranking comunque valido. Rigenerazione automatica ogni 7gg da run.py.
+- **Layer narrative mirror** (10/06): wallet_events.csv (storico buy/sell completo, anche scartati), confluenza cross-wallet 6h (pump_probability 0.80+0.05/wallet, cap 0.95), sell detection con warning se token segnalato di recente, risveglio post-inattività ≥30gg (mirror_state.json).
+- **Alert whale Telegram** (10/06): publisher taila wallet_events.csv → PREMIUM. Buy ≥$500 / confluence ≥2 / risveglio; sell solo sell_after_signal. Funziona anche in DRY_RUN (gli eventi vengono sempre scritti; i segnali mirror no).
+- **Smart money annotation** (10/06): trade_simulator annota `smart_money=N` nel note entry dei segnali solana non-mirror se N wallet alpha hanno comprato il token nelle ultime 6h. SOLO annotazione — backtestare prima di farne un filtro (regola validazione filtri).
+- **run.py hardening** (10/06): backoff esponenziale su crash (cap 600s) + email dopo 5 crash veloci (throttle 6h); watchdog thread critici scanner ogni 5min (solo alert); base_pump_scanner non muore più se RPC giù all'avvio (retry 15s→5min).
+
+## 9b. Note Importanti / Bug Fix Precedenti (09/06/2026)
+
+- **structural_bot doppia istanza (09/06 mattina)**: due processi in parallelo causavano trade duplicati (-5.9$). Fix: lock file fcntl in `run()` → SystemExit(1) se già in esecuzione.
+- **injective_autopilot (09/06 mattina)**: sistema multi-market Injective Protocol perps. Fix applicati: `--bare` elimina overhead 10-20s CLI, `stdin=DEVNULL` previene hang, timeout 45→90s, rate limit 10→20/h.
+- **Kill switch attivato (09/06 sera)**: Daily DD 6.6% ≥ 5%. Root cause: max_open_positions non enforced → 9 posizioni aperte → SL multipli. Fix: paper_trading/engine.py usa open_trades invece di fetch_positions().
+- **max_open_positions bug fix (09/06)**: `fetch_positions()` restituisce posizioni on-chain (vuote in PAPER) → `validate_decision` riceveva sempre 0 posizioni → nessun blocco. Fix: usa `self._executor.open_trades` (dict in-memory dell'executor paper).
+- **Kill switch reset endpoint (09/06)**: POST /admin/reset-kill-switch + pulsante in /risk. Resetta daily_start_equity al valore corrente (azzera contatore DD). Richiede conferma JS.
+- **DD threshold paper vs live (09/06)**: `paper_max_daily_drawdown_pct=0.15` (15%) vs `max_daily_drawdown_pct=0.05` (5%) per LIVE. risk_engine.py e dashboard usano il valore corretto per modalità.
+- **Ctrl+C shutdown (09/06)**: uvicorn rubava SIGINT. Fix: `install_signal_handlers=lambda: None`. Doppio Ctrl+C: primo→stop&salva posizioni open, secondo (entro 5s)→chiudi tutto. Un singolo Ctrl+C non chiude più posizioni.
+- **BSR persistence (09/06)**: bsr_trend_per_min sempre 0 dopo restart (deque in memoria). Fix: `data/bsr_history.json`, max age 2h. _save_bsr_history() ad ogni update, _load_bsr_history() all'avvio.
+- **Diagnostic cycle_stats.csv (09/06)**: `reports/cycle_stats.csv` — n_raw vs n_hard_pass vs n_signals per distinguere calo segnali da problema API vs filtri troppo restrittivi.
+- **Midcap score penalties (09/06)**: backtest n=28 (19 win/9 loss). Aggiunto in analyze_coin: `change_7d>150%→-12`, `adx>55→-5`. 9/9 loss bloccate, 4/19 win bloccate (tutte su token estremi che poi hanno perso). N < 30, rivalidare tra 2-3 settimane.
+- **Dashboard signals fix (09/06)**: colonna Market aggiunta; OBI/Fund Z/Vol mostravano '—' per Jinja2 `is defined` che restituisce True anche su None. Fix: `s.values and s.values.obi is not none`.
+- **Dashboard journal fix (09/06)**: colonna Token (ticker + market_id[:12]) aggiunta; colspan aggiornato.
+
+## 9b-bis. bot_telegram — aggiornamenti 10/06 sera (serve restart run_bot.py)
+
+- **Track record FIXATO**: `track_record.compute()` sommava `pnl_eur` per riga ma il
+  campo è CUMULATIVO per segnale → P&L pubblicato +1236€ vs **+291€ reale** (winner
+  con tp1+trail contati 2-3x); i 271 segnali mai tradati (pnl=0) contati come loss
+  deprimevano il WR: 30.4% → **49.9% reale**. Fix: ultima riga per signal_id +
+  esclusione pnl=0. ⚠️ REGOLA GENERALE: chiunque legga live_trades.csv deve usare
+  l'ULTIMA riga per signal_id, mai sommare.
+- **Closure FREE fixate**: `_TradeClosureTracker.feed` faceva `pnl +=` su valori
+  cumulativi → chiusure gonfiate. Ora `=`.
+- **Exit TP/SL su PREMIUM (NUOVO)**: il publisher pubblica gli eventi exit del
+  simulator (tp1/tp2/trail/hard_sl/sl_adaptive/liq_collapse/exit_*) via
+  `formatter.format_exit_premium` — parziale = "Sold X% riding", chiusura = P&L
+  "(simulated, €100/trade)". Il segnale full annuncia "Auto-managed: updates follow".
+- **Anti-flood whale alert**: criteri OR originali = ~5800 alert/gg (confl≥2 da solo
+  3610, sell micro 2202 — bot-spray mirror) → storm 429 07:13. Nuovi: buy usd≥500
+  AND (confl≥2 OR wake≥1) oppure usd≥2000; sell_after_signal con usd≥250; dedup
+  30min per (mint,side); tetto 20/h. ~29 alert/gg stimati.
+- **Recap arricchito**: riga "Top strategies" (pnl>0, n≥10) — il v2 morto (-613€)
+  affossava l'aggregato e nascondeva pump_grad +536€ WR77%.
+- **Dead code noto**: `format_teaser` + FREE_DELAY_MIN/FREE_MIN_PROBABILITY +
+  `state/free_queue.json` = teaser FREE mai cablato nel publisher (decisione
+  prodotto se attivarlo).
+- I read-timeout sparsi di api.telegram.org (1-2/h, recuperati al 1° retry) sono normali.
+
+## 9c. Note Importanti / Bug Fix Precedenti (04/06/2026)
 
 - **AUDIT SEGRETI (04/06)**: rimossi segreti hardcoded dal sorgente → migrati in `executor/.env` (caricato da run.py via dotenv PRIMA degli import, quindi risolti a import-time). Coinvolti: password SMTP Gmail (era in 8 file), 2 chiavi CoinGecko (3 file), chiave CMC (gemmeV3). Var aggiunte: SMTP_USER/PASSWORD/FROM/TO, COINGECKO_API_KEY, COINGECKO_API_KEY_SIM, CMC_API_KEY. Creato `.gitignore` (mancava; la cartella NON è ancora un git repo). Fix: `signal_tracker.py` ora importa `os`. ⚠️ Scanner lanciati standalone (non via run.py) non vedono executor/.env → email disabilitata (nessun crash).
 - **bot_telegram (NUOVO 04/06)**: modulo Signal SaaS Telegram, processo isolato, read-only sui CSV. Tier Free(ritardo 15m)/Premium($49)/VIP($149). Avvio `python bot_telegram/run_bot.py`. Pagamenti USDC on-chain via invoice a importo univoco (riusa RPC executor); finché non validato usare `/grant` manuale. Tutto testato.
