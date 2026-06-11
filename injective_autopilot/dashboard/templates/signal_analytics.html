@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %} — Signal Analytics{% endblock %}
+
+{% macro stats_table(rows, key_col, key_label) %}
+<table class="table table-dark table-sm table-hover mb-0">
+  <thead>
+    <tr>
+      <th>{{ key_label }}</th><th class="text-end">Trades</th><th class="text-end">WR %</th>
+      <th class="text-end">PF</th><th class="text-end">Expectancy $</th>
+      <th class="text-end">Net PnL $</th><th class="text-end">Max DD $</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r[key_col] }}</td>
+      <td class="text-end">{{ r.n }}</td>
+      <td class="text-end {% if r.win_rate >= 50 %}positive{% else %}negative{% endif %}">{{ r.win_rate }}</td>
+      <td class="text-end {% if r.profit_factor >= 1 %}positive{% else %}negative{% endif %}">{{ r.profit_factor }}</td>
+      <td class="text-end {% if r.expectancy >= 0 %}positive{% else %}negative{% endif %}">{{ r.expectancy }}</td>
+      <td class="text-end {% if r.net_pnl >= 0 %}positive{% else %}negative{% endif %}">{{ r.net_pnl }}</td>
+      <td class="text-end">{{ r.max_drawdown }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">Nessun dato — in attesa di trade chiusi</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">🏆 Ranking Segnali <small class="text-muted">(ordinato per expectancy — basato esclusivamente sui risultati reali)</small></div>
+      <div class="card-body p-0">{{ stats_table(signal_rank, "signal", "Segnale") }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">🔗 Ranking Combinazioni <small class="text-muted">(* = sottocombinazione di set più ampi)</small></div>
+      <div class="card-body p-0">{{ stats_table(combo_rank, "combo", "Combinazione") }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">📊 Coerenza Scoring <small class="text-muted">(bucket di confidence vs risultati)</small></div>
+      <div class="card-body p-0">{{ stats_table(score_buckets, "score_bucket", "Score") }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-header">↕ Direzione</div>
+      <div class="card-body p-0">{{ stats_table(direction_rank, "direction", "Dir") }}</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card">
+      <div class="card-header">🚪 Exit Reason</div>
+      <div class="card-body p-0">{{ stats_table(exit_rank, "exit_reason", "Exit") }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header positive">✅ Profilo Trade Vincenti (n={{ patterns.winners.n or 0 }})</div>
+      <div class="card-body"><pre class="mb-0" style="font-size:0.8rem">{{ patterns.winners | tojson(indent=2) }}</pre></div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header negative">❌ Profilo Trade Perdenti (n={{ patterns.losers.n or 0 }})</div>
+      <div class="card-body"><pre class="mb-0" style="font-size:0.8rem">{{ patterns.losers | tojson(indent=2) }}</pre></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

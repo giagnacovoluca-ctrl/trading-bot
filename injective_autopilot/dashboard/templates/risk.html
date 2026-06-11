@@ -8,7 +8,10 @@
       <div class="card-body text-center">
         {% if latest.kill_switch_active %}
         <h3 class="negative">🔴 KILL SWITCH ACTIVE</h3>
-        <p class="text-muted">Trading suspended. Manual intervention required.</p>
+        <p class="text-muted mb-3">Trading suspended. Manual intervention required.</p>
+        <form method="POST" action="/admin/reset-kill-switch" onsubmit="return confirm('Reset kill switch e riazzera daily DD? Assicurati che il problema sia risolto.')">
+          <button type="submit" class="btn btn-danger btn-lg">Reset Kill Switch</button>
+        </form>
         {% else %}
         <h3 class="positive">🟢 KILL SWITCH: OFF — Trading Active</h3>
         {% endif %}
@@ -56,7 +59,7 @@
           <div class="progress-bar {% if daily_dd > 4 %}bg-danger{% elif daily_dd > 2 %}bg-warning{% else %}bg-success{% endif %}"
                style="width:{{ [daily_dd * 20, 100]|min }}%"></div>
         </div>
-        <small class="text-muted">Limit: 5%</small>
+        <small class="text-muted">Limit: {{ dd_limit_pct }}%</small>
       </div>
     </div>
   </div>
@@ -84,7 +87,7 @@
           {% set checks = [
             ("Kill Switch", "OFF" if not latest.kill_switch_active else "ACTIVE", not latest.kill_switch_active),
             ("Margin", "<80%" if margin_pct < 80 else "CRITICAL", margin_pct < 80),
-            ("Daily DD", "<5%" if daily_dd < 5 else "LIMIT", daily_dd < 5),
+            ("Daily DD", "<" ~ dd_limit_pct ~ "%" if daily_dd < dd_limit_pct else "LIMIT", daily_dd < dd_limit_pct),
             ("Mode", "PAPER" if not latest else "ACTIVE", True),
           ] %}
           {% for label, status, ok in checks %}

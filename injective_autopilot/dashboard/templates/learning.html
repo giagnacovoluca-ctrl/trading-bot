@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %} — Learning Engine{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">🧠 Pesi Adattivi Correnti <small class="text-muted">(Bayesian + EWMA — applicati solo al ranking, mai al gate: il numero di trade non viene ridotto)</small></div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Segnale</th><th class="text-end">Peso</th><th class="text-end">Trend</th>
+              <th class="text-end">Attivazioni</th><th class="text-end">Posterior WR</th>
+              <th class="text-end">EWMA Exp.</th><th class="text-end">Expectancy $</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sig, w in weights | dictsort(by='value', reverse=True) %}
+            {% set st = signal_stats.get(sig, {}) %}
+            <tr>
+              <td>{{ sig }}</td>
+              <td class="text-end {% if w > 1.02 %}positive{% elif w < 0.98 %}negative{% else %}neutral{% endif %}">{{ "%.3f" | format(w) }}</td>
+              <td class="text-end">
+                {% set tr = trends.get(sig, '—') %}
+                <span class="{% if tr == 'IMPROVING' %}positive{% elif tr == 'DETERIORATING' %}negative{% endif %}">{{ tr }}</span>
+              </td>
+              <td class="text-end">{{ st.get("total_activations", "—") }}</td>
+              <td class="text-end">{{ st.get("posterior_winrate", "—") }}</td>
+              <td class="text-end">{{ st.get("ewma_norm_expectancy", "—") }}</td>
+              <td class="text-end {% if st.get('expectancy', 0) >= 0 %}positive{% else %}negative{% endif %}">{{ st.get("expectancy", "—") }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted">Pesi non ancora calcolati — servono trade chiusi</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">📈 Evoluzione Pesi nel Tempo <small class="text-muted">(snapshot ogni 25 trade)</small></div>
+      <div class="card-body"><div id="weights-chart" style="height:320px"></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">🔬 Post-Mortem Recenti</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Trade</th><th>Market</th><th>Dir</th><th class="text-end">PnL $</th>
+              <th class="text-end">R</th><th class="text-end">Hold h</th>
+              <th class="text-end">MAE %</th><th class="text-end">MFE %</th>
+              <th>Score</th><th>Exit</th><th>Valutazione statistica</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pm in postmortems %}
+            <tr>
+              <td>{{ pm.trade_id }}</td>
+              <td>{{ pm.ticker }}</td>
+              <td>{{ pm.direction }}</td>
+              <td class="text-end {% if pm.pnl_usdt >= 0 %}positive{% else %}negative{% endif %}">{{ "%.2f" | format(pm.pnl_usdt) }}</td>
+              <td class="text-end">{{ "%.2f" | format(pm.r_multiple) }}</td>
+              <td class="text-end">{{ "%.1f" | format(pm.hold_hours) }}</td>
+              <td class="text-end">{{ pm.mae_pct }}</td>
+              <td class="text-end">{{ pm.mfe_pct }}</td>
+              <td>{{ "%.2f" | format(pm.entry_confidence) }}</td>
+              <td>{{ pm.exit_reason }}</td>
+              <td style="font-size:0.75rem">{{ pm.evaluation }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="11" class="text-center text-muted">Nessun post-mortem ancora</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const snapshots = {{ snapshots_json | safe }};
+if (snapshots.length > 0) {
+  const signals = new Set();
+  snapshots.forEach(s => Object.keys(s.weights).forEach(k => signals.add(k)));
+  const traces = [...signals].map(sig => ({
+    x: snapshots.map(s => s.n_trades),
+    y: snapshots.map(s => s.weights[sig] ?? null),
+    name: sig, mode: 'lines+markers',
+  }));
+  Plotly.newPlot('weights-chart', traces, {
+    paper_bgcolor: '#151820', plot_bgcolor: '#151820',
+    font: {color: '#e0e0e0', size: 10},
+    xaxis: {title: 'trade chiusi', gridcolor: '#2a2f3d'},
+    yaxis: {title: 'peso', gridcolor: '#2a2f3d'},
+    margin: {t: 10, r: 10}, legend: {orientation: 'h'},
+  }, {displayModeBar: false});
+}
+</script>
+{% endblock %}

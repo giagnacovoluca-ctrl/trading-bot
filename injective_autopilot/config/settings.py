@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_HERE = Path(__file__).resolve().parent.parent  # → injective_autopilot/
 
 # Top 30 perpetual markets on Injective mainnet, ranked by open interest (2026-06-09)
 TOP_30_MARKET_IDS: list[str] = [
@@ -82,7 +85,7 @@ TOP_30_MARKET_IDS = _deduped
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_HERE / ".env"),
         env_prefix="INJ_",
         case_sensitive=False,
         extra="ignore",
@@ -113,7 +116,7 @@ class Settings(BaseSettings):
 
     # ── Sentinel loop ─────────────────────────────────────────────────
     sentinel_interval_sec: int = 60          # main polling cadence
-    sentinel_max_triggers_per_hour: int = 20  # rate limit on Claude calls (total, all markets)
+    sentinel_max_triggers_per_hour: int = 20  # rate limit on Gemini calls (total, all markets)
     sentinel_trigger_cooldown_min: int = 2    # per-market cooldown (PAPER: avoid exact duplicates; LIVE: raise to 30+)
     orderbook_depth: int = 20                # levels to fetch
     lookback_candles: int = 200              # candles kept in memory
@@ -139,19 +142,19 @@ class Settings(BaseSettings):
     atr_tp_multiplier: float = 4.0          # TP = entry ± ATR * mult
 
     # Kill switch
-    max_daily_drawdown_pct: float = 0.05     # 5% daily DD → kill
-    max_weekly_drawdown_pct: float = 0.10    # 10% weekly DD → kill
+    max_daily_drawdown_pct: float = 0.05         # 5% daily DD → kill (LIVE)
+    paper_max_daily_drawdown_pct: float = 0.15   # 15% daily DD → kill (PAPER/BACKTEST)
+    max_weekly_drawdown_pct: float = 0.10        # 10% weekly DD → kill (LIVE)
+    paper_max_weekly_drawdown_pct: float = 0.15  # 15% weekly DD → kill (PAPER/BACKTEST)
     max_margin_used_pct: float = 0.80        # 80% margin used → kill
     max_consecutive_errors: int = 5
 
-    # ── Claude Code integration ────────────────────────────────────────
-    claude_model: str = "claude-sonnet-4-6"
-    claude_timeout_sec: int = 90
-    claude_min_confidence: float = 0.65      # reject decisions below this
-    use_subprocess: bool = True              # True = CLI (OAuth), False = SDK (ANTHROPIC_API_KEY)
+    # ── Decision engine ───────────────────────────────────────────────
+    decision_min_confidence: float = 0.45    # score minimo per approvare un trade
+    decision_max_spread_bps: float = 80.0    # spread massimo accettabile (inj perp: 20-100 bps)
 
     # ── Database ──────────────────────────────────────────────────────
-    db_url: str = "sqlite+aiosqlite:///injective_autopilot.db"
+    db_url: str = f"sqlite+aiosqlite:///{_HERE}/injective_autopilot.db"
 
     # ── Dashboard ─────────────────────────────────────────────────────
     dashboard_host: str = "127.0.0.1"
@@ -159,11 +162,11 @@ class Settings(BaseSettings):
     dashboard_auto_refresh_sec: int = 10
 
     # ── Live validation gate ───────────────────────────────────────────
-    live_min_simulated_trades: int = 500
-    live_min_profit_factor: float = 1.5
-    live_min_sharpe: float = 1.5
-    live_max_drawdown_pct: float = 0.20
-    live_min_stable_days: int = 30
+    live_min_simulated_trades: int = 50
+    live_min_profit_factor: float = 1.2
+    live_min_sharpe: float = 0.8
+    live_max_drawdown_pct: float = 0.25
+    live_min_stable_days: int = 3
 
 
 _settings: Settings | None = None

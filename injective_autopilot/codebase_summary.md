@@ -1,5 +1,60 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE — injective_autopilot
-Aggiornato: 2026-06-09
+Aggiornato: 2026-06-10 (sera)
+
+## 🔧 Fix 10/06 sera (serve restart main.py)
+- **decision_engine `_build_decision`**: guard ATR freddo — reject se distanza TP
+  < max(2×spread, 0.30%). Prima un ATR microscopico (buffer corto) produceva TP
+  dentro lo spread → fill all'ask scavalcava il TP → chiusure "TP" istantanee
+  con pnl negativo (AAVE tp<fill, -0.69$) che inquinavano il learning layer.
+- **risk_engine**: `paper_max_weekly_drawdown_pct=0.15` (settings) usato in
+  PAPER/BACKTEST (LIVE resta 10%); `reset_kill_switch()` ora riallinea le
+  baseline daily/weekly all'equity corrente (prima: con equity sotto soglia il
+  kill si riattivava al primo check — trappola permanente).
+- **main.py**: FileHandler ancorato al modulo (prima il log finiva in
+  ~/Scrivania/code/ per CWD esterna alla repo).
+
+## ⚡ Layer Analytics & Learning (2026-06-10)
+
+Nuovo pacchetto `analytics/` — il sistema è auto-analizzante:
+
+```
+analytics/
+├── performance.py       ← pure functions su trade chiusi: signal_ranking,
+│                          combo_ranking, market_ranking, hourly/weekday/
+│                          vol_regime_analysis, score_bucket_analysis,
+│                          win_loss_patterns, basic_stats
+├── adaptive_scorer.py   ← AdaptiveScorer: pesi per segnale via Bayesian
+│                          updating (Beta prior 2,2) + EWMA expectancy su
+│                          rolling window 50. Neutrale sotto 10 attivazioni.
+│                          Pesi clampati [0.5, 1.5]. Applicati SOLO al
+│                          ranking dei candidati (gate su raw score →
+│                          numero di trade invariato).
+├── postmortem.py        ← build_postmortem(): R-multiple, hold, MAE/MFE,
+│                          contributi segnali, valutazione statistica auto
+└── audit.py             ← `python -m analytics.audit`: backfill trade↔segnali,
+                           post-mortem mancanti, report completo a console
+```
+
+Flusso learning: `PaperTradingEngine._monitoring_loop` → su ogni chiusura
+salva trade + post-mortem → `_refresh_adaptive_weights()` ricalcola i pesi
+da `get_closed_trades()` → `DecisionEngine.set_signal_weights()` → snapshot
+DB ogni 25 trade chiusi (`signal_weight_snapshots`).
+
+Pipeline dati arricchita: `SentinelTrigger.active_signals/signal_values` →
+`TradeDecision` → `TradeRecord` → colonna `trades.signal_values` (+ JSON
+`active_signals` ora popolato, prima sempre `[]`). MAE/MFE tracciati in
+`Executor.monitor_positions` (campionati ogni 30s).
+
+Nuove tabelle: `trade_postmortems`, `signal_weight_snapshots`.
+Nuove colonne trades: `signal_values`, `mae_pct`, `mfe_pct` (migrazione
+automatica ALTER TABLE in `Repository.init()`).
+
+Dashboard nuove pagine: `/analytics` (ranking segnali/combo/score-coherence,
+profili win vs loss), `/markets` (leaderboard mercati + analisi temporale),
+`/learning` (pesi correnti, trend IMPROVING/DETERIORATING, grafico evoluzione
+pesi, post-mortem). API JSON: `/api/analytics/{signals,markets,learning}`.
+
+NOTA: il decision engine è rule-based deterministico (nessuna chiamata IA).
 
 ---
 

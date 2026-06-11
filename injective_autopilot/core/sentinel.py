@@ -111,7 +111,11 @@ class Sentinel:
         self._trigger_timestamps: list[float] = []  # shared rate limit across all markets
         self._last_trigger_per_market: dict[str, float] = {}  # per-market cooldown
 
-    async def run(self, on_trigger: Any) -> None:
+    async def run(self, on_batch: Any) -> None:
+        """
+        Main loop. Calls on_batch(triggers) once per cycle with ALL triggers
+        collected in that cycle (empty list if none fired).
+        """
         log.info(
             "Sentinel started — scanning %d markets (interval=%ds)",
             len(self._markets),
@@ -121,8 +125,8 @@ class Sentinel:
             tick_start = time.monotonic()
             try:
                 triggers = await self._tick_all()
-                for trigger in triggers:
-                    await on_trigger(trigger)
+                if triggers:
+                    await on_batch(triggers)
                 self._consecutive_errors = 0
             except Exception as exc:
                 self._consecutive_errors += 1
@@ -275,13 +279,12 @@ class Sentinel:
         if now - last < cooldown_sec:
             return None
 
-        # Global rate limit: only enforced in LIVE mode to cap real execution risk
-        if self._cfg.mode == "LIVE":
-            self._trigger_timestamps = [t for t in self._trigger_timestamps if now - t < 3600]
-            if len(self._trigger_timestamps) >= self._cfg.sentinel_max_triggers_per_hour:
-                log.info("[%s] Global trigger rate limit reached (%d/h)", ctx.ticker, self._cfg.sentinel_max_triggers_per_hour)
-                return None
-            self._trigger_timestamps.append(now)
+        # Global rate limit: cap Gemini calls (quota/cost) in all modes
+        self._trigger_timestamps = [t for t in self._trigger_timestamps if now - t < 3600]
+        if len(self._trigger_timestamps) >= self._cfg.sentinel_max_triggers_per_hour:
+            log.debug("[%s] Global trigger rate limit reached (%d/h)", ctx.ticker, self._cfg.sentinel_max_triggers_per_hour)
+            return None
+        self._trigger_timestamps.append(now)
 
         self._last_trigger_per_market[ctx.market_id] = now
 

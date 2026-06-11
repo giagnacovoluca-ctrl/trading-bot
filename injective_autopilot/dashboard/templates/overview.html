@@ -67,23 +67,24 @@
       <div class="card-body p-0">
         <table class="table table-dark table-sm table-hover mb-0">
           <thead><tr>
-            <th>ID</th><th>Dir</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Exit</th><th>Conf</th>
+            <th>Token</th><th>Dir</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Exit</th><th>Conf</th><th>Reason</th>
           </tr></thead>
           <tbody>
             {% for t in trades %}
             <tr>
-              <td class="text-muted">{{ t.id }}</td>
+              <td><strong>{{ t.ticker or "?" }}</strong> <span class="text-muted small">{{ t.id }}</span></td>
               <td><span class="badge {% if t.direction == 'LONG' %}bg-success{% else %}bg-danger{% endif %}">{{ t.direction }}</span></td>
-              <td>{{ "%.4f"|format(t.entry_price) }}</td>
-              <td>{{ "%.4f"|format(t.exit_price) }}</td>
+              <td>{{ t.entry_price|fmt_price }}</td>
+              <td>{{ t.exit_price|fmt_price }}</td>
               <td class="{% if t.pnl_usdt >= 0 %}positive{% else %}negative{% endif %}">
                 ${{ "%.2f"|format(t.pnl_usdt) }} ({{ "%.1f"|format(t.pnl_pct) }}%)
               </td>
               <td><span class="badge bg-secondary">{{ t.exit_reason }}</span></td>
               <td>{{ "%.0f"|format(t.confidence * 100) }}%</td>
+              <td class="text-muted small">{{ t.reason }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="7" class="text-center text-muted">No trades yet</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">No trades yet</td></tr>
             {% endfor %}
           </tbody>
         </table>

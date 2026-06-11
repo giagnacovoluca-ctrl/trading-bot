@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %} — Market Analytics{% endblock %}
+
+{% macro stats_table(rows, key_col, key_label, show_sharpe=False) %}
+<table class="table table-dark table-sm table-hover mb-0">
+  <thead>
+    <tr>
+      <th>{{ key_label }}</th><th class="text-end">Trades</th><th class="text-end">WR %</th>
+      <th class="text-end">PF</th><th class="text-end">Expectancy $</th>
+      <th class="text-end">Net PnL $</th><th class="text-end">Max DD $</th>
+      {% if show_sharpe %}<th class="text-end">Sharpe*</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r[key_col] }}</td>
+      <td class="text-end">{{ r.n }}</td>
+      <td class="text-end {% if r.win_rate >= 50 %}positive{% else %}negative{% endif %}">{{ r.win_rate }}</td>
+      <td class="text-end {% if r.profit_factor >= 1 %}positive{% else %}negative{% endif %}">{{ r.profit_factor }}</td>
+      <td class="text-end {% if r.expectancy >= 0 %}positive{% else %}negative{% endif %}">{{ r.expectancy }}</td>
+      <td class="text-end {% if r.net_pnl >= 0 %}positive{% else %}negative{% endif %}">{{ r.net_pnl }}</td>
+      <td class="text-end">{{ r.max_drawdown }}</td>
+      {% if show_sharpe %}<td class="text-end">{{ r.sharpe }}</td>{% endif %}
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="text-center text-muted">Nessun dato — in attesa di trade chiusi</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">🌍 Leaderboard Mercati <small class="text-muted">(*Sharpe per-trade, non annualizzato — fase raccolta dati: nessun mercato escluso)</small></div>
+      <div class="card-body p-0">{{ stats_table(market_rank, "ticker", "Market", show_sharpe=True) }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">🕐 Performance per Ora (UTC)</div>
+      <div class="card-body p-0">{{ stats_table(hourly, "hour", "Ora") }}</div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card mb-3">
+      <div class="card-header">📅 Performance per Giorno</div>
+      <div class="card-body p-0">{{ stats_table(weekday, "weekday", "Giorno") }}</div>
+    </div>
+    <div class="card">
+      <div class="card-header">🌡 Performance per Regime di Volatilità</div>
+      <div class="card-body p-0">{{ stats_table(vol_regime, "regime", "Regime") }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

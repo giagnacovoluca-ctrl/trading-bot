@@ -20,6 +20,7 @@ class Trade(Base):
     mode: Mapped[str] = mapped_column(String(10))          # LIVE | PAPER | BACKTEST
     direction: Mapped[str] = mapped_column(String(10))     # LONG | SHORT
     market_id: Mapped[str] = mapped_column(String(100))
+    ticker: Mapped[str] = mapped_column(String(20), default="")
     entry_price: Mapped[float] = mapped_column(Float)
     exit_price: Mapped[float] = mapped_column(Float, default=0.0)
     stop_loss: Mapped[float] = mapped_column(Float)
@@ -35,8 +36,11 @@ class Trade(Base):
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
     reason: Mapped[str] = mapped_column(Text, default="")
     active_signals: Mapped[list] = mapped_column(JSON, default=list)
+    signal_values: Mapped[dict] = mapped_column(JSON, default=dict)  # snapshot at entry (funding, OI, vol regime, …)
     funding_paid: Mapped[float] = mapped_column(Float, default=0.0)
     slippage_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    mae_pct: Mapped[float] = mapped_column(Float, default=0.0)  # max adverse excursion %
+    mfe_pct: Mapped[float] = mapped_column(Float, default=0.0)  # max favorable excursion %
 
 
 class Signal(Base):
@@ -87,6 +91,40 @@ class MarginSnapshot(Base):
     equity: Mapped[float] = mapped_column(Float)
     daily_drawdown_pct: Mapped[float] = mapped_column(Float)
     kill_switch_active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class TradePostMortem(Base):
+    """Auto-generated statistical post-mortem for every closed trade."""
+    __tablename__ = "trade_postmortems"
+
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    trade_id: Mapped[str] = mapped_column(String, index=True)
+    ts: Mapped[float] = mapped_column(Float)
+    ticker: Mapped[str] = mapped_column(String(20))
+    direction: Mapped[str] = mapped_column(String(10))
+    entry_reason: Mapped[str] = mapped_column(Text, default="")
+    entry_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    active_signals: Mapped[list] = mapped_column(JSON, default=list)
+    signal_values: Mapped[dict] = mapped_column(JSON, default=dict)
+    exit_reason: Mapped[str] = mapped_column(String(20), default="")
+    pnl_usdt: Mapped[float] = mapped_column(Float, default=0.0)
+    r_multiple: Mapped[float] = mapped_column(Float, default=0.0)   # pnl / initial risk
+    hold_hours: Mapped[float] = mapped_column(Float, default=0.0)
+    mae_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    mfe_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    signal_contributions: Mapped[dict] = mapped_column(JSON, default=dict)  # signal → pnl share
+    evaluation: Mapped[str] = mapped_column(Text, default="")  # auto statistical assessment
+
+
+class SignalWeightSnapshot(Base):
+    """Adaptive scoring engine: weight history (one row per milestone)."""
+    __tablename__ = "signal_weight_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
+    ts: Mapped[float] = mapped_column(Float)
+    n_trades: Mapped[int] = mapped_column(Integer)  # closed trades at snapshot time
+    weights: Mapped[dict] = mapped_column(JSON, default=dict)       # signal → weight
+    signal_stats: Mapped[dict] = mapped_column(JSON, default=dict)  # signal → {n, wr, pf, expectancy, ewma}
 
 
 class ErrorLog(Base):

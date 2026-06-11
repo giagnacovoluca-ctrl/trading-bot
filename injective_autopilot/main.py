@@ -31,14 +31,16 @@ from config.settings import get_settings
 from data.injective_client import InjectiveClient
 from database.repository import Repository
 from core.decision_engine import DecisionEngine
-from dashboard.app import app as dashboard_app, set_repo
+from dashboard.app import app as dashboard_app, set_repo, set_risk_engine
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("injective_autopilot.log"),
+        # Path ancorato al modulo: relativo dipendeva dalla CWD del processo
+        # e il log finiva in ~/Scrivania/code/ invece che nella repo
+        logging.FileHandler(str(Path(__file__).resolve().parent / "injective_autopilot.log")),
     ],
 )
 log = logging.getLogger("main")
@@ -123,24 +125,24 @@ async def run_paper_or_live(mode: str) -> None:
     await client.connect()
 
     decision_engine = DecisionEngine(
-        model=cfg.claude_model,
-        timeout_sec=cfg.claude_timeout_sec,
-        min_confidence=cfg.claude_min_confidence,
-        use_subprocess=cfg.use_subprocess,
+        min_confidence=cfg.decision_min_confidence,
+        max_spread_bps=cfg.decision_max_spread_bps,
         capital=cfg.capital_usdt,
         max_leverage=cfg.max_leverage,
         min_rr=cfg.min_rr_ratio,
+        atr_sl_mult=cfg.atr_sl_multiplier,
+        atr_tp_mult=cfg.atr_tp_multiplier,
     )
 
     if mode == "LIVE":
-        from paper_trading.engine import PaperTradingEngine  # same architecture, different executor mode
-        # For true live, we'd use a separate LiveEngine class
-        # For now, PaperTradingEngine with mode override handles it
+        from paper_trading.engine import PaperTradingEngine
         log.warning("LIVE trading activated. Real capital at risk.")
         engine = PaperTradingEngine(client, repo, decision_engine)
     else:
         from paper_trading.engine import PaperTradingEngine
         engine = PaperTradingEngine(client, repo, decision_engine)
+
+    set_risk_engine(engine._risk)
 
     # Start dashboard in background
     dashboard_config = uvicorn.Config(
@@ -150,32 +152,41 @@ async def run_paper_or_live(mode: str) -> None:
         log_level="critical",
     )
     dashboard_server = uvicorn.Server(dashboard_config)
+    # Prevent uvicorn from overriding our SIGINT handler
+    dashboard_server.install_signal_handlers = lambda: None
 
     log.info("Dashboard available at http://%s:%d", cfg.dashboard_host, cfg.dashboard_port)
     log.info("Starting in %s mode...", mode)
-    log.info("Ctrl+C once = stop & save positions | Ctrl+C twice = stop & CLOSE positions")
+    log.info("Ctrl+C = stop & CLOSE positions dopo 5s | Ctrl+C di nuovo entro 5s = esci tenendo le posizioni APERTE")
 
     loop = asyncio.get_event_loop()
-    shutdown_event = asyncio.Event()
-    close_positions_flag = False
-    shutdown_started = False
+    first_sigint = asyncio.Event()
+    second_sigint = asyncio.Event()
+    first_sigint_ts = 0.0
 
     def _handle_sigint():
-        nonlocal close_positions_flag, shutdown_started
-        if not shutdown_started:
-            shutdown_started = True
-            log.info("Ctrl+C — stopping, keeping positions open...")
-        else:
-            close_positions_flag = True
-            log.warning("Second Ctrl+C — will close all positions")
-        shutdown_event.set()
+        nonlocal first_sigint_ts
+        now = loop.time()
+        if not first_sigint.is_set():
+            first_sigint_ts = now
+            log.info("Ctrl+C — stopping...")
+            first_sigint.set()
+            return
+        # Il terminale può consegnare SIGINT in burst (2-3 in <500ms per una
+        # sola pressione): l'opzione "tieni aperte" richiede una pressione
+        # distinta dopo il prompt, non un duplicato del primo Ctrl+C.
+        if now - first_sigint_ts < 1.0:
+            log.info("Ctrl+C ignorato (burst <1s dal primo) — premere di nuovo per TENERE APERTE le posizioni")
+            return
+        log.warning("Second Ctrl+C — exiting, posizioni lasciate APERTE")
+        second_sigint.set()
 
     loop.add_signal_handler(signal.SIGINT, _handle_sigint)
 
     engine_task = asyncio.create_task(engine.start())
     dashboard_task = asyncio.create_task(dashboard_server.serve())
 
-    await shutdown_event.wait()
+    await first_sigint.wait()
 
     # Stop running tasks
     dashboard_server.should_exit = True
@@ -183,22 +194,19 @@ async def run_paper_or_live(mode: str) -> None:
     dashboard_task.cancel()
     await asyncio.gather(engine_task, dashboard_task, return_exceptions=True)
 
-    # Save positions, then wait 5s for a second Ctrl+C to close them
+    # Save open positions to DB
     await engine.stop(close_positions=False)
-    log.info("Positions saved. Press Ctrl+C again within 5s to CLOSE all positions, or wait to exit.")
-
-    second_sigint = asyncio.Event()
-    loop.add_signal_handler(signal.SIGINT, second_sigint.set)
+    log.info("Positions saved. CHIUDO tutte le posizioni tra 5s — premi Ctrl+C di nuovo per uscire tenendole APERTE.")
 
     try:
         await asyncio.wait_for(second_sigint.wait(), timeout=5.0)
+        log.info("Exiting with positions open.")
+    except asyncio.TimeoutError:
         log.warning("Closing all positions...")
         await engine._executor.close_all()
         for trade in engine._executor.closed_trades:
             if trade.exit_reason == "MANUAL":
                 await engine._repo.save_trade(trade)
-    except asyncio.TimeoutError:
-        log.info("Exiting with positions open.")
 
     loop.remove_signal_handler(signal.SIGINT)
 

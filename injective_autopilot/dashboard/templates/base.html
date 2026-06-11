@@ -41,6 +41,9 @@
         <a class="nav-link {% if request.url.path == '/signals' %}active{% endif %}" href="/signals">Signals</a>
         <a class="nav-link {% if request.url.path == '/risk' %}active{% endif %}" href="/risk">Risk</a>
         <a class="nav-link {% if request.url.path == '/ai' %}active{% endif %}" href="/ai">AI</a>
+        <a class="nav-link {% if request.url.path == '/analytics' %}active{% endif %}" href="/analytics">Signal Analytics</a>
+        <a class="nav-link {% if request.url.path == '/markets' %}active{% endif %}" href="/markets">Markets</a>
+        <a class="nav-link {% if request.url.path == '/learning' %}active{% endif %}" href="/learning">Learning</a>
         {% if mode is defined %}
         <span class="badge badge-{{ mode|lower }} align-self-center">{{ mode }}</span>
         {% endif %}

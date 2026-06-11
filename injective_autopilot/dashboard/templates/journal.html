@@ -15,7 +15,7 @@
     <table class="table table-dark table-sm table-hover mb-0">
       <thead class="sticky-top">
         <tr>
-          <th>Date</th><th>ID</th><th>Mode</th><th>Dir</th>
+          <th>Date</th><th>Token</th><th>ID</th><th>Mode</th><th>Dir</th>
           <th>Entry</th><th>Exit</th><th>SL</th><th>TP</th>
           <th>Qty</th><th>PnL $</th><th>PnL %</th>
           <th>Exit</th><th>Conf</th><th>Reason</th>
@@ -25,15 +25,16 @@
         {% for t in trades %}
         <tr class="{% if t.pnl_usdt > 0 %}table-success bg-opacity-10{% elif t.pnl_usdt < 0 %}table-danger bg-opacity-10{% endif %}">
           <td class="text-muted" style="font-size:0.75rem">
-            {% if t.entry_ts %}{{ (t.entry_ts|int)|timestamp_to_str }}{% endif %}
+            {% if t.entry_ts %}{{ (t.entry_ts|int)|timestamp_to_str }}{% else %}—{% endif %}
           </td>
+          <td><strong>{{ t.ticker or '?' }}</strong> <span class="text-muted" style="font-size:0.7rem">{{ t.market_id[:12] if t.market_id else '' }}</span></td>
           <td><small>{{ t.id }}</small></td>
           <td><span class="badge {% if t.mode == 'LIVE' %}bg-danger{% elif t.mode == 'PAPER' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ t.mode }}</span></td>
           <td><span class="badge {% if t.direction == 'LONG' %}bg-success{% else %}bg-danger{% endif %}">{{ t.direction }}</span></td>
-          <td>{{ "%.4f"|format(t.entry_price) }}</td>
-          <td>{{ "%.4f"|format(t.exit_price) if t.exit_price else '—' }}</td>
-          <td class="negative">{{ "%.4f"|format(t.stop_loss) }}</td>
-          <td class="positive">{{ "%.4f"|format(t.take_profit) }}</td>
+          <td>{{ t.entry_price|fmt_price }}</td>
+          <td>{{ t.exit_price|fmt_price }}</td>
+          <td class="negative">{{ t.stop_loss|fmt_price }}</td>
+          <td class="positive">{{ t.take_profit|fmt_price }}</td>
           <td>{{ "%.4f"|format(t.quantity) }}</td>
           <td class="{% if t.pnl_usdt >= 0 %}positive{% else %}negative{% endif %} fw-bold">
             {% if t.pnl_usdt %}${{ "%.2f"|format(t.pnl_usdt) }}{% else %}—{% endif %}
@@ -48,7 +49,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="14" class="text-center text-muted py-4">No trades found</td></tr>
+        <tr><td colspan="15" class="text-center text-muted py-4">No trades found</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -42,6 +42,7 @@ class TradeRecord:
     stop_loss: float
     take_profit: float
     quantity: float
+    ticker: str = ""
     entry_ts: float = field(default_factory=time.time)
     exit_price: float = 0.0
     exit_ts: float = 0.0
@@ -54,6 +55,10 @@ class TradeRecord:
     status: str = "OPEN"     # "OPEN" | "CLOSED"
     funding_paid: float = 0.0
     slippage_pct: float = 0.0
+    active_signals: list[str] = field(default_factory=list)
+    signal_values: dict[str, Any] = field(default_factory=dict)
+    mae_pct: float = 0.0     # max adverse excursion (% of entry, positive number)
+    mfe_pct: float = 0.0     # max favorable excursion (% of entry)
 
 
 class Executor:
@@ -67,6 +72,23 @@ class Executor:
 
         # Slippage protection: max acceptable deviation from decision price
         self._max_slippage_pct = 0.005  # 0.5%
+
+    @staticmethod
+    def _reanchor_levels(decision: TradeDecision, fill_price: float) -> tuple[float, float]:
+        """Ri-ancora SL/TP al prezzo di fill preservando le distanze % decise
+        sul mid: il fill attraversa lo spread e senza ri-ancoraggio l'RR
+        nominale ~2:1 degrada a ~1:1 (SL più largo, TP più vicino)."""
+        ref = decision.entry + 1e-10
+        sl_dist = abs(decision.entry - decision.stop_loss) / ref
+        tp_dist = abs(decision.take_profit - decision.entry) / ref
+        if decision.action == "LONG":
+            return fill_price * (1 - sl_dist), fill_price * (1 + tp_dist)
+        return fill_price * (1 + sl_dist), fill_price * (1 - tp_dist)
+
+    def seed_counter(self, value: int) -> None:
+        """Riallinea il contatore al max id già in DB: gli id riciclati dopo
+        un restart sovrascrivono i trade storici (save è INSERT OR REPLACE)."""
+        self._trade_counter = max(self._trade_counter, value)
 
     async def execute(self, decision: TradeDecision) -> TradeRecord | None:
         """
@@ -122,6 +144,8 @@ class Executor:
             log.error("Order rejected: %s", result.error if result else "unknown")
             return None
 
+        stop_loss, take_profit = self._reanchor_levels(decision, current_price)
+
         self._trade_counter += 1
         trade = TradeRecord(
             id=f"LIVE_{self._trade_counter:06d}",
@@ -129,13 +153,15 @@ class Executor:
             direction=decision.action,
             market_id=getattr(decision, "market_id", "") or self._cfg.market_id,
             entry_price=current_price,
-            stop_loss=decision.stop_loss,
-            take_profit=decision.take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             quantity=decision.position_size,
             tx_hash=result.tx_hash,
             confidence=decision.confidence,
             reason=decision.reason,
             slippage_pct=price_drift * 100,
+            active_signals=list(getattr(decision, "active_signals", [])),
+            signal_values=dict(getattr(decision, "signal_values", {})),
         )
         self._open_trades[trade.id] = trade
         log.info("LIVE trade opened: %s %s qty=%.4f entry=%.4f", trade.id, trade.direction, trade.quantity, trade.entry_price)
@@ -154,6 +180,7 @@ class Executor:
             fill_price = snap.bids[0].price if snap.bids else fill_price
 
         slippage = abs(fill_price - decision.entry) / (decision.entry + 1e-10)
+        stop_loss, take_profit = self._reanchor_levels(decision, fill_price)
 
         self._trade_counter += 1
         trade = TradeRecord(
@@ -161,13 +188,16 @@ class Executor:
             mode="PAPER",
             direction=decision.action,
             market_id=trade_market_id,
+            ticker=getattr(decision, "ticker", ""),
             entry_price=fill_price,
-            stop_loss=decision.stop_loss,
-            take_profit=decision.take_profit,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
             quantity=decision.position_size,
             confidence=decision.confidence,
             reason=decision.reason,
             slippage_pct=slippage * 100,
+            active_signals=list(getattr(decision, "active_signals", [])),
+            signal_values=dict(getattr(decision, "signal_values", {})),
         )
         self._open_trades[trade.id] = trade
         log.info(
@@ -205,6 +235,13 @@ class Executor:
             current_price = market_prices.get(trade.market_id, 0.0)
             if current_price < 1e-10:
                 continue
+
+            # Track MAE/MFE (sampled at monitor cadence)
+            move_pct = (current_price - trade.entry_price) / (trade.entry_price + 1e-10) * 100
+            if trade.direction == "SHORT":
+                move_pct = -move_pct
+            trade.mfe_pct = max(trade.mfe_pct, move_pct)
+            trade.mae_pct = max(trade.mae_pct, -move_pct)
 
             # Check SL/TP
             exit_reason = ""

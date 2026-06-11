@@ -72,9 +72,9 @@
               {{ "%.0f"|format(d.confidence * 100) }}%
             </span>
           </td>
-          <td>{{ "%.4f"|format(d.entry) if d.entry else '—' }}</td>
-          <td class="negative">{{ "%.4f"|format(d.stop_loss) if d.stop_loss else '—' }}</td>
-          <td class="positive">{{ "%.4f"|format(d.take_profit) if d.take_profit else '—' }}</td>
+          <td>{{ d.entry|fmt_price }}</td>
+          <td class="negative">{{ d.stop_loss|fmt_price }}</td>
+          <td class="positive">{{ d.take_profit|fmt_price }}</td>
           <td class="{% if d.risk_score < 0.4 %}positive{% elif d.risk_score < 0.7 %}neutral{% else %}negative{% endif %}">
             {{ "%.2f"|format(d.risk_score) }}
           </td>

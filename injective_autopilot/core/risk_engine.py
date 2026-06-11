@@ -216,15 +216,25 @@ class RiskEngine:
         if self.kill_switch.active:
             return True
 
-        if self.equity.daily_drawdown_pct >= self._cfg.max_daily_drawdown_pct:
+        dd_limit = (
+            self._cfg.paper_max_daily_drawdown_pct
+            if self._cfg.mode in ("PAPER", "BACKTEST")
+            else self._cfg.max_daily_drawdown_pct
+        )
+        if self.equity.daily_drawdown_pct >= dd_limit:
             self._activate_kill(
-                f"Daily DD {self.equity.daily_drawdown_pct*100:.1f}% >= {self._cfg.max_daily_drawdown_pct*100:.1f}%"
+                f"Daily DD {self.equity.daily_drawdown_pct*100:.1f}% >= {dd_limit*100:.1f}%"
             )
             return True
 
-        if self.equity.weekly_drawdown_pct >= self._cfg.max_weekly_drawdown_pct:
+        weekly_limit = (
+            self._cfg.paper_max_weekly_drawdown_pct
+            if self._cfg.mode in ("PAPER", "BACKTEST")
+            else self._cfg.max_weekly_drawdown_pct
+        )
+        if self.equity.weekly_drawdown_pct >= weekly_limit:
             self._activate_kill(
-                f"Weekly DD {self.equity.weekly_drawdown_pct*100:.1f}% >= {self._cfg.max_weekly_drawdown_pct*100:.1f}%"
+                f"Weekly DD {self.equity.weekly_drawdown_pct*100:.1f}% >= {weekly_limit*100:.1f}%"
             )
             return True
 
@@ -249,9 +259,22 @@ class RiskEngine:
         log.critical("KILL SWITCH ACTIVATED: %s", reason)
 
     def reset_kill_switch(self) -> None:
-        """Manual reset — requires human confirmation."""
+        """Manual reset — requires human confirmation.
+
+        Riallinea anche le baseline daily/weekly all'equity corrente: senza
+        questo, con equity già sotto soglia il DD resta >= limite e il kill
+        switch si riattiva al primo check (trappola permanente, visto 10/06
+        con equity 884/1000 → weekly DD 11.5% perenne)."""
         self.kill_switch = KillSwitchState()
-        log.warning("Kill switch manually reset")
+        now = time.time()
+        self.equity.daily_start_equity = self.equity.current_equity
+        self.equity.daily_start_ts = now
+        self.equity.weekly_start_equity = self.equity.current_equity
+        self.equity.weekly_start_ts = now
+        log.warning(
+            "Kill switch manually reset — baseline daily/weekly riallineate a %.2f",
+            self.equity.current_equity,
+        )
 
     def update_equity(self, current_value: float) -> None:
         """Call after each trade close or periodically."""

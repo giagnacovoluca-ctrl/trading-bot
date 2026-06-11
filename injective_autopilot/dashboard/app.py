@@ -9,6 +9,8 @@ Endpoints:
   /risk        → stato Risk Engine / Kill Switch
   /ai          → decisioni Claude + accuracy
   /api/stats   → JSON per polling frontend
+  /admin/kill-switch-status  → GET stato kill switch (JSON)
+  /admin/reset-kill-switch   → POST reset manuale kill switch
 """
 
 from __future__ import annotations
@@ -19,10 +21,12 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
+from analytics import performance as perf
+from analytics.adaptive_scorer import AdaptiveScorer
 from backtest.metrics import PerformanceMetrics, compute_metrics
 from config.settings import get_settings
 from database.repository import Repository
@@ -31,6 +35,7 @@ app = FastAPI(title="Injective Autopilot Dashboard", docs_url=None)
 
 _cfg = get_settings()
 _repo: Repository | None = None
+_risk_engine: Any | None = None
 _templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
 # Register custom Jinja2 filters
@@ -42,6 +47,19 @@ def _ts_to_str(ts: float) -> str:
         return "—"
 _templates.env.filters["timestamp_to_str"] = _ts_to_str
 
+def _fmt_price(v) -> str:
+    """Precisione adattiva: PEPE a $0.00000273 con %.4f appare come 0.0000."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "—"
+    if v == 0:
+        return "—"
+    if v >= 1:
+        return f"{v:.4f}"
+    return f"{v:.12f}".rstrip("0").rstrip(".")
+_templates.env.filters["fmt_price"] = _fmt_price
+
 # Static files (CSS/JS)
 _static_path = Path(__file__).parent / "static"
 _static_path.mkdir(exist_ok=True)
@@ -51,6 +69,11 @@ app.mount("/static", StaticFiles(directory=str(_static_path)), name="static")
 def set_repo(repo: Repository) -> None:
     global _repo
     _repo = repo
+
+
+def set_risk_engine(engine: Any) -> None:
+    global _risk_engine
+    _risk_engine = engine
 
 
 # ── HTML pages ────────────────────────────────────────────────────────────────
@@ -111,8 +134,15 @@ async def risk_page(request: Request):
         return HTMLResponse("<h1>Starting up...</h1>")
     equity_data = await _repo.get_equity_curve()
     latest = equity_data[-1] if equity_data else {}
+    dd_limit = (
+        _cfg.paper_max_daily_drawdown_pct
+        if _cfg.mode in ("PAPER", "BACKTEST")
+        else _cfg.max_daily_drawdown_pct
+    )
     return _templates.TemplateResponse(request, "risk.html", {
-        "latest": latest, "refresh_sec": _cfg.dashboard_auto_refresh_sec,
+        "latest": latest,
+        "refresh_sec": _cfg.dashboard_auto_refresh_sec,
+        "dd_limit_pct": round(dd_limit * 100, 0),
     })
 
 
@@ -131,6 +161,55 @@ async def ai_page(request: Request):
         "avg_pnl": avg_pnl,
         "total_calls": len(decisions),
         "approved": len(approved),
+    })
+
+
+@app.get("/analytics", response_class=HTMLResponse)
+async def signal_analytics_page(request: Request):
+    if not _repo:
+        return HTMLResponse("<h1>Starting up...</h1>")
+    trades = await _repo.get_closed_trades()
+    return _templates.TemplateResponse(request, "signal_analytics.html", {
+        "signal_rank": perf.signal_ranking(trades),
+        "combo_rank": perf.combo_ranking(trades),
+        "score_buckets": perf.score_bucket_analysis(trades),
+        "direction_rank": perf.direction_ranking(trades),
+        "exit_rank": perf.exit_reason_analysis(trades),
+        "patterns": perf.win_loss_patterns(trades),
+        "refresh_sec": _cfg.dashboard_auto_refresh_sec,
+    })
+
+
+@app.get("/markets", response_class=HTMLResponse)
+async def market_analytics_page(request: Request):
+    if not _repo:
+        return HTMLResponse("<h1>Starting up...</h1>")
+    trades = await _repo.get_closed_trades()
+    return _templates.TemplateResponse(request, "market_analytics.html", {
+        "market_rank": perf.market_ranking(trades),
+        "hourly": perf.hourly_analysis(trades),
+        "weekday": perf.weekday_analysis(trades),
+        "vol_regime": perf.vol_regime_analysis(trades),
+        "refresh_sec": _cfg.dashboard_auto_refresh_sec,
+    })
+
+
+@app.get("/learning", response_class=HTMLResponse)
+async def learning_page(request: Request):
+    if not _repo:
+        return HTMLResponse("<h1>Starting up...</h1>")
+    trades = await _repo.get_closed_trades()
+    scorer = AdaptiveScorer()
+    scorer.update(trades)
+    snapshots = await _repo.get_weight_snapshots()
+    postmortems = await _repo.get_postmortems(limit=50)
+    return _templates.TemplateResponse(request, "learning.html", {
+        "weights": scorer.weights,
+        "signal_stats": scorer.signal_stats,
+        "trends": scorer.trend(snapshots),
+        "snapshots_json": json.dumps(snapshots),
+        "postmortems": postmortems,
+        "refresh_sec": _cfg.dashboard_auto_refresh_sec,
     })
 
 
@@ -162,6 +241,87 @@ async def api_equity():
         return JSONResponse([])
     data = await _repo.get_equity_curve()
     return JSONResponse(data)
+
+
+@app.get("/api/analytics/signals")
+async def api_analytics_signals():
+    if not _repo:
+        return JSONResponse({"status": "starting"})
+    trades = await _repo.get_closed_trades()
+    return JSONResponse({
+        "signal_ranking": perf.signal_ranking(trades),
+        "combo_ranking": perf.combo_ranking(trades),
+        "score_buckets": perf.score_bucket_analysis(trades),
+        "patterns": perf.win_loss_patterns(trades),
+    })
+
+
+@app.get("/api/analytics/markets")
+async def api_analytics_markets():
+    if not _repo:
+        return JSONResponse({"status": "starting"})
+    trades = await _repo.get_closed_trades()
+    return JSONResponse({
+        "market_ranking": perf.market_ranking(trades),
+        "hourly": perf.hourly_analysis(trades),
+        "weekday": perf.weekday_analysis(trades),
+        "vol_regime": perf.vol_regime_analysis(trades),
+    })
+
+
+@app.get("/api/analytics/learning")
+async def api_analytics_learning():
+    if not _repo:
+        return JSONResponse({"status": "starting"})
+    trades = await _repo.get_closed_trades()
+    scorer = AdaptiveScorer()
+    weights = scorer.update(trades)
+    snapshots = await _repo.get_weight_snapshots()
+    return JSONResponse({
+        "weights": weights,
+        "signal_stats": scorer.signal_stats,
+        "trends": scorer.trend(snapshots),
+        "snapshots": snapshots,
+    })
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+@app.get("/admin/kill-switch-status")
+async def kill_switch_status():
+    if not _risk_engine:
+        return JSONResponse({"error": "Risk engine not available"}, status_code=503)
+    ks = _risk_engine.kill_switch
+    eq = _risk_engine.equity
+    return JSONResponse({
+        "active": ks.active,
+        "reason": ks.reason,
+        "activated_at": ks.activated_at,
+        "daily_dd_pct": round(eq.daily_drawdown_pct * 100, 2),
+        "weekly_dd_pct": round(eq.weekly_drawdown_pct * 100, 2),
+        "current_equity": round(eq.current_equity, 2),
+    })
+
+
+@app.post("/admin/reset-kill-switch")
+async def reset_kill_switch(request: Request):
+    if not _risk_engine:
+        return JSONResponse({"error": "Risk engine not available"}, status_code=503)
+    if not _risk_engine.kill_switch.active:
+        # Accept both form and JSON callers
+        if request.headers.get("accept", "").startswith("text/html"):
+            return RedirectResponse("/risk", status_code=303)
+        return JSONResponse({"ok": False, "msg": "Kill switch is not active"})
+    reason = _risk_engine.kill_switch.reason
+    _risk_engine.reset_kill_switch()
+    # Reset daily equity baseline so DD counter starts fresh
+    _risk_engine.equity.daily_start_equity = _risk_engine.equity.current_equity
+    _risk_engine.equity.daily_start_ts = time.time()
+    if _repo:
+        await _repo.log_error("AdminReset", f"Kill switch manually reset (was: {reason})")
+    if request.headers.get("accept", "").startswith("text/html"):
+        return RedirectResponse("/risk", status_code=303)
+    return JSONResponse({"ok": True, "msg": f"Kill switch reset. Was: {reason}"})
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
