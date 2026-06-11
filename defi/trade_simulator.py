@@ -82,6 +82,7 @@ PRE_GRAD_SIGNALS  = os.path.join(BASE, "reports", "pre_grad_signals.csv")
 BASE_PUMP_SIGNALS = os.path.join(BASE, "reports", "base_pump_signals.csv")
 MIDCAP_SIGNALS    = os.path.join(BASE, "reports", "midcap_signals.csv")
 V3_EXIT_SIGNALS   = os.path.join(BASE, "reports", "v3_exit_signals.csv")
+WALLET_EVENTS_CSV = os.path.join(BASE, "reports", "wallet_events.csv")
 
 LIVE_LOG_CSV  = os.path.join(BASE, "reports", "live_trades.csv")
 LIVE_HTML     = os.path.join(BASE, "reports", "sim_report.html")
@@ -100,8 +101,12 @@ CAPITAL_BY_TIER = {
 # Blacklist hard post-SL: token_address → expiry datetime (48h)
 _hard_sl_blacklist: dict = {}
 
-# Circuit breaker: blocca nuovi segnali se perdita 24h supera soglia
-MAX_DAILY_LOSS_EUR = float(os.getenv("MAX_DAILY_LOSS_EUR", "-80"))
+# Circuit breaker: blocca nuovi segnali se perdita 24h supera soglia.
+# Default 0 = DISATTIVATO (11/06): in paper trading il blocco toglie solo dati
+# — congelava tutti i sistemi quando pre_grad/base_pump perdevano (-122€ alle
+# 13:27 → midcap incluso fermo). Riattivabile con MAX_DAILY_LOSS_EUR=-80 in env
+# se/quando si passa a esecuzione reale.
+MAX_DAILY_LOSS_EUR = float(os.getenv("MAX_DAILY_LOSS_EUR", "0"))
 _daily_pnl_cache: dict = {"val": 0.0, "ts": 0.0}
 _DAILY_PNL_CACHE_TTL = 120  # secondi
 
@@ -736,7 +741,7 @@ class _RugWatcher:
         try:
             self._ws.send(json.dumps({
                 "jsonrpc": "2.0", "id": req_id, "method": "logsSubscribe",
-                "params": [{"mentions": [pair_address]}, {"commitment": "processed"}],
+                "params": [{"mentions": [pair_address]}, {"commitment": "confirmed"}],
             }))
         except Exception as e:
             log.debug(f"[rug_watch] subscribe {pair_address[:8]}…: {e}")
@@ -823,6 +828,47 @@ class _RugWatcher:
 
     def _on_close(self, ws, code, msg):
         log.debug(f"[rug_watch] WS chiuso (code={code})")
+
+
+# ── Smart money overlap (wallet_events.csv del wallet_mirror_bot) ────────────
+# SOLO annotazione/visibilità nel note dell'entry: nessun filtro o boost finché
+# un backtest non ne valida l'edge (regola: win bloccati vs loss evitate).
+_SM_WINDOW_H   = 6.0
+_sm_cache      = {"ts": 0.0, "buys": {}}   # mint → set(wallet)
+
+
+def _smart_money_count(token_address: str) -> int:
+    """Quanti wallet alpha distinti hanno comprato questo mint nelle ultime 6h.
+    Legge la coda di wallet_events.csv (cache 60s); 0 se file assente."""
+    if not token_address:
+        return 0
+    now_t = time.time()
+    if now_t - _sm_cache["ts"] > 60:
+        buys: dict = {}
+        try:
+            if os.path.exists(WALLET_EVENTS_CSV):
+                size = os.path.getsize(WALLET_EVENTS_CSV)
+                with open(WALLET_EVENTS_CSV, "r", encoding="utf-8", errors="replace") as f:
+                    if size > 200_000:
+                        f.seek(size - 200_000)
+                        f.readline()  # scarta riga troncata
+                    cutoff = now_t - _SM_WINDOW_H * 3600
+                    for line in f:
+                        # colonne: ts,wallet,side,mint,usd,confluence,wake_days,note
+                        parts = line.rstrip("\n").split(",")
+                        if len(parts) < 4 or parts[2] != "buy":
+                            continue
+                        try:
+                            ev_ts = datetime.fromisoformat(parts[0]).timestamp()
+                        except Exception:
+                            continue
+                        if ev_ts >= cutoff:
+                            buys.setdefault(parts[3], set()).add(parts[1])
+        except Exception as e:
+            log.debug(f"[smart_money] lettura wallet_events: {e}")
+        _sm_cache["buys"] = buys
+        _sm_cache["ts"]   = now_t
+    return len(_sm_cache["buys"].get(token_address, ()))
 
 
 def _parse_dex_pair(pair: dict):
@@ -1025,30 +1071,68 @@ def _fetch_price_coingecko(token_address: str, chain: str, timeout: int = 10):
 _pf_sol_cache: dict = {"price": 0.0, "ts": 0.0}
 
 
+_SOLANA_RPC      = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
+_PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+
+
+def _derive_bonding_curve(mint: str) -> str:
+    """PDA della bonding curve pump.fun per un mint."""
+    try:
+        from solders.pubkey import Pubkey
+        pda, _bump = Pubkey.find_program_address(
+            [b"bonding-curve", bytes(Pubkey.from_string(mint))],
+            Pubkey.from_string(_PUMP_PROGRAM_ID),
+        )
+        return str(pda)
+    except Exception:
+        return ""
+
+
+def _decode_bonding_curve(data_b64: str):
+    """(vSol, vTokens, complete) o None. Layout anchor: 8B discriminator +
+    5×u64 (virtual_token, virtual_sol, real_token, real_sol, total_supply) + bool complete."""
+    import base64
+    import struct
+    try:
+        raw = base64.b64decode(data_b64)
+        if len(raw) < 49:
+            return None
+        vtok_raw, vsol_lamports = struct.unpack_from("<QQ", raw, 8)
+        complete = bool(raw[48])
+        return vsol_lamports / 1_000_000_000, vtok_raw / 1_000_000, complete
+    except Exception:
+        return None
+
+
 def _fetch_price_pumpfun(mint: str) -> Optional[tuple]:
     """
-    Prezzo dalla bonding curve pump.fun (usato per posizioni pre_grad non ancora graduate).
+    Prezzo dalla bonding curve pump.fun on-chain (frontend-api.pump.fun è morta, 530).
     Ritorna (price_usd, 0, 1.0, liq_usd, mint) oppure None.
-    Imposta pos["pair_address"] se il token è già graduato (side effect tramite dict ritornato).
+    Se il token è già graduato (complete=True) ritorna una 6-tupla speciale
+    (0.0, 0, 1.0, 0, mint, "") → pos["pair_address"] viene impostato a "" e il
+    chiamante deve risolvere la pool via DexScreener al prossimo giro.
     """
+    curve = _derive_bonding_curve(mint)
+    if not curve:
+        return None
     try:
-        r = requests.get(
-            f"https://frontend-api.pump.fun/coins/{mint}",
-            timeout=6,
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        if r.status_code != 200:
+        r = requests.post(_SOLANA_RPC, timeout=8, json={
+            "jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
+            "params": [curve, {"encoding": "base64"}],
+        })
+        acc = (r.json().get("result") or {}).get("value")
+        if not acc:
             return None
-        d = r.json()
+        decoded = _decode_bonding_curve((acc.get("data") or [""])[0])
+        if not decoded:
+            return None
+        v_sol, v_tok, complete = decoded
 
-        # Token graduato → non usare più questo endpoint
-        if d.get("complete"):
-            raydium_pool = d.get("raydium_pool") or ""
-            # Segnala con un valore speciale: price=0 ma pair_address valorizzato
-            return (0.0, 0, 1.0, 0, mint, raydium_pool)  # 6-tuple speciale: graduated
+        if complete:
+            # graduato: niente raydium_pool noto on-chain, ma _fetch_price(mint,...)
+            # risolve la pool via search API DexScreener usando il mint come query
+            return (0.0, 0, 1.0, 0, mint, mint)  # 6-tupla speciale: graduato
 
-        v_sol = float(d.get("virtual_sol_reserves", 0) or 0) / 1e9
-        v_tok = float(d.get("virtual_token_reserves", 0) or 0) / 1e6
         if v_tok <= 0:
             return None
 
@@ -1075,7 +1159,7 @@ def _fetch_price_pumpfun(mint: str) -> Optional[tuple]:
         liq_usd   = v_sol * sol_price * 2   # approssimazione: liq = 2 * valore SOL
         return (price_usd, 0, 1.0, liq_usd, mint)
     except Exception as e:
-        log.debug(f"[pre_grad] pump.fun price {mint[:8]}: {e}")
+        log.debug(f"[pre_grad] RPC bonding curve {mint[:8]}: {e}")
         return None
 
 
@@ -1100,6 +1184,9 @@ class LiveEngine:
         self._lock  = threading.Lock()
         self._stop  = threading.Event()
         self._v3_flagged: Dict[str, str] = {}   # signal_id → severity ("warn"|"exit")
+        # signal_id mai loggati su live_trades.csv ma scartati (es. cooldown):
+        # senza questa cache _load_new_signals li rivaluta e ri-logga ad ogni ciclo per sempre
+        self._signal_skip_cache: set = set()
         # ── Rug watcher (fast-check WS pump_grad, vedi _RugWatcher) ────────
         self._fast_lock          = threading.Lock()
         self._fast_check_pending: set  = set()   # pair_address con attività rilevata
@@ -1231,6 +1318,8 @@ class LiveEngine:
                 continue
             if pos.get("pair_address", "").strip():
                 continue                          # ha già pair_address
+            if pos.get("system") == "pre_grad":
+                continue                          # pre_grad: bonding curve, pair_address vuoto è normale
             if sid in pair_lookup:
                 pos["pair_address"] = pair_lookup[sid]
                 recovered += 1
@@ -1464,10 +1553,17 @@ class LiveEngine:
                     df = df.rename(columns={"gem_id": "signal_id"})
                 for _, row in df.iterrows():
                     sid = str(row.get("signal_id", ""))
-                    if not sid or sid in known:
+                    if not sid or sid in known or sid in self._signal_skip_cache:
                         continue
                     # Skip se pair_address in permanent blacklist
                     pair_addr_check = str(row.get("pair_address","") or "").strip()
+                    if pair_addr_check.lower() == "nan":
+                        # pre_grad: pair_address vuoto (bonding curve, niente DEX pair)
+                        # → pandas legge NaN → str(nan)="nan" → "nan" finiva in
+                        # active_pairs alla 1a entry e bloccava in silenzio TUTTI
+                        # i segnali pre_grad successivi (stesso pattern del caso
+                        # recent_tokens[""], vedi 07/06)
+                        pair_addr_check = ""
                     if pair_addr_check and pair_addr_check in _perm_bl:
                         known.add(sid)
                         continue
@@ -1498,6 +1594,22 @@ class LiveEngine:
                         sig_src  = str(row.get("source", "") or "")
                         sig_mcap = float(row.get("market_cap_usd", 0) or 0)
                         sig_dex  = str(row.get("dex_id", "") or "")
+
+                        def _skip_routing(reason: str):
+                            # Traccia su log+CSV gli scarti del router (prima erano
+                            # known.add silenziosi: impossibili da diagnosticare a posteriori)
+                            log.info(f"[routing] {sid}: scartato → {reason}")
+                            _log_trade({
+                                "ts": now.isoformat(), "signal_id": sid, "system": "v3",
+                                "token_symbol": str(row.get("token_symbol", "")),
+                                "chain": str(row.get("chain", "")),
+                                "pair_address": pair_addr_check,
+                                "action": "skip_routing",
+                                "price": str(row.get("price_usd", row.get("price", "0"))),
+                                "change_pct": "0", "vol_h1": "0", "bsr": "0",
+                                "remaining": "0.00", "pnl_eur": "+0.00",
+                                "exit_reason": "skip_routing", "note": reason,
+                            })
                         if sig_src in ("coingecko_midcap", "coingecko_trending") and sig_mcap >= 5_000_000:
                             # Promozione a v3_large: token CoinGecko mcap>$10M con BSR forte su DEX
                             # Sostituisce il proxy "inflow_wallet_count=10" con un gate reale on-chain
@@ -1514,6 +1626,11 @@ class LiveEngine:
                                          f"(mcap=${sig_mcap/1e6:.1f}M bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg={_cg_chg:+.1f}%)")
                             else:
                                 # v3_midcap disabilitato: sostituito da midcap_scanner (BB Squeeze)
+                                _skip_routing(
+                                    f"CoinGecko {sig_src} mcap=${sig_mcap:,.0f} non promosso a v3_large "
+                                    f"(bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg24={_cg_chg:+.1f}%) "
+                                    "e v3_midcap disabilitato"
+                                )
                                 known.add(sid)
                                 continue
                         elif sig_mcap > 10_000_000:
@@ -1530,9 +1647,11 @@ class LiveEngine:
                                     or _bsr_vl < 0.6
                                     or _inflow_vl < 15
                                     or _pnl_vl < 10):
-                                log.debug(f"[live/v3_large] {sid}: qualità insufficiente "
-                                          f"(tier={_tier_vl} score={_score_vl:.0f} bsr={_bsr_vl:.2f} "
-                                          f"inflow={_inflow_vl} pnl={_pnl_vl:.0f}%) → skip")
+                                _skip_routing(
+                                    f"gate v3_large: tier={_tier_vl} score={_score_vl:.0f} "
+                                    f"bsr={_bsr_vl:.2f} inflow={_inflow_vl} pnl={_pnl_vl:.0f}% "
+                                    "(serve DIAMOND/GOLD + score>=65 + bsr>=0.6 + inflow>=15 + pnl>=10%)"
+                                )
                                 known.add(sid)
                                 continue
                         elif sig_dex in ("pumpswap", "pump.fun") or sig_mcap < 1_000_000:
@@ -1580,18 +1699,18 @@ class LiveEngine:
                         _cd_ts, _cd_action = _cd_sym
                         _cd_limit = _COOLDOWN_MAP.get(_cd_action, TOKEN_COOLDOWN_H)
                         if (now - _cd_ts).total_seconds() / 3600 < _cd_limit:
-                            known.add(sid)
+                            self._signal_skip_cache.add(sid)
                             log.debug(f"[live/{effective_system}] {sym_check} cooldown {_cd_action} "
-                                      f"({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
+                                     f"({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
                             continue
                     _cd_ta = recent_taddrs.get(tok_addr_check) if tok_addr_check else None
                     if _cd_ta:
                         _cd_ts, _cd_action = _cd_ta
                         _cd_limit = _COOLDOWN_MAP.get(_cd_action, TOKEN_COOLDOWN_H)
                         if (now - _cd_ts).total_seconds() / 3600 < _cd_limit:
-                            known.add(sid)
+                            self._signal_skip_cache.add(sid)
                             log.debug(f"[live/{effective_system}] {tok_addr_check[:12]}… taddr cooldown "
-                                      f"{_cd_action} ({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
+                                     f"{_cd_action} ({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
                             continue
 
                     # Filtro re-entry su token in downtrend:
@@ -1626,10 +1745,12 @@ class LiveEngine:
                     if entry_price <= 0:
                         # Prezzo non valido già al momento del segnale (es. API origine giù) —
                         # non cambierà ai cicli successivi: marca come noto per evitare retry infiniti.
-                        log.debug(f"[live/{system}] {sid}: price_entry_usd<=0 nel segnale → skip definitivo (non tracciabile)")
+                        log.info(f"[live/{system}] {sid}: price_entry_usd<=0 nel segnale → skip definitivo (non tracciabile)")
                         known.add(sid)
                         continue
                     pair_addr = str(row.get("pair_address", "") or "")
+                    if pair_addr.lower() == "nan":
+                        pair_addr = ""
                     # Blocca segnali v2/defi senza pair_address: non possiamo tracciarne il prezzo
                     if effective_system in ("v2", "defi") and not pair_addr.strip():
                         log.debug(f"[live/{system}] {sid}: nessun pair_address → skip (non tracciabile)")
@@ -1715,7 +1836,10 @@ class LiveEngine:
 
                     # ── Pre-entry price check via Jupiter (solo Solana) ────────────────────
                     # Soglia allineata all'executor: pump_grad usa slippage(8%)+margin(12%)=20%
-                    _ENTRY_DROP_THRESH = {"pump_grad": 0.20, "pre_grad": 0.20, "defi": 0.08}
+                    # NOTA 11/06: il check anti-stantio per i segnali gemmeV3 (anche Base)
+                    # sta ALLA RADICE in gemmeV3.stampa_gemma — il segnale soppresso non
+                    # arriva proprio qui (regola: filtri alla fonte, non all'entry).
+                    _ENTRY_DROP_THRESH = {"pump_grad": 0.20, "pre_grad": 0.50, "defi": 0.08}
                     _entry_drop_max = _ENTRY_DROP_THRESH.get(effective_system, 0.08)
                     if chain == "solana" and token_address and entry_price > 0:
                         live_price = _fetch_price_jupiter(token_address, entry_price)
@@ -1763,6 +1887,20 @@ class LiveEngine:
                     if effective_system not in ("v3", "v3_midcap", "v3_large"):
                         sig_capital = CAPITAL_EUR
 
+                    # Overlap smart money: wallet alpha hanno comprato lo stesso mint
+                    # nelle ultime 6h? Solo annotazione (per futura validazione)
+                    entry_note = "vol_na"
+                    # Attribuzione: gemme v3 mascherate da "defi" dal routing mcap<$1M
+                    # restano riconoscibili nelle statistiche per sistema
+                    if system == "v3" and effective_system == "defi":
+                        entry_note += " | via_gemmeV3"
+                    if effective_system != "mirror" and chain == "solana":
+                        sm_n = _smart_money_count(token_address)
+                        if sm_n > 0:
+                            entry_note += f" | smart_money={sm_n}"
+                            log.info(f"[live] 🐋 {row.get('token_symbol','?')}: {sm_n} wallet alpha "
+                                     f"hanno comprato questo token nelle ultime {_SM_WINDOW_H:.0f}h")
+
                     _log_trade({
                         "ts": now.isoformat(), "signal_id": sid, "system": effective_system,
                         "token_symbol": str(row.get("token_symbol", "")), "chain": chain,
@@ -1770,7 +1908,7 @@ class LiveEngine:
                         "action": "entry", "price": f"{entry_price:.8g}",
                         "change_pct": "+0.00", "vol_h1": f"{entry_vol:.0f}",
                         "bsr": "1.000", "remaining": "1.00",
-                        "pnl_eur": "+0.00", "exit_reason": "open", "note": "vol_na",
+                        "pnl_eur": "+0.00", "exit_reason": "open", "note": entry_note,
                     })
                     known.add(sid)
                     if pair_addr and pair_addr not in ("", "0"*len(pair_addr) if pair_addr else ""):
@@ -1894,7 +2032,11 @@ class LiveEngine:
     # ── Logica di exit ──────────────────────────────────────────────────────
 
     def _process_position(self, sid: str, pos: dict):
-        if pos["remaining"] <= 0 or not pos.get("pair_address"):
+        if pos["remaining"] <= 0:
+            return
+        # pre_grad: pair_address vuoto = ancora sulla bonding curve (normale,
+        # non un errore) → gestito al ramo dedicato sotto via _fetch_price_pumpfun
+        if not pos.get("pair_address") and pos.get("system") != "pre_grad":
             return
 
         # ── Blocca posizioni con indirizzo mock BSC (USE_MOCK_FALLBACK) ────────
@@ -1982,6 +2124,19 @@ class LiveEngine:
             return
         cur_price, cur_vol, cur_bsr, cur_liq = fetch[0], fetch[1], fetch[2], fetch[3]
         if cur_price <= 0:
+            return
+
+        # ── Sanity check: crollo di prezzo >99.9999% con liquidità ancora sana ──
+        # è internamente incoerente (liq USD = reserve×price: se il prezzo
+        # crollasse davvero così tanto, anche la liq crollerebbe). Indica un
+        # glitch di parsing dell'API (es. PEAK 11/06: 0.0007106 → 2.9e-27,
+        # liq invariata) → scarta il dato, ritenta al ciclo successivo.
+        ep = pos.get("entry_price", 0)
+        if ep > 0 and cur_price < ep * 1e-6 and cur_liq > 500.0:
+            log.warning(
+                f"[live] {sid}: prezzo {cur_price:.3e} incoerente con entry {ep:.3e} "
+                f"(liq=${cur_liq:.0f} ancora sana) → scarto come glitch API"
+            )
             return
 
         # Aggiorna entry_liq dal primo fetch live se non disponibile dal segnale
@@ -2073,9 +2228,25 @@ class LiveEngine:
         # Sanity check: ignora spike oracle assurdi (>5000% o <-99.9%)
         # Caso reale: VIMAX peak=3.4 trilioni% → bug prezzo oracle
         if chg > 5000.0 or chg < -99.9:
-            log.warning(f"[live] {sid}: prezzo anomalo ignorato "
-                        f"cur={cur_price:.8g} ep={ep:.8g} chg={chg:+.1f}% — skip ciclo")
-            return
+            if chg < -99.9:
+                # -99.9% persistente non è un glitch oracle: è un rug. Senza
+                # questo contatore la posizione resta zombie per sempre (caso
+                # PEAK 10/06: rug a 43s dall'entry, 990 cicli skippati in 11h,
+                # perdita mai realizzata nelle statistiche).
+                pos["anomaly_streak"] = pos.get("anomaly_streak", 0) + 1
+                if pos["anomaly_streak"] >= 10:
+                    chg = -100.0   # prosegue → hard_sl chiude e blacklista
+                else:
+                    log.warning(f"[live] {sid}: prezzo anomalo ignorato "
+                                f"cur={cur_price:.8g} ep={ep:.8g} chg={chg:+.1f}% — skip ciclo "
+                                f"({pos['anomaly_streak']}/10 prima del force-close)")
+                    return
+            else:
+                log.warning(f"[live] {sid}: prezzo anomalo ignorato "
+                            f"cur={cur_price:.8g} ep={ep:.8g} chg={chg:+.1f}% — skip ciclo")
+                return
+        else:
+            pos.pop("anomaly_streak", None)
         pos["current_pct"]   = chg
         pos["current_vol"]   = cur_vol
         pos["current_bsr"]   = cur_bsr
@@ -2384,7 +2555,7 @@ class LiveEngine:
                 with self._lock:
                     pos_list = list(self.positions.items())
                 for sid, pos in pos_list:
-                    if pos["remaining"] > 0 and pos.get("pair_address"):
+                    if pos["remaining"] > 0 and (pos.get("pair_address") or pos.get("system") == "pre_grad"):
                         try: self._process_position(sid, pos)
                         except Exception as e: log.debug(f"[live] {sid}: {e}")
                 try: self._generate_html()
@@ -2541,7 +2712,19 @@ class LiveEngine:
             if r.get("action") == "entry" and r.get("price",""):
                 entry_prices[r["signal_id"]] = r["price"]
 
-        html = _build_live_html(open_list, closed_list, all_states, entry_prices)
+        # Attribuzione v3→defi (anche retroattiva): marker "via_gemmeV3" sulle
+        # entry + match diretto signal_id↔gem_id in gems_log_v3.csv per i trade
+        # precedenti all'introduzione del marker (10/06)
+        v3_routed = {r["signal_id"] for r in rows + storico_rows
+                     if r.get("action") == "entry"
+                     and "via_gemmeV3" in (r.get("note") or "")}
+        try:
+            with open(V3_SIGNALS, encoding="utf-8") as _fh:
+                v3_routed |= {r2.get("gem_id", "") for r2 in csv.DictReader(_fh)}
+        except Exception:
+            pass
+
+        html = _build_live_html(open_list, closed_list, all_states, entry_prices, v3_routed)
         Path(LIVE_HTML).write_text(html, encoding="utf-8")
         log.info(f"[live] HTML aggiornato: {len(open_list)} aperte, {len(closed_list)} chiuse mostrate.")
 
@@ -2948,15 +3131,192 @@ def _fmt_price(p_str: str) -> str:
     except: return "—"
 
 
-def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = None):
+_INJ_DB = os.path.join(os.path.dirname(BASE), "injective_autopilot", "injective_autopilot.db")
+
+def _build_inj_section() -> str:
+    """Sezione read-only con i trade di injective_autopilot (DB SQLite).
+    Statistiche separate: NON tocca sys_stats né i filtri della dashboard."""
+    import sqlite3 as _sq
+    try:
+        conn = _sq.connect(f"file:{_INJ_DB}?mode=ro", uri=True, timeout=2)
+        conn.row_factory = _sq.Row
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id, ticker, direction, status, entry_price, exit_price, "
+            "pnl_usdt, pnl_pct, exit_reason, confidence, entry_ts, exit_ts "
+            "FROM trades ORDER BY entry_ts DESC LIMIT 60")]
+        conn.close()
+    except Exception as e:
+        return (f'<div class="section-title">🤖 Injective Autopilot</div>'
+                f'<div style="color:#8b949e;font-size:.8rem;padding:8px">DB non disponibile: {e}</div>')
+    if not rows:
+        return ""
+
+    def _fp(v):
+        try: v = float(v)
+        except (TypeError, ValueError): return "—"
+        if v == 0: return "—"
+        return f"{v:.4f}" if v >= 1 else f"{v:.12f}".rstrip("0").rstrip(".")
+
+    closed = [r for r in rows if r["status"] == "CLOSED"]
+    opened = [r for r in rows if r["status"] == "OPEN"]
+    win_l  = [r["pnl_usdt"] or 0 for r in closed if (r["pnl_usdt"] or 0) > 0]
+    loss_l = [r["pnl_usdt"] or 0 for r in closed if (r["pnl_usdt"] or 0) < 0]
+    wins, losses = len(win_l), len(loss_l)
+    tot_win, tot_loss = sum(win_l), sum(loss_l)
+    pnl    = tot_win + tot_loss
+    wr     = wins / len(closed) * 100 if closed else 0
+    pnl_c  = "#3fb950" if pnl > 0 else ("#f85149" if pnl < 0 else "#8b949e")
+    wr_c   = "#3fb950" if wr >= 40 else "#e3b341" if wr >= 25 else "#f85149"
+
+    trs = ""
+    for r in opened + closed:
+        is_open = r["status"] == "OPEN"
+        p   = r["pnl_usdt"] or 0
+        pct = r["pnl_pct"] or 0
+        pc  = "#3fb950" if p > 0 else ("#f85149" if p < 0 else "#8b949e")
+        try:
+            et  = datetime.fromtimestamp(r["entry_ts"]).strftime("%d/%m %H:%M")
+            dur = ((r["exit_ts"] or datetime.now().timestamp()) - r["entry_ts"]) / 60
+            dur_s = f"{int(dur//60)}h{int(dur%60):02d}m"
+        except Exception:
+            et, dur_s = "?", "?"
+        stato_raw = "OPEN" if is_open else (r["exit_reason"] or "—")
+        stato   = '<span style="color:#58a6ff">● OPEN</span>' if is_open else (r["exit_reason"] or "—")
+        dir_c   = "#3fb950" if r["direction"] == "LONG" else "#f85149"
+        exit_s  = "—" if is_open else _fp(r["exit_price"])
+        pnl_s   = "" if is_open else f"{p:+.2f}$"
+        pct_s   = "" if is_open else f"{pct:+.2f}%"
+        conf    = (r["confidence"] or 0) * 100
+        trs += (
+            f'<tr class="injrow" style="opacity:{1 if is_open else .8}" '
+            f'data-id="{r["id"]}" data-ticker="{r["ticker"].lower()}" data-dir="{r["direction"]}" '
+            f'data-entry="{r["entry_price"] or 0}" data-exit="{r["exit_price"] or 0}" '
+            f'data-pnl="{p:.4f}" data-pct="{pct:.4f}" data-stato="{stato_raw}" '
+            f'data-conf="{conf:.0f}" data-ts="{r["entry_ts"] or 0}">'
+            f'<td style="font-size:.72rem;color:#484f58;font-family:monospace">{r["id"]}</td>'
+            f'<td style="font-weight:600">{r["ticker"]}</td>'
+            f'<td style="color:{dir_c}">{r["direction"]}</td>'
+            f'<td style="font-family:monospace;font-size:.72rem;color:#8b949e">{_fp(r["entry_price"])}</td>'
+            f'<td style="font-family:monospace;font-size:.72rem;color:#8b949e">{exit_s}</td>'
+            f'<td style="color:{pc};font-weight:600">{pnl_s}</td>'
+            f'<td style="color:{pc};font-size:.8rem">{pct_s}</td>'
+            f'<td style="font-size:.8rem;color:#8b949e">{stato}</td>'
+            f'<td style="font-size:.8rem;color:#8b949e">{conf:.0f}%</td>'
+            f'<td style="font-size:.75rem;color:#484f58">{et} ({dur_s})</td>'
+            f'</tr>'
+        )
+
+    # Esiti distinti per il filtro (TP, SL, MANUAL, …)
+    esiti = sorted({(r["exit_reason"] or "—") for r in closed})
+    esiti_opts = "".join(f'<option value="{e}">{e}</option>' for e in esiti)
+
+    # Header ordinabili: colonna → (label, tipo num/str)
+    _cols = [("id", "ID", 0), ("ticker", "Ticker", 0), ("dir", "Dir", 0),
+             ("entry", "Entry", 1), ("exit", "Exit", 1), ("pnl", "P&L", 1),
+             ("pct", "%", 1), ("stato", "Stato/Exit", 0), ("conf", "Conf", 1),
+             ("ts", "Apertura (durata)", 1)]
+    ths = "".join(
+        f'<th style="cursor:pointer" onclick="injSort(\'{c}\',{n})">{lbl} '
+        f'<span class="inj-ind" id="inj-ind-{c}">&#8645;</span></th>'
+        for c, lbl, n in _cols)
+
+    _card = ('background:#161b22;border:1px solid #30363d;border-radius:8px;'
+             'padding:10px 16px;min-width:130px')
+    return (
+        f'<details style="margin:4px 0 14px">\n'
+        f'<summary style="cursor:pointer;list-style-position:inside;background:#161b22;'
+        f'border:1px solid #30363d;border-radius:8px;padding:10px 14px;font-weight:600">'
+        f'🤖 Injective Autopilot (PAPER) '
+        f'<span style="font-size:.75rem;font-weight:400;color:#8b949e;margin-left:10px">'
+        f'aperte {len(opened)} · chiuse {len(closed)} · '
+        f'WR <span style="color:{wr_c}">{wr:.0f}%</span> · '
+        f'P&L <span style="color:{pnl_c}">{pnl:+.2f}$</span> · '
+        f'statistiche separate — clicca per i trade</span></summary>\n'
+        # ── Card vincite / perdite / netto ──
+        f'<div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">\n'
+        f'  <div style="{_card}"><div style="font-size:.7rem;color:#8b949e;text-transform:uppercase">Vincite</div>'
+        f'<div style="font-size:1.15rem;font-weight:700;color:#3fb950">{tot_win:+.2f}$</div>'
+        f'<div style="font-size:.72rem;color:#484f58">{wins} trade</div></div>\n'
+        f'  <div style="{_card}"><div style="font-size:.7rem;color:#8b949e;text-transform:uppercase">Perdite</div>'
+        f'<div style="font-size:1.15rem;font-weight:700;color:#f85149">{tot_loss:+.2f}$</div>'
+        f'<div style="font-size:.72rem;color:#484f58">{losses} trade</div></div>\n'
+        f'  <div style="{_card}"><div style="font-size:.7rem;color:#8b949e;text-transform:uppercase">Netto</div>'
+        f'<div style="font-size:1.15rem;font-weight:700;color:{pnl_c}">{pnl:+.2f}$</div>'
+        f'<div style="font-size:.72rem;color:#484f58">WR {wr:.0f}% · payoff '
+        f'{abs(tot_win/wins/(tot_loss/losses)) if wins and losses else 0:.2f}</div></div>\n'
+        f'</div>\n'
+        # ── Filtri rapidi ──
+        f'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:.78rem;color:#8b949e">\n'
+        f'  Dir: <select id="inj_fdir" onchange="injFilter()" style="background:#21262d;border:1px solid #30363d;'
+        f'color:#e6edf3;border-radius:4px;padding:3px 6px;font-size:.75rem">'
+        f'<option value="">Tutte</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>\n'
+        f'  Esito: <select id="inj_fstato" onchange="injFilter()" style="background:#21262d;border:1px solid #30363d;'
+        f'color:#e6edf3;border-radius:4px;padding:3px 6px;font-size:.75rem">'
+        f'<option value="">Tutti</option><option value="OPEN">OPEN</option>{esiti_opts}</select>\n'
+        f'  🔍 <input type="text" id="inj_ftok" onkeyup="injFilter()" placeholder="ticker..." '
+        f'style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:4px;'
+        f'padding:3px 6px;font-size:.75rem;width:110px">\n'
+        f'  <span id="inj_vis" style="color:#484f58"></span>\n'
+        f'</div>\n'
+        f'<div class="wrap"><table>\n'
+        f'  <thead><tr>{ths}</tr></thead>\n'
+        f'  <tbody id="inj_tbody">{trs}</tbody>\n'
+        f'</table></div>\n'
+        f'<script>\n'
+        f'var _injCol="",_injDir=-1;\n'
+        f'function injSort(col,isNum){{\n'
+        f'  if(_injCol===col){{_injDir=-_injDir;}}else{{_injCol=col;_injDir=-1;}}\n'
+        f'  var tb=document.getElementById("inj_tbody");\n'
+        f'  var rs=Array.from(tb.querySelectorAll("tr.injrow"));\n'
+        f'  rs.sort(function(a,b){{\n'
+        f'    var av=a.dataset[col]||"",bv=b.dataset[col]||"";\n'
+        f'    if(isNum){{return(parseFloat(av)-parseFloat(bv))*_injDir;}}\n'
+        f'    return(av<bv?-1:av>bv?1:0)*_injDir;\n'
+        f'  }});\n'
+        f'  rs.forEach(r=>tb.appendChild(r));\n'
+        f'  document.querySelectorAll(".inj-ind").forEach(function(s){{s.textContent="\\u21C5";}});\n'
+        f'  var ind=document.getElementById("inj-ind-"+col);\n'
+        f'  if(ind) ind.textContent=_injDir>0?"\\u25B2":"\\u25BC";\n'
+        f'}}\n'
+        f'function injFilter(){{\n'
+        f'  var fd=document.getElementById("inj_fdir").value;\n'
+        f'  var fs=document.getElementById("inj_fstato").value;\n'
+        f'  var ft=document.getElementById("inj_ftok").value.toLowerCase().trim();\n'
+        f'  var n=0;\n'
+        f'  document.querySelectorAll("#inj_tbody tr.injrow").forEach(function(r){{\n'
+        f'    var ok=(!fd||r.dataset.dir===fd)&&(!fs||r.dataset.stato===fs)\n'
+        f'        &&(!ft||r.dataset.ticker.indexOf(ft)>=0);\n'
+        f'    r.style.display=ok?"":"none"; if(ok)n++;\n'
+        f'  }});\n'
+        f'  document.getElementById("inj_vis").textContent=n+" visibili";\n'
+        f'}}\n'
+        f'</script>\n'
+        f'</details>\n'
+    )
+
+
+def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = None,
+                     v3_routed: set = None):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    v3_routed = v3_routed or set()
+
+    # Sistema "visualizzato": le gemme v3 instradate su config defi (mcap<$1M)
+    # appaiono come defi_v3 — stessa gestione exit, ma fonte segnale diversa:
+    # senza distinzione le statistiche dello scanner pre-pump sono inquinate
+    def _disp_sys(sid, s):
+        sys_name = s.get("system", "?")
+        if sys_name == "defi" and sid in v3_routed:
+            return "defi_v3"
+        return sys_name
+
+    _SYS_LABELS = {"defi_v3": "DEFI·V3"}
 
     # ── Stats per sistema ───────────────────────────────────────────────────
     sys_stats = {}
-    for sys_name in ("defi", "v3", "v3_large", "midcap", "pump_grad", "pre_grad", "mirror"):
-        open_n   = sum(1 for _, s in open_list if s.get("system") == sys_name)
+    for sys_name in ("defi", "defi_v3", "v3", "v3_large", "midcap", "pump_grad", "pre_grad", "mirror"):
+        open_n   = sum(1 for sid, s in open_list if _disp_sys(sid, s) == sys_name)
         closed_s = [(sid, s) for sid, s in all_states.items()
-                    if s.get("system") == sys_name and float(s.get("remaining", 0) or 0) <= 0]
+                    if _disp_sys(sid, s) == sys_name and float(s.get("remaining", 0) or 0) <= 0]
         wins     = sum(1 for _, s in closed_s if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
         wr       = wins / len(closed_s) * 100 if closed_s else 0
         pnl_tot  = sum(float(s.get("pnl_eur","0").replace("+","") or 0) for _, s in closed_s)
@@ -3017,7 +3377,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         wr_c   = "#3fb950" if s["real_wr"] >= 40 else "#e3b341" if s["real_wr"] >= 25 else "#f85149"
         return (
             f'<div class="sys-card" style="border-top:3px solid {color}">'
-            f'<div class="sys-lbl">{name.upper()}</div>'
+            f'<div class="sys-lbl">{_SYS_LABELS.get(name, name.upper())}</div>'
             f'<div class="sys-row"><span class="lbl2">Aperte</span>'
             f'<strong id="sc-{name}-open">{s["open"]}</strong></div>'
             f'<div class="sys-row"><span class="lbl2">Chiuse</span>'
@@ -3032,7 +3392,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
 
     # ── Righe tabella aperte ─────────────────────────────────────────────────
     def open_row(sid, s):
-        sys_name       = s.get("system", "?")
+        sys_name       = _disp_sys(sid, s)
         sym            = s.get("token_symbol", "?")
         chain          = s.get("chain", "").lower()
         pair           = s.get("_pair", s.get("pair_address",""))
@@ -3081,7 +3441,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             tp_status = '<span style="color:#3fb950">●TP1 ●TP2</span>'
 
         dex_link = f"https://dexscreener.com/{chain}/{pair}" if pair and chain != "cex_spot" else "#"
-        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
+        sys_colors = {"defi": "#1f6feb", "defi_v3": "#39c5cf", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
         sc = sys_colors.get(sys_name, "#8b949e")
         chg_c = chg_color(live_pct)
         pnl_c = pnl_color(pnl)
@@ -3115,7 +3475,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'<tr class="orow"{opacity} {data_attrs}>'
             f'<td><a href="{dex_link}" target="_blank" style="color:#58a6ff;font-weight:600">{sym}</a>'
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
-            f'<br><span class="tag" style="background:{sc}22;color:{sc}">{sys_name.upper()}</span>'
+            f'<br><span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
             f'<td style="color:#8b949e;font-size:.8rem">{age}</td>' +
             delta_cell +
@@ -3132,7 +3492,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
     # ── Righe tabella chiuse ─────────────────────────────────────────────────
     def closed_row(sid, s):
         sym      = s.get("token_symbol", "?")
-        sys_name = s.get("system","?")
+        sys_name = _disp_sys(sid, s)
         chg      = float(s.get("change_pct","0").replace("+","") or 0)
         pnl      = float(s.get("pnl_eur","0").replace("+","") or 0)
         reason   = s.get("exit_reason", s.get("action","?"))
@@ -3149,7 +3509,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             age   = f"{h}h{m:02d}m"
         except: age = "?"
         chg_c = chg_color(chg); pnl_c = pnl_color(pnl)
-        sys_colors = {"defi": "#1f6feb", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
+        sys_colors = {"defi": "#1f6feb", "defi_v3": "#39c5cf", "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950", "pump_grad": "#f0883e", "pre_grad": "#58a6ff", "mirror": "#bc8cff"}
         sc = sys_colors.get(sys_name, "#8b949e")
         # Estrai data e ora di apertura da signal_id (SYM_YYYYMMDD_HHMMSS)
         sig_date = ""; entry_time = ""
@@ -3178,7 +3538,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'data-pnl="{pnl:.2f}" data-pct="{chg:.2f}" data-win="{win_flag}" data-token="{sym_lower}">'
             f'<td style="font-weight:600">{sym} '
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
-            f'<span class="tag" style="background:{sc}22;color:{sc}">{sys_name.upper()}</span>'
+            f'<span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
             f'<td style="color:#8b949e;font-size:.8rem">{age}</td>'
             f'<td style="color:{pnl_c};font-weight:600">{pnl:+.2f}€</td>'
@@ -3279,12 +3639,15 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'</div>\n'
         f'<div class="sys-cards">\n'
         f'{sys_card("defi","#1f6feb")}'
+        f'{sys_card("defi_v3","#39c5cf")}'
         f'{sys_card("v3","#e3b341")}'
         f'{sys_card("v3_large","#a371f7")}'
+        f'{sys_card("midcap","#3fb950")}'
         f'{sys_card("pump_grad","#f0883e")}'
         f'{sys_card("pre_grad","#58a6ff")}'
         f'{sys_card("mirror","#bc8cff")}'
         f'</div>\n'
+        f'{_build_inj_section()}'
         f'<div class="filters">\n'
         f'  <span class="lbl2">Dal:</span>\n'
         f'  <div class="btn-grp">\n'
@@ -3301,6 +3664,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  <div class="btn-grp">\n'
         f'    <button class="active sys-btn" onclick="setSys(this,\'\')">Tutti</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'defi\')">DEFI</button>\n'
+        f'    <button class="sys-btn" onclick="setSys(this,\'defi_v3\')">DEFI·V3</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'v3\')">V3</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'v3_large\')">V3L</button>\n'
         f'    <button class="sys-btn" onclick="setSys(this,\'v3_midcap\')">V3M</button>\n'
@@ -3434,7 +3798,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  var df=document.getElementById("df").value;\n'
         f'  var dt=document.getElementById("dt").value;\n'
         f'  var vo=0, vc=0, tot_pnl=0, wins=0, losses=0;\n'
-        f'  var sysStat={{defi:{{o:0,c:0,wins:0,pnl:0}},v3:{{o:0,c:0,wins:0,pnl:0}},v3_large:{{o:0,c:0,wins:0,pnl:0}},bnf:{{o:0,c:0,wins:0,pnl:0}},pump_grad:{{o:0,c:0,wins:0,pnl:0}},pre_grad:{{o:0,c:0,wins:0,pnl:0}}}};\n'
+        f'  var sysStat={{defi:{{o:0,c:0,wins:0,pnl:0}},defi_v3:{{o:0,c:0,wins:0,pnl:0}},v3:{{o:0,c:0,wins:0,pnl:0}},v3_large:{{o:0,c:0,wins:0,pnl:0}},midcap:{{o:0,c:0,wins:0,pnl:0}},mirror:{{o:0,c:0,wins:0,pnl:0}},bnf:{{o:0,c:0,wins:0,pnl:0}},pump_grad:{{o:0,c:0,wins:0,pnl:0}},pre_grad:{{o:0,c:0,wins:0,pnl:0}}}};\n'
         f'  document.querySelectorAll("#tbody tr.orow").forEach(function(r){{\n'
         f'    var sd=r.dataset.sigdate||"";\n'
         f'    var tok=(r.dataset.token||"");\n'
@@ -3484,7 +3848,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    sp.textContent=(tot_pnl>=0?"+":"")+Math.round(tot_pnl)+"\u20ac";\n'
         f'    sp.style.color=tot_pnl>=0?"#3fb950":"#f85149";\n'
         f'  }}\n'
-        f'  ["defi","v3","v3_large","v3_midcap","midcap","bnf","pump_grad","pre_grad","mirror"].forEach(function(sys){{\n'
+        f'  ["defi","defi_v3","v3","v3_large","midcap","bnf","pump_grad","pre_grad","mirror"].forEach(function(sys){{\n'
         f'    var st=sysStat[sys];\n'
         f'    var eo=document.getElementById("sc-"+sys+"-open"); if(eo) eo.textContent=st.o;\n'
         f'    var ec=document.getElementById("sc-"+sys+"-closed"); if(ec) ec.textContent=st.c;\n'

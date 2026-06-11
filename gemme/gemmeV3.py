@@ -38,7 +38,7 @@ import time
 import threading
 import warnings
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from functools import lru_cache
@@ -469,6 +469,69 @@ def check_followup_blacklist() -> None:
     except Exception as e:
         log.warning(f"[blacklist] Errore followup: {e}")
 
+
+# Blocco rug a livello (symbol, chain): il re-rug arriva su pool E contratto
+# nuovi (caso SpaceX 11/06: token_address 0x9151…→0xdCBb…), quindi pair_address
+# e token_address non bastano come chiave.
+_RUG_EXIT_REASONS = {"rug", "liq_collapse", "exit_vol_crash", "exit_low_liq"}
+_rug_block_cache: dict = {"ts": None, "keys": set()}
+_RUG_BLOCK_CACHE_SEC = 300
+
+
+def _rug_token_blocked(symbol: str, chain: str) -> bool:
+    """True se il ticker ha avuto un rug nelle ultime RUG_TOKEN_BLOCK_H ore:
+    dump <= RUG_TOKEN_DUMP_PCT visto dal gem_tracker (qualsiasi pair) oppure
+    exit rug-type del simulator. Segnale soppresso alla radice."""
+    sym = (symbol or "").strip().lower()
+    if not sym:
+        return False
+    now = datetime.now()
+    if (_rug_block_cache["ts"] is None
+            or (now - _rug_block_cache["ts"]).total_seconds() > _RUG_BLOCK_CACHE_SEC):
+        block_h   = FILTER_CONFIG.get("RUG_TOKEN_BLOCK_H", 48.0)
+        dump_pct  = FILTER_CONFIG.get("RUG_TOKEN_DUMP_PCT", -50.0)
+        cutoff    = now - timedelta(hours=block_h)
+        keys: set = set()
+        # 1) followup tracker: dump pesante su qualsiasi pair del token
+        fpath = os.path.join(_BASE_DIR, "reports", "gems_followup_v3.csv")
+        if os.path.exists(fpath):
+            try:
+                with open(fpath, encoding="utf-8") as f:
+                    for row in csv.DictReader(f):
+                        try:
+                            if float(row.get("change_pct") or 0) > dump_pct:
+                                continue
+                            if datetime.fromisoformat(row["timestamp_snapshot"]) < cutoff:
+                                continue
+                        except Exception:
+                            continue
+                        s = (row.get("token_symbol") or "").strip().lower()
+                        if s:
+                            keys.add((s, (row.get("chain") or "").strip().lower()))
+            except Exception as e:
+                log.warning(f"[rug-block] Errore lettura followup: {e}")
+        # 2) exit rug-type del simulator (tutti i sistemi)
+        lpath = os.path.join(os.path.dirname(_BASE_DIR), "defi", "reports", "live_trades.csv")
+        if os.path.exists(lpath):
+            try:
+                with open(lpath, encoding="utf-8") as f:
+                    for row in csv.DictReader(f):
+                        if row.get("exit_reason", "") not in _RUG_EXIT_REASONS:
+                            continue
+                        try:
+                            if datetime.fromisoformat(row["ts"]) < cutoff:
+                                continue
+                        except Exception:
+                            continue
+                        s = (row.get("token_symbol") or "").strip().lower()
+                        if s:
+                            keys.add((s, (row.get("chain") or "").strip().lower()))
+            except Exception as e:
+                log.warning(f"[rug-block] Errore lettura live_trades: {e}")
+        _rug_block_cache["keys"] = keys
+        _rug_block_cache["ts"]   = now
+    return (sym, (chain or "").strip().lower()) in _rug_block_cache["keys"]
+
 # ==============================================================================
 # SEZIONE 4 – UTILITIES
 # ==============================================================================
@@ -867,9 +930,13 @@ class DuneDataFetcher:
             log.warning(f"[Dune] Query ID non configurato per {chain}.")
             return self._mock_tokens(chain) if BOT_CONFIG["USE_MOCK_FALLBACK"] else []
 
-        rows = self._get_latest_results(query_id, chain)
+        rows, stale_rows = self._get_latest_results(query_id, chain)
         if rows is None:
             rows = self._execute_and_wait(query_id, chain)
+            if rows is None and stale_rows:
+                # Re-esecuzione fallita (timeout/crediti): meglio dati vecchi che niente
+                log.warning(f"[Dune] Re-esecuzione fallita per {chain} — uso ultimi risultati cachati.")
+                rows = stale_rows
         if rows is None:
             log.warning(f"[Dune] Nessun risultato per {chain}.")
             if BOT_CONFIG["USE_MOCK_FALLBACK"]:
@@ -880,23 +947,53 @@ class DuneDataFetcher:
         log.info(f"[Dune] {len(rows)} token smart-money su {chain}.")
         return rows
 
-    def _get_latest_results(self, query_id: str, chain: str) -> Optional[list]:
+    # Oltre questa età i risultati cachati su Dune sono stale → re-execute.
+    # 1h perché i campi inflow_last_2h/buyers_last_2h perdono senso con dati più vecchi.
+    # Costo misurato: ~0.03 crediti/run → 48 run/gg × 2 chain ≈ 43 crediti/mese (piano free: 2500).
+    _MAX_RESULT_AGE_H = 1.0
+
+    def _get_latest_results(self, query_id: str, chain: str) -> tuple[Optional[list], Optional[list]]:
+        """Ritorna (rows_fresche, rows_stale).
+
+        GET /query/{id}/results restituisce l'ultima esecuzione CACHATA lato Dune:
+        senza un check sull'età, la query non viene mai ri-eseguita e i dati
+        restano congelati (visto: 9 giorni fermi al 01/06). Se execution_ended_at
+        è più vecchio di _MAX_RESULT_AGE_H ritorna (None, rows) per forzare
+        _execute_and_wait, tenendo le righe stale come fallback.
+        """
         url  = f"{DUNE_BASE}/query/{query_id}/results"
         resp = _safe_get(url, headers=self._headers, label="Dune/results")
         if resp is None:
-            return None
+            return None, None
         try:
-            rows = resp.json().get("result", {}).get("rows", [])
-            return self._normalize_rows(rows, chain) if rows else None
+            data = resp.json()
+            rows = data.get("result", {}).get("rows", [])
+            if not rows:
+                return None, None
+            normalized = self._normalize_rows(rows, chain)
+            ended = str(data.get("execution_ended_at", "") or "")
+            if ended:
+                try:
+                    ended_dt = datetime.fromisoformat(ended.replace("Z", "+00:00"))
+                    age = datetime.now(timezone.utc) - ended_dt
+                    if age > timedelta(hours=self._MAX_RESULT_AGE_H):
+                        log.info(f"[Dune] Risultati {chain} vecchi di {age.total_seconds()/3600:.1f}h "
+                                 f"(> {self._MAX_RESULT_AGE_H:.0f}h) → ri-eseguo la query.")
+                        return None, normalized
+                except Exception as e:
+                    log.warning(f"[Dune] Parse execution_ended_at '{ended}': {e}")
+            return normalized, normalized
         except Exception as e:
             log.warning(f"[Dune] Parse error: {e}")
-            return None
+            return None, None
 
     def _execute_and_wait(self, query_id: str, chain: str, max_wait: int = 60) -> Optional[list]:
         url = f"{DUNE_BASE}/query/{query_id}/execute"
         try:
+            # Nessun body: il piano free rifiuta qualsiasi {"performance": ...}
+            # con "Invalid performance tier" (il vecchio "large" falliva SEMPRE,
+            # per questo il ramo execute non ha mai funzionato). Costo: ~0.03 crediti/run.
             resp = requests.post(url, headers=self._headers,
-                                 json={"performance": "large"},
                                  timeout=BOT_CONFIG["REQUEST_TIMEOUT"])
             if resp.status_code != 200:
                 return None
@@ -2599,7 +2696,6 @@ class BinanceScanFetcher:
 
     _cache_ts:        Optional[datetime] = None
     _cache_data:      list = []
-    _unresolved_data: list = []   # token Binance senza pair DEX
     _CACHE_TTL = timedelta(minutes=10)
 
     # Token esclusi: solo stablecoin e mega-cap non segnalabili come "gem".
@@ -2624,7 +2720,6 @@ class BinanceScanFetcher:
                 datetime.now() - self._cache_ts < self._CACHE_TTL):
             return self._cache_data
 
-        self._unresolved_data = []   # reset ogni fetch fresco
         try:
             resp = requests.get(
                 f"{BINANCE_FUTURES_BASE}/fapi/v1/ticker/24hr",
@@ -2701,13 +2796,11 @@ class BinanceScanFetcher:
                 log.debug(f"[BinanceScan] DexScreener lookup failed for {tok}: {e}")
 
             if not real_address:
-                log.debug(f"[BinanceScan] {tok}: indirizzo non trovato su DexScreener — alert only")
-                self._unresolved_data.append({
-                    "token_symbol": tok,
-                    "binance_vol24": c["vol24"],
-                    "binance_chg1h": c["chg1h"],
-                    "binance_price": c["price"],
-                })
+                # Token solo-CEX: nessun pair DEX → non tradabile, skip silenzioso.
+                # L'alert email è stato RIMOSSO 11/06: backtest su 24 alert storici
+                # = edge negativo (long +24h: media -6.1%, positivi 4/16 — l'anomalia
+                # di volume fotografa la cima del pump).
+                log.debug(f"[BinanceScan] {tok}: indirizzo non trovato su DexScreener — skip")
                 continue
 
             # ── Segnali large-cap: OI, funding, LS ratio, vol trend ──────
@@ -2965,9 +3058,12 @@ class GemFilter:
         sells   = p.get("txns_1h_sells", 0)
         bsr_real = (buys + sells) > 0
 
-        # ── BSR globale — nessun acquirente (dump/fake pump) ──────────────
-        if bsr_real and bsr < 0.1:
-            return False, f"BSR {bsr:.2f} — nessun acquirente (dump/fake pump)"
+        # ── BSR globale — venditori dominanti (dump/fake pump) ────────────
+        # Soglia 0.1→0.5 (backtest 10/06 su 330 gemme con followup: bsr<0.5
+        # n=5 → 0 win, 5 loss con final mediano -86.6%, precisione blocco 100%.
+        # Caso scatenante: PXR GOLD 73 passato con bsr=0.1, venditori 10:1)
+        if bsr_real and bsr < 0.5:
+            return False, f"BSR {bsr:.2f} < 0.5 — venditori dominanti (dump/fake pump)"
 
         # ── Pump.fun / PumpSwap — filtra rug precoce ─────────────────────
         dex_id = p.get("dex_id", "").lower()
@@ -3186,6 +3282,8 @@ class GemFilter:
         pair_key = p.get("pair_address") or p.get("token_address", "")
         if _gem_blacklisted(pair_key):
             return False, f"{sym} in blacklist (dump massiccio)"
+        if _rug_token_blocked(sym, p.get("chain", "")):
+            return False, f"{sym} rug recente su altro pair/contratto (block 48h)"
         # CoinGecko Trending: bypass cooldown (validazione esterna = già filtrato dal mercato)
         _src = p.get("source", "")
         if _src != "coingecko_trending" and not _gem_cooldown_ok(pair_key):
@@ -3630,6 +3728,29 @@ def stampa_gemma(gem: dict) -> None:
                          chain=gem.get("chain", "solana")):
         return
 
+    # ── Check prezzo live ALLA RADICE ─────────────────────────────────────
+    # I dati del ciclo (Dune fino a 1h stale + enrichment a inizio ciclo)
+    # possono fotografare il token PRIMA del retrace: se il prezzo live è già
+    # crollato, il segnale viene soppresso qui — niente CSV, email né
+    # watchlist, la chiamata non arriva al simulator. (11/06: 17 trade
+    # via_gemmeV3 su Base entrati in retrace post-pump, WR 24%, -64€ in 14h.)
+    _sig_price = float(gem.get("price_usd", 0) or 0)
+    if _sig_price > 0 and gem.get("token_address"):
+        _live_pair = fetch_dexscreener_token(gem["token_address"],
+                                             gem.get("chain", "solana"))
+        try:
+            _live_px = float((_live_pair or {}).get("priceUsd", 0) or 0)
+        except (TypeError, ValueError):
+            _live_px = 0.0
+        if _live_px > 0:
+            _drift = (_live_px - _sig_price) / _sig_price
+            if _drift < -0.08:
+                log.info(f"[gem] {gem.get('token_symbol','?')} "
+                         f"[{gem.get('chain','?')}]: prezzo live {_drift*100:.1f}% "
+                         f"sotto il dato del ciclo → segnale SOPPRESSO (stantio)")
+                return
+            gem["price_usd"] = _live_px   # il segnale parte col prezzo reale
+
     sym   = gem.get("token_symbol", "?")
     chain = gem.get("chain", "?").upper()
     addr  = gem.get("token_address", "")
@@ -3911,10 +4032,21 @@ def send_gem_email(gem: dict) -> bool:
              f"Segnali: {' | '.join(sigs)}\n\n"
              f"DexScreener: {dex_url}\n\n"
              "⚠️ Solo a scopo educativo. NON è un consiglio finanziario.")
+    addr_short = (addr[:12] + "…") if addr and len(addr) > 12 else (addr or "no-addr")
+    subject = f"{tier_emoji} GEM {tier}: {sym} [{chain}] Score {score:.0f} | {addr_short}"
+    # Digest mode: accoda invece di inviare (riepiloghi 3/gg via email_digest;
+    # la call real-time arriva su Telegram PREMIUM dal publisher).
+    try:
+        import email_digest
+        email_digest.queue_email("v3", subject, html)
+        _mark_email_sent(sym, chain)
+        log.info(f"[email] 📥 {sym} ({tier}) accodata al digest")
+        return True
+    except ImportError:
+        pass   # standalone senza defi/ in sys.path: invio diretto
     try:
         msg           = MIMEMultipart("alternative")
-        addr_short = (addr[:12] + "…") if addr and len(addr) > 12 else (addr or "no-addr")
-        msg["Subject"] = f"{tier_emoji} GEM {tier}: {sym} [{chain}] Score {score:.0f} | {addr_short}"
+        msg["Subject"] = subject
         msg["From"]    = cfg["FROM_ADDR"] or cfg["SMTP_USER"]
         msg["To"]      = cfg["TO_ADDR"]
         msg.attach(MIMEText(plain, "plain", "utf-8"))
@@ -3932,97 +4064,10 @@ def send_gem_email(gem: dict) -> bool:
         log.error(f"[email] ❌ {e}")
     return False
 
-def send_binance_alert_email(tokens: list[dict]) -> bool:
-    """
-    Invia un'unica mail di alert per i token Binance Futures con volume/variazione
-    anomali ma senza pair DEX trovato su DexScreener.
-    """
-    cfg = EMAIL_CONFIG
-    if not cfg["ENABLED"] or not cfg["SMTP_USER"] or not cfg["SMTP_PASSWORD"]:
-        return False
-    if not tokens:
-        return False
-
-    now_s = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    rows_html = ""
-    rows_plain = ""
-    for t in tokens:
-        sym   = t.get("token_symbol", "?")
-        vol   = t.get("binance_vol24", 0)
-        chg   = t.get("binance_chg1h", 0)
-        price = t.get("binance_price", 0)
-        color = "#4ade80" if chg >= 0 else "#f87171"
-        arrow = "▲" if chg >= 0 else "▼"
-        rows_html += (
-            f"<tr>"
-            f"<td style='padding:8px 12px;color:#f1f5f9;font-weight:700'>{sym}</td>"
-            f"<td style='padding:8px 12px;color:#94a3b8;font-family:monospace'>${price:.6f}</td>"
-            f"<td style='padding:8px 12px;color:#94a3b8;font-family:monospace'>${vol:,.0f}</td>"
-            f"<td style='padding:8px 12px;color:{color};font-weight:700'>{arrow}{abs(chg):.1f}%</td>"
-            f"<td style='padding:8px 12px'>"
-            f"<a href='https://www.binance.com/en/futures/{sym}USDT' "
-            f"style='color:#7c3aed'>Binance</a></td>"
-            f"</tr>"
-        )
-        rows_plain += f"  {sym:12} | ${price:.6f} | Vol ${vol:,.0f} | {arrow}{abs(chg):.1f}%\n"
-
-    html = f"""<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>
-  body{{font-family:Arial,sans-serif;background:#020617;color:#e2e8f0;margin:0;padding:20px}}
-  .card{{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:24px;max-width:620px;margin:0 auto}}
-  .hdr{{background:#0f4c81;color:#fff;padding:16px;border-radius:8px 8px 0 0;margin:-24px -24px 20px}}
-  table{{width:100%;border-collapse:collapse}}
-  th{{background:#1e293b;color:#94a3b8;font-size:11px;text-transform:uppercase;
-      letter-spacing:.5px;padding:8px 12px;text-align:left}}
-  tr:nth-child(even){{background:#111827}}
-  .warn{{color:#fcd34d;background:#1c1a00;border:1px solid #6e5908;
-         border-radius:8px;padding:10px 14px;font-size:12px;margin-top:20px}}
-</style></head><body>
-<div class="card">
-  <div class="hdr">
-    <div style="font-size:20px;font-weight:800">📡 ALERT BINANCE FUTURES — No DEX Pair</div>
-    <div style="font-size:13px;color:rgba(255,255,255,0.8)">{now_s} | {len(tokens)} token</div>
-  </div>
-  <p style="color:#94a3b8;font-size:13px">
-    Questi token mostrano volume/variazione anomali su Binance Futures
-    ma non sono stati trovati su DexScreener. Potrebbero essere su exchange
-    centralizzato o token non ancora listati sui DEX principali.
-  </p>
-  <table>
-    <tr>
-      <th>Symbol</th><th>Prezzo</th><th>Vol 24h</th><th>Δ 1h</th><th>Link</th>
-    </tr>
-    {rows_html}
-  </table>
-  <div class="warn">⚠️ Nessun indirizzo on-chain disponibile. Solo a scopo informativo.</div>
-</div></body></html>"""
-
-    plain = (f"📡 ALERT BINANCE FUTURES — No DEX Pair\n{now_s}\n\n"
-             f"{'Symbol':<12} | {'Prezzo':<12} | Vol 24h       | Δ1h\n"
-             f"{'-'*60}\n"
-             f"{rows_plain}\n"
-             "Nessun indirizzo on-chain trovato su DexScreener.")
-
-    try:
-        msg            = MIMEMultipart("alternative")
-        syms           = ", ".join(t.get("token_symbol","?") for t in tokens[:4])
-        msg["Subject"] = f"📡 Binance Alert: {syms} — nessun pair DEX"
-        msg["From"]    = cfg["FROM_ADDR"] or cfg["SMTP_USER"]
-        msg["To"]      = cfg["TO_ADDR"]
-        msg.attach(MIMEText(plain, "plain", "utf-8"))
-        msg.attach(MIMEText(html,  "html",  "utf-8"))
-        with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=15) as srv:
-            srv.ehlo(); srv.starttls()
-            srv.login(cfg["SMTP_USER"], cfg["SMTP_PASSWORD"])
-            srv.sendmail(msg["From"], [cfg["TO_ADDR"]], msg.as_string())
-        log.info(f"[email] 📡 Alert Binance inviato per {len(tokens)} token senza DEX pair")
-        return True
-    except smtplib.SMTPAuthenticationError:
-        log.error("[email] ❌ Autenticazione SMTP fallita (binance alert).")
-    except Exception as e:
-        log.error(f"[email] ❌ {e}")
-    return False
+# send_binance_alert_email RIMOSSA 11/06 — backtest sui 24 alert storici
+# (email_sent.json, klines Binance 15m): long all'alert = edge NEGATIVO
+# (+1h media -1.1%, +24h media -6.1%, positivi 4/16). L'anomalia di volume
+# fotografa la cima del pump. Token senza pair DEX = non tradabili comunque.
 
 
 # ==============================================================================
@@ -4415,27 +4460,8 @@ def main_loop() -> None:
             else:
                 log.info(f"[loop] Ciclo #{ciclo}: nessuna gemma trovata.")
 
-            # ── Alert Binance (token senza DEX pair) ──────────────────────────
-            if ciclo % 2 == 0:
-                unresolved = bn_scan._unresolved_data
-                if unresolved:
-                    try:
-                        to_notify = [
-                            t for t in unresolved
-                            if not _was_email_sent_recently(
-                                t.get("token_symbol", ""), "BINANCE_FUTURES"
-                            )
-                        ]
-                        if to_notify:
-                            if send_binance_alert_email(to_notify):
-                                for t in to_notify:
-                                    _mark_email_sent(
-                                        t.get("token_symbol", ""), "BINANCE_FUTURES"
-                                    )
-                        else:
-                            log.debug("[email] Alert Binance: tutti i token già notificati nelle ultime 12h — skip")
-                    except Exception as e:
-                        log.warning(f"[email] Errore alert Binance: {e}")
+            # Alert Binance "no DEX pair" RIMOSSO 11/06: backtest 24 alert storici
+            # → edge negativo (vedi send_binance_alert_email rimossa, stessa data)
 
             # ── Monitor posizioni v3/v3_large aperte ─────────────────────────
             try:

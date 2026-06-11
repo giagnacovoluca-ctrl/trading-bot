@@ -245,6 +245,14 @@ def send_signal_email(riga: dict) -> bool:
         f"{sym} ({chain}) · P(pump)={prob:.0%}"
     )
 
+    try:
+        import email_digest
+        email_digest.queue_email("defi", subject, _build_email_html(riga))
+        log.info(f"[email] 📥 {sym} ({chain}) accodata al digest")
+        return True
+    except ImportError:
+        pass   # standalone: invio diretto
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = EMAIL_CONFIG["SMTP_USER"]

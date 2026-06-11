@@ -24,6 +24,7 @@ di perdite finanziarie derivanti dall'utilizzo di questo software.
 import os
 import csv
 import time
+import threading
 import logging
 import warnings
 import random
@@ -59,6 +60,11 @@ from sklearn.metrics import (
 from sklearn.utils.class_weight import compute_class_weight
 
 import joblib  # salvataggio/caricamento modello
+
+# Directory reports ancorata al modulo: i path relativi ("reports/...") dipendono
+# dalla CWD del processo (run.py gira con CWD esterna alla repo) e finivano in
+# /home/magic/Scrivania/code/reports — vedi bug cycle_stats.csv/blacklist 10/06
+_REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 
 try:
     from rugcheck import is_safe as rugcheck_safe
@@ -318,6 +324,44 @@ def _blacklist_token(token_address: str, symbol: str = "") -> None:
 # che il dump_risk_score puntuale non riesce a vedere (vedi memoria project_dumprisk_no_predictive_power).
 _BSR_HISTORY_MAXLEN = 12  # ~36 minuti a LOOP_INTERVAL_SEC=180s
 _token_bsr_history: dict = {}
+_BSR_HISTORY_FILE = Path("data/bsr_history.json")
+# Solo letture recenti hanno valore predittivo: scartiamo quelle >2h al caricamento
+_BSR_HISTORY_MAX_AGE_SEC = 7200
+
+def _save_bsr_history() -> None:
+    """Persiste _token_bsr_history su disco (JSON). Chiamata dopo ogni _update_bsr_history."""
+    try:
+        import json
+        _BSR_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            addr: list(buf)
+            for addr, buf in _token_bsr_history.items()
+            if buf
+        }
+        _BSR_HISTORY_FILE.write_text(json.dumps(payload))
+    except Exception as e:
+        log.debug(f"[bsr_history] save error: {e}")
+
+def _load_bsr_history() -> None:
+    """Carica _token_bsr_history dal file (se esiste). Chiamata all'avvio prima del loop."""
+    import json
+    if not _BSR_HISTORY_FILE.exists():
+        return
+    try:
+        now = time.time()
+        payload = json.loads(_BSR_HISTORY_FILE.read_text())
+        loaded = 0
+        for addr, entries in payload.items():
+            # Scarta letture troppo vecchie (>2h) — non hanno più valore predittivo
+            fresh = [(ts, bsr) for ts, bsr in entries if now - ts <= _BSR_HISTORY_MAX_AGE_SEC]
+            if fresh:
+                buf = deque(fresh, maxlen=_BSR_HISTORY_MAXLEN)
+                _token_bsr_history[addr] = buf
+                loaded += 1
+        log.info(f"[bsr_history] Caricati {loaded} token da {_BSR_HISTORY_FILE} "
+                 f"(scartati {len(payload)-loaded} per età >2h).")
+    except Exception as e:
+        log.warning(f"[bsr_history] Errore caricamento: {e}")
 
 def _update_bsr_history(df: pd.DataFrame) -> None:
     """Accumula una lettura BSR per ogni pair scansionato in questo ciclo (per il trend del prossimo)."""
@@ -334,6 +378,7 @@ def _update_bsr_history(df: pd.DataFrame) -> None:
             continue
         buf = _token_bsr_history.setdefault(addr, deque(maxlen=_BSR_HISTORY_MAXLEN))
         buf.append((now, bsr_f))
+    _save_bsr_history()
 
 def _bsr_trend(pair_address: str) -> tuple:
     """
@@ -358,7 +403,7 @@ def _check_followup_blacklist() -> None:
     Chiamata all'avvio e ogni N cicli.
     """
     drop_thresh = CONFIG.get("BLACKLIST_DROP_PCT", -70.0)
-    followup_path = "reports/price_followup.csv"
+    followup_path = str(_REPORTS_DIR / "price_followup.csv")
     if not __import__("os").path.exists(followup_path):
         return
     try:
@@ -1594,7 +1639,7 @@ def fetch_onchain_and_market_data(chain: str = "ethereum") -> pd.DataFrame:
     df = pd.DataFrame(righe)
 
     # ── Salvataggio debug su disco (sempre, indipendentemente dal contenuto del df) ──
-    out_dir = Path("debug")
+    out_dir = Path(__file__).resolve().parent / "debug"   # ancorato al modulo (no CWD)
     out_dir.mkdir(exist_ok=True)
 
     if debug_filter_records:
@@ -2825,11 +2870,12 @@ def predict_and_score(df: pd.DataFrame, modello, scaler) -> pd.DataFrame:
 # SEZIONE 9 – FILTRI DI SICUREZZA (pre-segnale)
 # ==============================================================================
 
-def apply_hard_filters(df: pd.DataFrame) -> pd.DataFrame:
+def apply_hard_filters(df: pd.DataFrame, quiet: bool = False) -> pd.DataFrame:
     """
     Applica filtri hard prima della generazione segnali.
     Scarta token che non superano i requisiti minimi di sicurezza.
     Questi filtri sono OBBLIGATORI indipendentemente dalla probabilità del modello.
+    quiet=True (tick fast-poll): riepilogo a DEBUG per non inflazionare i log.
     """
     if df.empty:
         return df
@@ -2943,7 +2989,11 @@ def apply_hard_filters(df: pd.DataFrame) -> pd.DataFrame:
             sym  = r.get("token_symbol", "?") or "?"
             addr = str(r.get("token_address", "") or "")[:8]
             log.debug(f"[filtri] ❌ SCARTATO {sym:>10s} ({addr}…) — {', '.join(motivi)}")
-        log.info(f"[filtri] {n_scartati}/{n_before} token scartati, {len(df_filtrato)} passano ai filtri ML.")
+        # "filtri ML" era una dicitura fossile: l'ML è disabilitato (modello sintetico),
+        # i token passano alle condizioni pre-pump rule-based
+        (log.debug if quiet else log.info)(
+            f"[filtri] {n_scartati}/{n_before} token scartati, "
+            f"{len(df_filtrato)} passano alle condizioni pre-pump.")
     else:
         log.info(f"[filtri] Tutti i {n_before} token superano i filtri di sicurezza.")
     return df_filtrato
@@ -2952,11 +3002,167 @@ def apply_hard_filters(df: pd.DataFrame) -> pd.DataFrame:
 # SEZIONE 10 – GENERAZIONE SEGNALI
 # ==============================================================================
 
+# ==============================================================================
+# FAST-POLL WATCHLIST (2-stage entry)
+# ==============================================================================
+# Stage 1: il ciclo lento (~6min) individua i "near-miss" — token che passano
+#   TUTTE le condizioni pre-pump tranne comp>=0.55, con comp in [0.45, 0.55).
+# Stage 2: un thread li ripolla ogni 30s (1 chiamata batch DexScreener per chain,
+#   max 30 pair/call) e riesegue l'INTERA pipeline (engineer + hard filters +
+#   condizioni via generate_signals): al 2° tick consecutivo che genera il
+#   segnale → emissione. Il doppio tick sostituisce la conferma implicita che
+#   prima dava la latenza dei 6 minuti (anti rumore attorno alla soglia).
+# Note:
+#   - vol_accel/PVD ecc. sono ratio di finestre API (m5 vs h1) → timebase-safe;
+#     _update_bsr_history NON viene chiamato dal fast-poll (bsr_trend resta
+#     calcolato sui soli cicli lenti).
+#   - Nessuna persistenza su disco: lo stage 1 ripopola la watchlist a ogni
+#     ciclo lento, dopo un restart si perde al più ~6 min di candidati.
+_FASTPOLL_INTERVAL_SEC  = 30
+_FASTPOLL_TTL_MIN       = 45     # un near-miss che non converge in 45min è morto
+_FASTPOLL_COMP_MIN      = 0.45   # sotto questa soglia il token è troppo lontano
+_FASTPOLL_MAX_WATCH     = 30     # = 1 chiamata batch DexScreener per chain
+_FASTPOLL_CONFIRM_TICKS = 2      # tick consecutivi sopra soglia per emettere
+
+_fastpoll_lock:  threading.Lock = threading.Lock()
+_fastpoll_watch: dict = {}   # pair_address → {"row": dict, "added": datetime, "streak": int}
+
+# Prezzo all'ultimo ciclo LENTO per pair (per condizione c10_notfall in generate_signals).
+# Aggiornato solo con collect_nearmiss=True: i tick fast-poll a 30s NON lo toccano,
+# altrimenti il confronto "vs ciclo precedente" degenererebbe a "vs 30s fa" (sempre ~0).
+_prev_cycle_px: dict = {}
+
+
+def _fastpoll_add_candidates(df_nearmiss: pd.DataFrame) -> None:
+    """Registra i near-miss del ciclo lento nella watchlist fast-poll."""
+    if df_nearmiss.empty:
+        return
+    now = datetime.now()
+    added = []
+    with _fastpoll_lock:
+        for _, riga in df_nearmiss.iterrows():
+            pair = str(riga.get("pair_address", "") or "")
+            if not pair or pair in _fastpoll_watch:
+                continue
+            if len(_fastpoll_watch) >= _FASTPOLL_MAX_WATCH:
+                # evict del più vecchio (FIFO): meglio perdere un candidato
+                # stantio che saltare uno fresco
+                oldest = min(_fastpoll_watch, key=lambda k: _fastpoll_watch[k]["added"])
+                _fastpoll_watch.pop(oldest, None)
+            row = {k: (v.item() if hasattr(v, "item") else v) for k, v in riga.items()}
+            _fastpoll_watch[pair] = {"row": row, "added": now, "streak": 0}
+            added.append(f"{row.get('token_symbol','?')}(comp={row.get('prepump_composite_score',0):.2f})")
+    if added:
+        log.info(f"[fastpoll] +{len(added)} near-miss in watchlist ({len(_fastpoll_watch)} totali): "
+                 + ", ".join(added))
+
+
+def _fastpoll_refresh_rows(entries: dict) -> list[dict]:
+    """Batch-fetch DexScreener e aggiorna i campi dinamici delle righe in watch.
+    Ritorna le righe aggiornate (quelle senza risposta API restano fuori dal tick)."""
+    by_chain: dict = {}
+    for pair, ent in entries.items():
+        by_chain.setdefault(ent["row"].get("chain", "solana"), []).append(pair)
+    refreshed = []
+    for chain, addrs in by_chain.items():
+        # _safe_get ritorna già il dict JSON deserializzato (non la Response)
+        data = _safe_get(f"{DEXSCREENER_BASE}/dex/pairs/{chain}/{','.join(addrs)}",
+                         label="fastpoll-pairs")
+        if not data:
+            continue
+        pairs = data.get("pairs") or []
+        for p in pairs:
+            pair_addr = p.get("pairAddress", "")
+            ent = entries.get(pair_addr)
+            if not ent:
+                continue
+            volume, change = p.get("volume", {}), p.get("priceChange", {})
+            txns = p.get("txns", {})
+            row = dict(ent["row"])
+            row.update({
+                "price_usd":      float(p.get("priceUsd", 0) or 0),
+                "fdv":            float(p.get("fdv", 0) or row.get("fdv", 0) or 0),
+                "change_5m_pct":  float(change.get("m5",  0) or 0),
+                "change_15m_pct": float(change.get("m15", 0) or 0),
+                "change_1h_pct":  float(change.get("h1",  0) or 0),
+                "change_24h_pct": float(change.get("h24", 0) or 0),
+                "volume_5m_usd":  float(volume.get("m5",  0) or 0),
+                "volume_1h_usd":  float(volume.get("h1",  0) or 0),
+                "volume_24h_usd": float(volume.get("h24", 0) or 0),
+                "liquidity_usd":  float((p.get("liquidity", {}) or {}).get("usd", 0) or 0),
+                "buys_5m":        int((txns.get("m5",  {}) or {}).get("buys",  0) or 0),
+                "sells_5m":       int((txns.get("m5",  {}) or {}).get("sells", 0) or 0),
+                "buys_1h":        int((txns.get("h1",  {}) or {}).get("buys",  0) or 0),
+                "sells_1h":       int((txns.get("h1",  {}) or {}).get("sells", 0) or 0),
+                "buys_24h":       int((txns.get("h24", {}) or {}).get("buys",  0) or 0),
+                "sells_24h":      int((txns.get("h24", {}) or {}).get("sells", 0) or 0),
+                "timestamp":      datetime.now().isoformat(),
+            })
+            refreshed.append(row)
+    return refreshed
+
+
+def fastpoll_loop(stop_event=None) -> None:
+    """Thread worker: ripolla la watchlist near-miss ogni 30s ed emette al cross confermato."""
+    log.info(f"[fastpoll] ▶ attivo — tick {_FASTPOLL_INTERVAL_SEC}s, conferma {_FASTPOLL_CONFIRM_TICKS} tick, "
+             f"TTL {_FASTPOLL_TTL_MIN}min, max {_FASTPOLL_MAX_WATCH} token")
+    while not (stop_event and stop_event.is_set()):
+        time.sleep(_FASTPOLL_INTERVAL_SEC)
+        try:
+            now = datetime.now()
+            with _fastpoll_lock:
+                # Scadenza TTL + token entrati in cooldown (già segnalati altrove)
+                for pair in list(_fastpoll_watch):
+                    ent = _fastpoll_watch[pair]
+                    age_min = (now - ent["added"]).total_seconds() / 60
+                    if age_min > _FASTPOLL_TTL_MIN or _is_token_cooldown(pair):
+                        _fastpoll_watch.pop(pair, None)
+                snapshot = {p: {"row": dict(e["row"]), "added": e["added"]}
+                            for p, e in _fastpoll_watch.items()}
+            if not snapshot:
+                continue
+
+            rows = _fastpoll_refresh_rows(snapshot)
+            if not rows:
+                continue
+            # Pipeline identica al ciclo lento (engineering, hard filters, condizioni).
+            # collect_nearmiss=False: il fast-poll non ri-alimenta sé stesso.
+            segnali = generate_signals(pd.DataFrame(rows), None, None,
+                                       collect_nearmiss=False, quiet=True)
+            passed = {s.get("pair_address", ""): s for s in segnali}
+
+            to_emit = []
+            with _fastpoll_lock:
+                for pair in list(_fastpoll_watch):
+                    if pair in passed:
+                        _fastpoll_watch[pair]["streak"] += 1
+                        sym = passed[pair].get("token_symbol", "?")
+                        if _fastpoll_watch[pair]["streak"] >= _FASTPOLL_CONFIRM_TICKS:
+                            to_emit.append(passed[pair])
+                            _fastpoll_watch.pop(pair, None)
+                        else:
+                            log.info(f"[fastpoll] {sym}: cross comp>=0.55 al tick "
+                                     f"{_fastpoll_watch[pair]['streak']}/{_FASTPOLL_CONFIRM_TICKS} — attendo conferma")
+                    elif pair in _fastpoll_watch and any(r.get("pair_address") == pair for r in rows):
+                        _fastpoll_watch[pair]["streak"] = 0   # sotto soglia → riparte la conferma
+
+            for sig in to_emit:
+                # Marker per backtest: distingue le entry fast-poll da quelle del ciclo lento
+                sig["top_features"] = (sig.get("top_features", "") + " | fastpoll=true").strip(" |")
+                log.info(f"[fastpoll] 🚀 {sig.get('token_symbol','?')}: cross confermato su "
+                         f"{_FASTPOLL_CONFIRM_TICKS} tick → segnale anticipato")
+                stampa_segnale(sig)
+        except Exception as e:
+            log.warning(f"[fastpoll] errore tick: {e}")
+
+
 def generate_signals(
     df: pd.DataFrame,
     modello,
     scaler,
     threshold: float = None,
+    collect_nearmiss: bool = True,
+    quiet: bool = False,
 ) -> list[dict]:
     """
     Genera segnali di entrata per i token che soddisfano TUTTE le condizioni:
@@ -2984,6 +3190,9 @@ def generate_signals(
     """
     if threshold is None:
         threshold = CONFIG["SIGNAL_THRESHOLD"]
+    # quiet=True (tick fast-poll ogni 30s): diagnostica a livello DEBUG per non
+    # triplicare il volume di log del ciclo lento
+    _log_info = log.debug if quiet else log.info
 
     if df.empty:
         log.warning("[segnali] DataFrame vuoto ricevuto.")
@@ -2993,9 +3202,9 @@ def generate_signals(
     df_eng = engineer_features(df)
 
     # ── Step 2: filtri hard di sicurezza (honeypot, tax, liq, vol, change, BSR) ──
-    df_filtrato = apply_hard_filters(df_eng)
+    df_filtrato = apply_hard_filters(df_eng, quiet=quiet)
     if df_filtrato.empty:
-        log.info("[segnali] Nessun token supera i filtri di sicurezza.")
+        _log_info("[segnali] Nessun token supera i filtri di sicurezza.")
         return []
 
     # ── Step 3: predizione del modello ──
@@ -3024,11 +3233,25 @@ def generate_signals(
     #          Aggrega: vol_accel, BSR, PVD, age score, holder quality, squeeze_momentum.
     #          Soglia alzata 0.38 → 0.42 → 0.55 (analisi 7g: score<0.55 = 12% WR, -30€).
     c9_comp  = df_scored.get("prepump_composite_score", pd.Series(0.0, index=df_scored.index)) >= 0.55
+    # c10_notfall: prezzo NON in caduta >3% rispetto al ciclo lento precedente.
+    #   Le metriche 1h sono lagging: il segnale spesso scatta nel retrace post-pump
+    #   (STEPHEN/KINS/YETZY: prezzo in calo da 2-3 cicli all'allineamento).
+    #   Backtest 10/06 su n=46 con storia: blocca 13, precisione 77%, pnl bloccato -35€,
+    #   sottoinsieme tenuto +17€→+52€. I token alla 1ª apparizione passano (nessuna storia).
+    _prev_px = df_scored["pair_address"].map(_prev_cycle_px) if "pair_address" in df_scored.columns else pd.Series(dtype=float)
+    c10_notfall = pd.Series(True, index=df_scored.index)
+    if len(_prev_px):
+        _has_prev = _prev_px.notna() & (_prev_px > 0)
+        c10_notfall = ~_has_prev | (df_scored["price_usd"] >= _prev_px * 0.97)
+    # c11_bsrshift: venditori non in surge ADESSO (bsr_5m vs bsr_1h).
+    #   PROVVISORIA: backtest n=8 (strumentata 08/06), 4 bloccate tutte loss (-44€),
+    #   0 win perse — ricontrollare quando n>=20.
+    c11_bsrshift = df_scored.get("bsr_recent_shift", pd.Series(0.0, index=df_scored.index)) >= -0.15
 
     # Log diagnostico: quanti token falliscono per ogni condizione
     # NOTA: c1_prob (pump_probability ML) RIMOSSO — modello addestrato su dati sintetici
     # era inversamente correlato (prob alta = più perdite). Gate ora puramente rule-based.
-    log.info(
+    _log_info(
         f"[segnali] Diagnosi condizioni su {len(df_scored)} token (ML disabilitato, solo rule-based): "
         f"accel≥0.7: {c2_accel.sum()} | "
         f"BSR≥1.0: {c3_bsr.sum()} | "
@@ -3036,14 +3259,36 @@ def generate_signals(
         f"PVD≥0.08: {c6_pvd.sum()} | "
         f"age≥15m: {c7_age.sum()} | "
         f"tax ok: {c8_tax.sum()} | "
-        f"comp≥0.55: {c9_comp.sum()}"
+        f"comp≥0.55: {c9_comp.sum()} | "
+        f"not-falling: {c10_notfall.sum()} | "
+        f"bsr_shift ok: {c11_bsrshift.sum()}"
     )
 
-    candidati = df_scored[c2_accel & c3_bsr & c4_max & c5_min & c6_pvd & c7_age & c8_tax & c9_comp].copy()
+    base_cond = c2_accel & c3_bsr & c4_max & c5_min & c6_pvd & c7_age & c8_tax & c10_notfall & c11_bsrshift
+    candidati = df_scored[base_cond & c9_comp].copy()
+
+    # Aggiorna lo storico prezzi per c10_notfall DOPO la valutazione (il confronto
+    # di questo ciclo usa solo il ciclo precedente). Solo cicli lenti.
+    if collect_nearmiss and "pair_address" in df_scored.columns:
+        for _pa, _px in zip(df_scored["pair_address"], df_scored["price_usd"]):
+            if _pa and _px and _px > 0:
+                _prev_cycle_px[str(_pa)] = float(_px)
+        if len(_prev_cycle_px) > 2000:   # bound memoria: tiene gli ultimi inseriti
+            for _k in list(_prev_cycle_px)[:-1500]:
+                _prev_cycle_px.pop(_k, None)
+
+    # Stage 1 fast-poll: near-miss = tutte le condizioni OK tranne comp>=0.55,
+    # con comp >= 0.45 → watchlist a 30s per catturare il cross senza aspettare
+    # il prossimo ciclo lento (vedi blocco FAST-POLL WATCHLIST sopra)
+    if collect_nearmiss:
+        _comp_series = df_scored.get("prepump_composite_score", pd.Series(0.0, index=df_scored.index))
+        nearmiss = df_scored[base_cond & ~c9_comp & (_comp_series >= _FASTPOLL_COMP_MIN)]
+        if not nearmiss.empty:
+            _fastpoll_add_candidates(nearmiss)
 
     if candidati.empty:
-        log.info("[segnali] Nessun token supera tutte le condizioni pre-pump "
-                 "(accel≥0.7, BSR≥1.0, PVD≥0.08, comp≥0.55, change in range).")
+        _log_info("[segnali] Nessun token supera tutte le condizioni pre-pump "
+                  "(accel≥0.7, BSR≥1.0, PVD≥0.08, comp≥0.55, change in range).")
         return []
 
     # ── Step 4: costruzione dei segnali ──
@@ -3334,6 +3579,13 @@ def invia_segnale_email(segnale: dict) -> bool:
 
     subject = f"🟢 [{chain}] Pre-Pump: {sym} | P={prob:.0%} | {ch1h_str}"
     try:
+        import email_digest
+        email_digest.queue_email("defi", subject, html_body)
+        log.info(f"[email] 📥 {sym} ({chain}) accodata al digest")
+        return True
+    except ImportError:
+        pass   # standalone: invio diretto
+    try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"]    = cfg["FROM_ADDR"] or cfg["SMTP_USER"]
@@ -3452,12 +3704,22 @@ def main():
     # Carica blacklist dinamica dai followup precedenti
     _check_followup_blacklist()
 
+    # Carica storico BSR persistito (sopravvive ai restart)
+    _load_bsr_history()
+
+    # Thread fast-poll: ripolla i near-miss ogni 30s (vedi FAST-POLL WATCHLIST)
+    threading.Thread(target=fastpoll_loop, name="defi_fastpoll", daemon=True).start()
+
     # ML rimosso: pump_probability non era usato nel filtro (modello su dati sintetici)
     model, scaler = None, None
 
     chains   = list(CHAINS.keys())
     interval = CONFIG.get("LOOP_INTERVAL_SEC", 180)
     _ciclo   = 0
+
+    # Stats log per diagnosticare il calo segnali (funnel API→filtri→segnali per ciclo)
+    _cycle_stats_file = _REPORTS_DIR / "cycle_stats.csv"
+    _cycle_stats_header = not _cycle_stats_file.exists()
 
     while True:
         _ciclo += 1
@@ -3474,8 +3736,18 @@ def main():
         for chain in chains:
             try:
                 df_raw = fetch_onchain_and_market_data(chain)
+
+                n_raw = len(df_raw) if not df_raw.empty else 0
                 if df_raw.empty:
                     log.warning(f"[main] Nessun pair trovato per {chain}.")
+                    # Scrivi comunque riga zero per vedere i buchi
+                    with _cycle_stats_file.open("a", newline="", encoding="utf-8") as fh:
+                        w = csv.DictWriter(fh, fieldnames=["ts","chain","n_raw","n_hard_pass","n_signals","bsr_med","vol_med","chg_med"])
+                        if _cycle_stats_header:
+                            w.writeheader(); _cycle_stats_header = False
+                        w.writerow({"ts": datetime.now().isoformat(), "chain": chain,
+                                    "n_raw": 0, "n_hard_pass": 0, "n_signals": 0,
+                                    "bsr_med": 0, "vol_med": 0, "chg_med": 0})
                     continue
 
                 signals = generate_signals(df_raw, model, scaler)
@@ -3485,6 +3757,30 @@ def main():
                 # Aggiorna lo storico BSR DOPO aver generato i segnali (il trend usato
                 # nei segnali di questo ciclo riflette solo i cicli precedenti — leading)
                 _update_bsr_history(df_raw)
+
+                # Calcola metriche di funnel per il cycle_stats log
+                bsr_med = float(df_raw["buy_sell_ratio_1h"].median()) if "buy_sell_ratio_1h" in df_raw.columns else 0
+                vol_med = float(df_raw["volume_1h_usd"].median())     if "volume_1h_usd" in df_raw.columns else 0
+                chg_med = float(df_raw["change_1h_pct"].median())     if "change_1h_pct" in df_raw.columns else 0
+
+                # n_hard_pass: applica i filtri hard allo stesso df per contare quanti passano
+                try:
+                    _df_eng = engineer_features(df_raw.copy())
+                    _df_pass = apply_hard_filters(_df_eng)
+                    n_hard_pass = len(_df_pass)
+                except Exception:
+                    n_hard_pass = -1
+
+                with _cycle_stats_file.open("a", newline="", encoding="utf-8") as fh:
+                    w = csv.DictWriter(fh, fieldnames=["ts","chain","n_raw","n_hard_pass","n_signals","bsr_med","vol_med","chg_med"])
+                    if _cycle_stats_header:
+                        w.writeheader(); _cycle_stats_header = False
+                    w.writerow({
+                        "ts": datetime.now().isoformat(), "chain": chain,
+                        "n_raw": n_raw, "n_hard_pass": n_hard_pass, "n_signals": len(signals),
+                        "bsr_med": round(bsr_med, 3), "vol_med": round(vol_med, 0), "chg_med": round(chg_med, 2),
+                    })
+                log.info(f"[stats] {chain}: raw={n_raw} → hard_pass={n_hard_pass} → segnali={len(signals)} | bsr_med={bsr_med:.2f} vol_med={vol_med:.0f} chg_med={chg_med:+.1f}%")
 
             except Exception as e:
                 import traceback

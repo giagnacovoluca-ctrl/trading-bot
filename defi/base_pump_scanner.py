@@ -330,6 +330,14 @@ def _send_base_pump_email(sig: dict, pair: dict) -> bool:
 </p>
 </body></html>"""
 
+        try:
+            import email_digest
+            email_digest.queue_email("base_pump", subject, body)
+            log.info(f"[base_pump] 📥 Segnale accodato al digest email: {sym}")
+            return True
+        except ImportError:
+            pass   # standalone: invio diretto
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"]    = cfg["FROM_ADDR"]
@@ -511,10 +519,9 @@ class BasePumpScanner:
             log.warning("[base_pump] web3 non installato → scanner disabilitato. "
                         "Esegui: pip install web3")
             return
-        w3 = _get_w3()
-        if not w3:
-            log.warning("[base_pump] RPC Base non raggiungibile → scanner disabilitato")
-            return
+        # NOTA: niente check RPC qui — se l'RPC è momentaneamente giù il
+        # poll loop riprova da solo invece di lasciare lo scanner spento
+        # fino al prossimo restart del processo.
         threading.Thread(
             target=self._poll_loop,
             daemon=True,
@@ -529,15 +536,24 @@ class BasePumpScanner:
     # ── Poll loop ─────────────────────────────────────────────────────────────
 
     def _poll_loop(self):
-        w3 = _get_w3()
-        if not w3:
-            log.error("[base_pump] Web3 non disponibile nel poll loop — abort")
-            return
-
-        try:
-            last_block = w3.eth.block_number - CONFIG["LOOKBACK_BLOCKS"]
-        except Exception as e:
-            log.error(f"[base_pump] Impossibile ottenere block_number: {e}")
+        # Startup resiliente: prima un `return` qui uccideva il thread per
+        # sempre se l'RPC era giù all'avvio → retry con backoff fino a 5 min.
+        w3 = None
+        last_block = None
+        retry_s = 15
+        while not self._stop.is_set():
+            try:
+                w3 = _get_w3()
+                if w3:
+                    last_block = w3.eth.block_number - CONFIG["LOOKBACK_BLOCKS"]
+                    break
+                log.warning(f"[base_pump] RPC Base non raggiungibile — retry tra {retry_s}s")
+            except Exception as e:
+                log.warning(f"[base_pump] Errore init block_number: {e} — retry tra {retry_s}s")
+            if self._stop.wait(retry_s):
+                return
+            retry_s = min(retry_s * 2, 300)
+        if last_block is None:
             return
 
         log.info(f"[base_pump] Poll loop avviato dal blocco {last_block}")

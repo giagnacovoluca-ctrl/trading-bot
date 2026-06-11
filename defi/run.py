@@ -86,19 +86,61 @@ parser.add_argument("--no-solana",    action="store_true", help="Salta solana_ex
 parser.add_argument("--no-base",      action="store_true", help="Salta base_executor")
 parser.add_argument("--no-pump",      action="store_true", help="Salta pump graduation scanner")
 parser.add_argument("--no-midcap",    action="store_true", help="Salta midcap scanner")
+parser.add_argument("--no-mirror",    action="store_true", help="Salta wallet mirror bot")
 args = parser.parse_args()
 
 # ── Helper: thread con auto-restart ──────────────────────────────────────────
 _stop_event = threading.Event()
 
+# Alert email (riusa le var SMTP di executor/.env). Throttle 6h per soggetto.
+_alert_last_sent: dict = {}
+_ALERT_THROTTLE_S = 6 * 3600
+
+
+def _send_alert(subject: str, body: str):
+    now = time.time()
+    if now - _alert_last_sent.get(subject, 0) < _ALERT_THROTTLE_S:
+        return
+    _alert_last_sent[subject] = now
+    log.error(f"[run] 🚨 ALERT: {subject} — {body}")
+    user = os.environ.get("SMTP_USER", "")
+    pwd  = os.environ.get("SMTP_PASSWORD", "")
+    if not user or not pwd:
+        return
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        msg = MIMEText(body)
+        msg["Subject"] = f"[run.py] {subject}"
+        msg["From"]    = os.environ.get("SMTP_FROM", user)
+        msg["To"]      = os.environ.get("SMTP_TO", user)
+        host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+        port = int(os.environ.get("SMTP_PORT", "587"))
+        with smtplib.SMTP(host, port, timeout=15) as server:
+            server.starttls()
+            server.login(user, pwd)
+            server.send_message(msg)
+    except Exception as e:
+        log.warning(f"[run] alert email fallita: {e}")
+
+
+_FAST_CRASH_S      = 600   # uptime < 10 min = crash "veloce"
+_CRASH_ALERT_AFTER = 5     # crash veloci consecutivi → alert
+_MAX_RESTART_DELAY = 600
+
 
 def _start_component(name: str, target_fn, restart_delay: int = 30):
     """
     Avvia `target_fn` in un thread daemon.
-    Se crasha, riprova dopo `restart_delay` secondi (finché _stop_event non è set).
+    Se crasha, riprova con backoff esponenziale (raddoppia su crash veloci,
+    cap 10 min, reset se il componente resta su >10 min). Dopo 5 crash veloci
+    consecutivi manda un alert email (prima il crash-loop era silenzioso).
     """
     def _wrapper():
+        delay = restart_delay
+        fast_crashes = 0
         while not _stop_event.is_set():
+            started = time.time()
             try:
                 log.info(f"[run] ▶ {name} avviato")
                 target_fn()
@@ -106,9 +148,21 @@ def _start_component(name: str, target_fn, restart_delay: int = 30):
                 break
             except Exception as e:
                 log.error(f"[run] ✗ {name} crashato: {e}", exc_info=False)
+            uptime = time.time() - started
+            if uptime >= _FAST_CRASH_S:
+                delay = restart_delay
+                fast_crashes = 0
+            else:
+                fast_crashes += 1
+                delay = min(delay * 2, _MAX_RESTART_DELAY)
+                if fast_crashes == _CRASH_ALERT_AFTER:
+                    _send_alert(f"{name} in crash-loop",
+                                f"{name}: {fast_crashes} crash consecutivi con uptime "
+                                f"< {_FAST_CRASH_S//60} min. Prossimo retry tra {delay}s. "
+                                f"Controlla defi/reports/run.log.")
             if not _stop_event.is_set():
-                log.info(f"[run] {name} riavvio tra {restart_delay}s...")
-                _stop_event.wait(restart_delay)
+                log.info(f"[run] {name} riavvio tra {delay}s...")
+                _stop_event.wait(delay)
         log.info(f"[run] ■ {name} fermato")
 
     t = threading.Thread(target=_wrapper, name=name, daemon=True)
@@ -210,6 +264,89 @@ if not args.no_executor and not args.no_base and "base" in _exec_chains:
         log.info("[run] ▶ Base executor avviato (oracle on-chain + swap)")
     except Exception as e:
         log.warning(f"[run] base_executor non avviato: {e}")
+
+# ── 8. wallet mirror bot ──────────────────────────────────────────────────────
+# Richiede executor/alpha_wallets.json (generato da wallet_alpha_finder.py).
+# Se manca, o se il piano Helius non supporta le subscription WS, il bot esce
+# con SystemExit → nessun restart-loop.
+if not args.no_mirror:
+    try:
+        import wallet_mirror_bot as _mirror_mod
+        if (_EXEC / "alpha_wallets.json").exists():
+            _start_component("wallet_mirror_bot",
+                             lambda: _mirror_mod.main(stop_event=_stop_event),
+                             restart_delay=60)
+            log.info("[run] ▶ Wallet mirror bot avviato (logsSubscribe su wallet alpha)")
+        else:
+            log.info("[run] wallet_mirror_bot non attivo: manca executor/alpha_wallets.json "
+                     "(esegui wallet_alpha_finder.py)")
+    except Exception as e:
+        log.warning(f"[run] wallet_mirror_bot non avviato: {e}")
+
+# ── 8b. refresh settimanale alpha_wallets.json ───────────────────────────────
+# Il finder era solo manuale → la watchlist alpha invecchiava indefinitamente.
+ALPHA_REFRESH_DAYS = 7
+
+def _alpha_refresh_loop():
+    alpha_file = _EXEC / "alpha_wallets.json"
+    while not _stop_event.wait(24 * 3600):
+        try:
+            age_d = (time.time() - alpha_file.stat().st_mtime) / 86400 if alpha_file.exists() else 999
+            if age_d < ALPHA_REFRESH_DAYS:
+                continue
+            log.info(f"[run] alpha_wallets.json ha {age_d:.0f}gg — rigenerazione...")
+            import wallet_alpha_finder as _waf
+            _waf.main(min_tokens=2, top=30)
+            log.info("[run] alpha_wallets.json rigenerato")
+        except Exception as e:
+            log.warning(f"[run] refresh alpha_wallets fallito: {e}")
+
+if not args.no_mirror:
+    threading.Thread(target=_alpha_refresh_loop, name="alpha_refresh", daemon=True).start()
+
+# ── 8-bis. digest email (riepiloghi 3/gg al posto delle mail per-segnale) ──────
+try:
+    import email_digest as _email_digest
+    threading.Thread(target=lambda: _email_digest.digest_loop(stop_event=_stop_event),
+                     name="email_digest", daemon=True).start()
+except Exception as _e:
+    log.warning(f"[run] email_digest non avviato: {_e}")
+
+# ── 9. watchdog thread critici ────────────────────────────────────────────────
+# I sotto-thread degli scanner (.start() diretto, fuori da _start_component)
+# non hanno auto-restart: se uno muore il sistema continuava zoppo in silenzio.
+# Restartarli a caldo duplicherebbe i thread superstiti → solo alert.
+_CRITICAL_THREADS: dict = {}   # thread_name → componente
+if not args.no_pump:
+    _CRITICAL_THREADS.update({
+        "pump_ws":     "pump_graduation_scanner",
+        "pump_val":    "pump_graduation_scanner",
+        "pregrd_ws":   "pre_grad_monitor",
+        "pregrd_sig":  "pre_grad_monitor",
+        "pregrd_poll": "pre_grad_monitor",
+        "base_pump":   "base_pump_scanner",
+    })
+
+def _thread_watchdog_loop():
+    if _stop_event.wait(120):   # grace: lascia partire tutto
+        return
+    # Monitora solo i thread realmente partiti (es. base_pump non parte
+    # se manca web3: non è un'anomalia da segnalare ogni 6h)
+    alive_at_start = {t.name for t in threading.enumerate()}
+    monitored = {n: c for n, c in _CRITICAL_THREADS.items() if n in alive_at_start}
+    log.info(f"[run] watchdog attivo su: {sorted(monitored)}")
+    while not _stop_event.is_set():
+        alive = {t.name for t in threading.enumerate()}
+        for tname, comp in monitored.items():
+            if tname not in alive:
+                _send_alert(f"thread {tname} morto",
+                            f"Il thread '{tname}' di {comp} non è più attivo. "
+                            f"Il componente continua a girare senza questa parte: "
+                            f"riavvia run.py per ripristinarlo.")
+        _stop_event.wait(300)
+
+if _CRITICAL_THREADS:
+    threading.Thread(target=_thread_watchdog_loop, name="thread_watchdog", daemon=True).start()
 
 # ── Ctrl+C ────────────────────────────────────────────────────────────────────
 _last_ctrl_c   = 0.0

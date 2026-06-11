@@ -400,6 +400,13 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
         score -= 8    # pump già esteso (30d>100%) + trend maturo: rischio mean-reversion
     elif chg7d_val > 80 and adx_val > 50:
         score -= 5    # variante: pump recente molto spinto + trend maturo
+    # Backtest Jun 2026 (n=28): token change_7d>150% perdono sistematicamente
+    # (BTW×3, VELVET×3, BEAT) indipendentemente da ADX. ADX>55 è ulteriore segnale
+    # di trend maturo/esausto (币安人生 adx=59 non catturato dai threshold sopra).
+    if chg7d_val > 150:
+        score -= 12   # pump settimanale estremo: mean-reversion molto probabile
+    if adx_val > 55:
+        score -= 5    # trend esausto (soglia 55 non 50: evita falsi positivi su adx 51-53)
 
     # Direzione
     if (ema_bull or price_lean > 0.6) and not breakout_dn:
@@ -498,8 +505,17 @@ def _send_email(signals: list[dict]) -> bool:
         </p></details>
         </body></html>
         """
+        subject = f"[MidCap] {len(signals)} segnali — top: {signals[0]['symbol']} ({signals[0]['score']}pt)"
+        try:
+            import email_digest
+            email_digest.queue_email("midcap", subject, html)
+            log.info(f"[email] 📥 {len(signals)} segnali midcap accodati al digest")
+            return True
+        except ImportError:
+            pass   # standalone: invio diretto
+
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"[MidCap] {len(signals)} segnali — top: {signals[0]['symbol']} ({signals[0]['score']}pt)"
+        msg["Subject"] = subject
         msg["From"]    = cfg["from"] or cfg["user"]
         msg["To"]      = cfg["to"]
         msg.attach(MIMEText(html, "html"))

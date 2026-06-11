@@ -81,6 +81,14 @@ def _send_pre_grad_email(sig: dict) -> bool:
 </p>
 </body></html>"""
 
+        try:
+            import email_digest
+            email_digest.queue_email("pre_grad", subject, body)
+            log.info(f"[pre_grad] 📥 Segnale accodato al digest email: {sym}")
+            return True
+        except ImportError:
+            pass   # standalone: invio diretto
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"]    = cfg["FROM_ADDR"]
@@ -110,6 +118,71 @@ PUMPPORTAL_WS  = (
 )
 DEXSCREENER    = "https://api.dexscreener.com"
 
+_pp_service_seen: set = set()
+
+# ── Lettura bonding curve on-chain (fonte vSol primaria dal 11/06) ────────────
+# PumpPortal ha reso subscribeTokenTrade a pagamento (key fondata ≥0.02 SOL) e
+# frontend-api.pump.fun è morta (404): senza questa lettura RPC il monitor non
+# vede mai crescere il vSol → eviction casuale → zero segnali.
+_SOLANA_RPC = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
+_PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+
+
+def _derive_bonding_curve(mint: str) -> str:
+    """PDA della bonding curve pump.fun per un mint (fallback se il create
+    event non aveva bondingCurveKey, es. watchlist ricaricata da disco)."""
+    try:
+        from solders.pubkey import Pubkey
+        pda, _bump = Pubkey.find_program_address(
+            [b"bonding-curve", bytes(Pubkey.from_string(mint))],
+            Pubkey.from_string(_PUMP_PROGRAM_ID),
+        )
+        return str(pda)
+    except Exception:
+        return ""
+
+
+def _decode_bonding_curve(data_b64: str):
+    """Decodifica lo stato della curve: (vSol, vTokens, complete) o None.
+    Layout anchor: 8B discriminator + 5×u64 (virtual_token, virtual_sol,
+    real_token, real_sol, total_supply) + bool complete.
+    vSol/vTokens danno anche il prezzo: price_sol = vSol / vTokens."""
+    import base64
+    import struct
+    try:
+        raw = base64.b64decode(data_b64)
+        if len(raw) < 49:
+            return None
+        vtok_raw, vsol_lamports = struct.unpack_from("<QQ", raw, 8)
+        complete = bool(raw[48])
+        return vsol_lamports / 1_000_000_000, vtok_raw / 1_000_000, complete
+    except Exception:
+        return None
+
+
+def _fetch_bonding_curves(curve_keys: list) -> dict:
+    """getMultipleAccounts batch (max 100/call) → {curve_key: (vSol, complete)}.
+    ~2 chiamate RPC ogni 30s per 150 token: trascurabile su Helius."""
+    out: dict = {}
+    for i in range(0, len(curve_keys), 100):
+        chunk = curve_keys[i:i + 100]
+        try:
+            r = requests.post(_SOLANA_RPC, timeout=10, json={
+                "jsonrpc": "2.0", "id": 1, "method": "getMultipleAccounts",
+                "params": [chunk, {"encoding": "base64"}],
+            })
+            accounts = (r.json().get("result") or {}).get("value") or []
+        except Exception as e:
+            log.warning(f"[pre_grad] RPC getMultipleAccounts: {e}")
+            continue
+        for key, acc in zip(chunk, accounts):
+            if not acc:
+                continue
+            decoded = _decode_bonding_curve((acc.get("data") or [""])[0])
+            if decoded:
+                out[key] = decoded
+    return out
+
 # ── Configurazione ────────────────────────────────────────────────────────────
 CFG = {
     # Filtra new token: solo se l'initial buy >= questa soglia (SOL)
@@ -120,7 +193,7 @@ CFG = {
     "TRACK_WARN_SOL":    55.0,
 
     # Soglia "prossimo alla graduation" → rugcheck preventivo
-    "TRACK_HOT_SOL":     60.0,  # era 72 — più margine prima di graduation (88 SOL)
+    "TRACK_HOT_SOL":     70.0,  # 11/06: a 60 troppi rug (5/8 hard_sl, 2 -78/-91%); 70 = vSol dell'unico TP1 (+40%, $SCUP)
 
     # Graduation avviene intorno a questa soglia (varia 79-85 SOL)
     "GRAD_SOL":          80.0,
@@ -137,7 +210,7 @@ CFG = {
     "JUPITER_MAX_RETRY": 10,     # 40s massimo
 
     # Filtri segnale (allineati al graduation scanner esistente)
-    "MIN_LIQ_USD":      12_000,
+    "MIN_LIQ_USD":       9_000,  # 11/06: 12k escludeva l'unico TP1 ($SCUP, liq=$9,270)
     "MIN_VOL_1H_USD":    1_500,
     "MAX_CHANGE_1H_PCT": 80.0,   # più stretto: già pompato troppo → skip
 }
@@ -319,18 +392,20 @@ def _get_sol_price_usd() -> float:
 
 
 def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min: float,
-                          dex_pair: Optional[dict] = None):
+                          dex_pair: Optional[dict] = None, v_tok: float = 0.0):
     """Scrive segnale pre-graduation su pre_grad_signals.csv.
 
     `dex_pair`: oggetto pair DexScreener già disponibile (path "scoperto da poll
     via pair su DEX") — usato come fonte prezzo/liq/pair_address al posto della
     pump.fun API (morta, sempre 404 → price_usd=0 → simulator scarta il segnale
     come non tracciabile, vedi caso BILLY 07/06).
+    `v_tok`: virtual_token_reserves dalla bonding curve → prezzo on-chain
+    (vSol/vTok × SOL/USD) quando il token non è ancora su DEX.
     """
     if not PRE_GRAD_ENABLED:
         return
     with _lock:
-        if mint in _pre_grad_signaled:
+        if mint in _pre_grad_signaled or mint in _seen_mints:
             return
         _pre_grad_signaled.add(mint)
 
@@ -342,9 +417,19 @@ def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min
         pair_address = str(dex_pair.get("pairAddress") or "")
     else:
         pf = _fetch_pumpfun_price(mint)
+        sol_usd = _get_sol_price_usd()
         price_usd = pf["price_usd"] if pf else 0.0
-        liq_usd   = pf["liq_usd"]   if pf else v_sol * _get_sol_price_usd() * 2
+        liq_usd   = pf["liq_usd"]   if pf else v_sol * sol_usd * 2
         mcap_usd  = pf["mcap_usd"]  if pf else 0.0
+        if price_usd <= 0 and v_tok > 0:
+            # prezzo dalla curve: senza, il simulator scarta il segnale (price=0)
+            price_usd = v_sol / v_tok * sol_usd
+            if mcap_usd <= 0:
+                mcap_usd = price_usd * 1_000_000_000   # supply pump.fun = 1B
+
+    if liq_usd < CFG["MIN_LIQ_USD"]:
+        log.info(f"[pre_grad] {symbol}: liq=${liq_usd:,.0f} < min (${CFG['MIN_LIQ_USD']:,}) → segnale soppresso")
+        return
 
     sid = f"PG_{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     row = {
@@ -451,9 +536,12 @@ def _signal_immediate(mint: str, symbol: str, v_sol: float):
     attende che Jupiter abbia la route (max JUPITER_MAX_RETRY * JUPITER_RETRY_SEC)
     poi valida con DexScreener e scrive il segnale.
     """
-    if mint in _seen_mints:
-        return
-    _seen_mints.add(mint)
+    with _lock:
+        # dedup incrociato col percorso poll (_emit_pre_grad_signal): stesso mint
+        # segnalato pre-graduation non va ri-segnalato alla graduation
+        if mint in _seen_mints or mint in _pre_grad_signaled:
+            return
+        _seen_mints.add(mint)
 
     log.info(f"[pre_grad] ⚡ {symbol} in watchlist ({v_sol:.1f} SOL) — "
              f"attendo Jupiter (max {CFG['JUPITER_MAX_RETRY']*CFG['JUPITER_RETRY_SEC']}s)")
@@ -626,6 +714,13 @@ class PreGradMonitor:
             return
 
         if "message" in msg and "mint" not in msg:
+            # Messaggi di servizio PumpPortal: loggali (una volta per testo) — qui
+            # passava inosservato il rifiuto di subscribeTokenTrade (richiede API
+            # key fondata con 0.02 SOL), lasciando il monitor cieco in silenzio.
+            svc = str(msg["message"])
+            if svc not in _pp_service_seen:
+                _pp_service_seen.add(svc)
+                log.info(f"[pre_grad] PumpPortal: {svc}")
             return
 
         mint   = msg.get("mint", "")
@@ -706,6 +801,11 @@ class PreGradMonitor:
                     "ts_hot":        None,
                     "rugcheck_ok":   None,
                     "v_sol_history": deque(maxlen=30),
+                    # per il poll RPC della bonding curve (subscribeTokenTrade è
+                    # a pagamento su PumpPortal: senza key fondata non arrivano trade).
+                    # Solo pool pump.fun: i launch "bonk" hanno layout curve diverso.
+                    "bonding_curve": (msg.get("bondingCurveKey", "")
+                                      if str(msg.get("pool", "pump")).lower() == "pump" else ""),
                 }
                 log.info(f"[pre_grad] 📥 {symbol} — initial={initial_buy:.3f}SOL vSol={_init_vsol:.1f} → watchlist ({len(_watchlist)})")
 
@@ -790,7 +890,7 @@ class PreGradMonitor:
             if (v_sol >= CFG["TRACK_HOT_SOL"]
                     and velocity_sol_min > 0
                     and mint not in _pre_grad_signaled
-                    and entry.get("rugcheck_ok") is not False):
+                    and entry.get("rugcheck_ok") is True):
                 _v = v_sol
                 _vel = velocity_sol_min
                 threading.Thread(
@@ -810,9 +910,11 @@ class PreGradMonitor:
 
     def _poll_vsol_loop(self):
         """
-        Fallback polling: subscribeTokenTrade spesso non consegna eventi vSol.
-        Ogni 30s interroga pump.fun API per i token in watchlist senza aggiornamenti recenti.
-        Se vSol >= HOT threshold → triggera segnale pre_grad.
+        Fonte vSol primaria: ogni 30s legge le bonding curve di TUTTA la
+        watchlist on-chain (getMultipleAccounts, ~2 call RPC). Sostituisce
+        frontend-api.pump.fun (morta, 404) e subscribeTokenTrade (a pagamento).
+        complete=True fresco di un token che stavamo seguendo vicino alla
+        graduation → segnale immediato (stesso flusso di _handle_graduation).
         """
         while not self._stop.is_set():
             self._stop.wait(30)
@@ -821,66 +923,45 @@ class PreGradMonitor:
 
             now_t = time.time()
             with _lock:
-                # Poll solo token senza aggiornamenti vSol negli ultimi 60s
-                to_poll = [
-                    (mint, entry["symbol"], entry.get("v_sol", 0))
-                    for mint, entry in _watchlist.items()
-                    if now_t - entry.get("last_trade_ts", 0) > 60
-                ]
+                to_poll = []
+                for mint, entry in _watchlist.items():
+                    curve = entry.get("bonding_curve") or ""
+                    if not curve:
+                        curve = _derive_bonding_curve(mint)
+                        entry["bonding_curve"] = curve   # cache (anche se vuota: non riprovare)
+                    if curve:
+                        to_poll.append((mint, entry["symbol"], entry.get("v_sol", 0), curve))
+
+            if not to_poll:
+                continue
+            curves = _fetch_bonding_curves([c for _, _, _, c in to_poll])
 
             polled = 0
-            for mint, symbol, old_vsol in to_poll[:25]:   # max 25/ciclo → ~750 req/ora
+            for mint, symbol, old_vsol, curve in to_poll:
                 if self._stop.is_set():
                     break
+                decoded = curves.get(curve)
+                if not decoded:
+                    continue
+                v_sol, v_tok, complete = decoded
                 try:
-                    # Prova pump.fun API, fallback DexScreener se 5xx
-                    d = None
-                    for api_url in [
-                        f"https://frontend-api.pump.fun/coins/{mint}",
-                        f"https://api.dexscreener.com/tokens/v1/solana/{mint}",
-                    ]:
-                        try:
-                            r = requests.get(api_url, timeout=5)
-                            if r.status_code == 200:
-                                raw_d = r.json()
-                                # DexScreener /tokens/v1 restituisce una lista di pair, non un dict
-                                d = {"pairs": raw_d} if isinstance(raw_d, list) else raw_d
-                                break
-                            log.debug(f"[pre_grad] poll {symbol}: {api_url.split('/')[2]} → {r.status_code}")
-                        except Exception as e:
-                            log.debug(f"[pre_grad] poll {symbol}: errore API {e}")
-                    if d is None:
-                        continue
-
-                    # Già graduato (pump.fun campo "complete") → rimuovi senza segnale.
-                    # Niente "segnale tardivo": a questo punto il token è già su DEX,
-                    # entrare ora significa comprare nel graduation dump (vedi pump_grad
-                    # MIN_AGE_MIN=4min). pump_graduation_scanner lo intercetta in autonomia
-                    # via il proprio evento WS con il filtro anti-dump già applicato.
-                    if d.get("complete", False):
+                    if complete:
                         with _lock:
                             entry_snap = _watchlist.pop(mint, None)
-                        if entry_snap:
-                            v_snap = entry_snap.get("v_sol", 0)
-                            log.info(f"[pre_grad] {symbol}: già graduato (vSol={v_snap:.1f}) → rimosso, demandato a pump_graduation_scanner")
+                            rug_ok = (entry_snap or {}).get("rugcheck_ok")
+                        if not entry_snap:
+                            continue
+                        v_snap = entry_snap.get("v_sol", 0)
+                        # Lo stavamo guardando salire (≥ WARN) e non è rug → il
+                        # ritardo è ≤30s: vale come graduation real-time.
+                        if v_snap >= CFG["TRACK_WARN_SOL"] and rug_ok is not False:
+                            log.info(f"[pre_grad] 🎓 {symbol} complete on-chain "
+                                     f"(vSol={v_snap:.1f}) → segnale IMMEDIATO")
+                            self._sig_queue.put((mint, symbol, v_snap))
+                        else:
+                            log.info(f"[pre_grad] {symbol}: già graduato (vSol={v_snap:.1f}) "
+                                     "→ rimosso, demandato a pump_graduation_scanner")
                         continue
-
-                    # pump.fun: virtual_sol_reserves in lamports
-                    # DexScreener: nested pairs → usa liquidità come proxy
-                    raw = float(d.get("virtual_sol_reserves", 0) or 0)
-                    if raw <= 0:
-                        # Fallback DexScreener: se esiste un pair con liq → già graduato su DEX.
-                        # Stesso discorso: niente segnale tardivo, demandato a pump_grad.
-                        pairs = d.get("pairs") or []
-                        if pairs:
-                            liq = float((pairs[0].get("liquidity") or {}).get("usd", 0) or 0)
-                            if liq >= CFG["MIN_LIQ_USD"]:
-                                with _lock:
-                                    entry_snap = _watchlist.pop(mint, None)
-                                if entry_snap:
-                                    log.info(f"[pre_grad] {symbol}: pair su DEX (liq=${liq:,.0f}) → già graduato, rimosso, demandato a pump_graduation_scanner")
-                        continue
-                    v_sol = raw / 1_000_000_000 if raw > 1_000 else raw
 
                     with _lock:
                         if mint not in _watchlist:
@@ -926,10 +1007,11 @@ class PreGradMonitor:
                         # Emetti segnale anche se velocity==0 ma vSol è cresciuto dall'ultimo poll
                         # (token che pompano velocemente hanno un solo punto di storia)
                         vel_use = velocity if velocity > 0 else max(0.05, v_sol - old_vsol)
-                        if not already and rug_ok is not False and (velocity > 0 or v_sol > old_vsol):
+                        if not already and rug_ok is True and (velocity > 0 or v_sol > old_vsol):
                             threading.Thread(
                                 target=_emit_pre_grad_signal,
                                 args=(mint, symbol, v_sol, vel_use),
+                                kwargs={"v_tok": v_tok},
                                 daemon=True,
                             ).start()
 
@@ -937,7 +1019,7 @@ class PreGradMonitor:
                     log.warning(f"[pre_grad] poll {symbol}: errore — {e}")
 
             if polled > 0:
-                log.debug(f"[pre_grad] poll loop: {polled}/{len(to_poll)} token aggiornati")
+                log.debug(f"[pre_grad] poll loop: {polled}/{len(to_poll)} bonding curve aggiornate")
 
     def _handle_graduation(self, mint: str, symbol: str, msg: dict):
         """Graduation event — se il token era in watchlist: segnale immediato."""

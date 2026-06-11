@@ -93,6 +93,14 @@ def _send_graduation_email(sig: dict, pair: dict) -> bool:
 </p>
 </body></html>"""
 
+        try:
+            import email_digest
+            email_digest.queue_email("pump_grad", subject, body)
+            log.info(f"[pump_grad] 📥 Segnale accodato al digest email: {sym}")
+            return True
+        except ImportError:
+            pass   # standalone: invio diretto
+
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"]    = cfg["FROM_ADDR"]

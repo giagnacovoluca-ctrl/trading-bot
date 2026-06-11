@@ -56,7 +56,9 @@ def is_safe(mint: str, scanner: str, chain: str = "solana") -> bool:
         if time.time() < expires:
             return safe
 
-    if scanner == "pump_grad":
+    if scanner in ("pump_grad", "pre_grad"):
+        # pre-graduation: niente LP da controllare (bonding curve), il rischio
+        # vero è la concentrazione holder (sniper/dev che dumpano alla graduation)
         return _check_pump_grad(mint)
     else:
         return _check_lp_lock(mint, scanner)
