@@ -59,13 +59,17 @@ SOLANA_RPC      = os.getenv("SOLANA_RPC", f"https://mainnet.helius-rpc.com/?api-
 
 ROOT            = Path(__file__).parent.parent
 PUMP_GRAD_CSV   = ROOT / "defi" / "reports" / "pump_grad_signals.csv"
+LIVE_TRADES_CSV = ROOT / "defi" / "reports" / "live_trades.csv"
 REAL_EXEC_CSV   = Path(__file__).parent / "real_executions.csv"
 OUTPUT_FILE     = Path(__file__).parent / "alpha_wallets.json"
 
 # Finestra early: wallet che comprano entro X minuti dal segnale = alpha
 EARLY_WINDOW_MIN   = 10
-# Quante tx del pool analizzare per trovare early buyer
-MAX_SIGS_PER_POOL  = 200
+# Paginazione getSignaturesForAddress: firme per pagina e max pagine.
+# Le firme arrivano newest-first: per pool ancora attivi la finestra early
+# è molto indietro nella history → si pagina con `before` fino a signal_ts.
+SIGS_PAGE_LIMIT    = 1000
+MAX_SIG_PAGES      = 15
 # Batch size per Helius parse API
 HELIUS_BATCH_SIZE  = 100
 # Quante tx totali analizzare per la history di ogni wallet
@@ -139,13 +143,73 @@ def _helius_wallet_history(wallet: str) -> list[dict]:
 # Phase 1 — carica token seed da CSV esistenti
 # ---------------------------------------------------------------------------
 
-def load_seed_tokens() -> list[dict]:
+def load_winning_signal_ids() -> Optional[set]:
     """
-    Carica i token noti da pump_grad_signals.csv.
-    Filtra solo quelli con dati sufficienti (pair_address + token_address).
+    Da live_trades.csv: signal_id con esito vincente.
+    Win = almeno una riga tp1/tp2, oppure exit con change_pct > 0.
+    Ritorna None se il CSV manca (→ nessun filtro applicabile).
     """
+    if not LIVE_TRADES_CSV.exists():
+        return None
+    wins: set = set()
+    try:
+        with open(LIVE_TRADES_CSV) as f:
+            for row in csv.DictReader(f):
+                sid    = (row.get("signal_id") or "").strip()
+                action = (row.get("action") or "").strip()
+                if not sid:
+                    continue
+                if action in ("tp1", "tp2"):
+                    wins.add(sid)
+                    continue
+                if action == "entry":
+                    continue
+                try:
+                    chg = float((row.get("change_pct") or "0").replace("+", ""))
+                except Exception:
+                    chg = 0.0
+                if chg > 0:
+                    wins.add(sid)
+    except Exception as e:
+        log.warning(f"live_trades.csv non leggibile ({e}) — filtro win disattivato")
+        return None
+    return wins
+
+
+def _mint_from_pair(pair_address: str) -> str:
+    """Risolve il mint (baseToken) di una pair Solana via DexScreener."""
+    try:
+        r = requests.get(
+            f"https://api.dexscreener.com/latest/dex/pairs/solana/{pair_address}",
+            timeout=8)
+        r.raise_for_status()
+        data  = r.json()
+        pairs = data.get("pairs") or ([data.get("pair")] if data.get("pair") else [])
+        if pairs:
+            return ((pairs[0].get("baseToken") or {}).get("address") or "").strip()
+    except Exception as e:
+        log.debug(f"mint da pair {pair_address[:8]}…: {e}")
+    return ""
+
+
+def load_seed_tokens(winners_only: bool = True) -> list[dict]:
+    """
+    Carica i token seed da:
+      1. pump_grad_signals.csv (ha già mint + pair, ma viene ruotato spesso)
+      2. live_trades.csv — righe entry pump_grad/mirror con pair_address;
+         il mint viene risolto via DexScreener (1 call/seed)
+    Se winners_only: tiene solo i token il cui trade ha avuto esito vincente
+    (live_trades.csv) — altrimenti un wallet prende score "alpha" anche
+    comprando early token poi ruggati.
+    """
+    win_ids = load_winning_signal_ids() if winners_only else None
+    if winners_only and win_ids is None:
+        log.warning("live_trades.csv assente — uso TUTTI i seed (anche loss)")
+
     tokens = []
-    seen = set()
+    seen_mints = set()
+    seen_pairs = set()
+    skipped_loss = 0
 
     if PUMP_GRAD_CSV.exists():
         with open(PUMP_GRAD_CSV) as f:
@@ -154,18 +218,60 @@ def load_seed_tokens() -> list[dict]:
                 pair  = row.get("pair_address", "").strip()
                 ts_str = row.get("timestamp_entry", "")
                 sym   = row.get("token_symbol", "?")
-                if not mint or not pair or mint in seen:
+                sid   = (row.get("signal_id") or "").strip()
+                if not mint or not pair or mint in seen_mints:
                     continue
                 if mint in STABLECOIN_MINTS:
+                    continue
+                if win_ids is not None and sid not in win_ids:
+                    skipped_loss += 1
                     continue
                 try:
                     ts = datetime.fromisoformat(ts_str).timestamp()
                 except Exception:
                     ts = 0.0
                 tokens.append({"mint": mint, "pair": pair, "ts": ts, "symbol": sym, "source": "pump_grad"})
-                seen.add(mint)
+                seen_mints.add(mint)
+                seen_pairs.add(pair)
 
-    log.info(f"Seed token caricati: {len(tokens)} (pump_grad={sum(1 for t in tokens if t['source']=='pump_grad')})")
+    # Seed aggiuntivi da live_trades.csv (storico più lungo del CSV segnali)
+    pending = []   # entry win senza mint, da risolvere via DexScreener
+    if LIVE_TRADES_CSV.exists():
+        with open(LIVE_TRADES_CSV) as f:
+            for row in csv.DictReader(f):
+                if (row.get("system") or "") not in ("pump_grad", "mirror"):
+                    continue
+                if (row.get("action") or "") != "entry":
+                    continue
+                if (row.get("chain") or "") != "solana":
+                    continue
+                pair = (row.get("pair_address") or "").strip()
+                sid  = (row.get("signal_id") or "").strip()
+                if not pair or pair in seen_pairs:
+                    continue
+                if win_ids is not None and sid not in win_ids:
+                    skipped_loss += 1
+                    continue
+                try:
+                    ts = datetime.fromisoformat((row.get("ts") or "")).timestamp()
+                except Exception:
+                    ts = 0.0
+                pending.append({"pair": pair, "ts": ts, "symbol": row.get("token_symbol", "?")})
+                seen_pairs.add(pair)
+
+    for p in pending:
+        mint = _mint_from_pair(p["pair"])
+        time.sleep(0.3)  # rate limit DexScreener
+        if not mint or mint in seen_mints or mint in STABLECOIN_MINTS:
+            continue
+        tokens.append({"mint": mint, "pair": p["pair"], "ts": p["ts"],
+                       "symbol": p["symbol"], "source": "live_trades"})
+        seen_mints.add(mint)
+
+    log.info(f"Seed token caricati: {len(tokens)} "
+             f"(pump_grad_csv={sum(1 for t in tokens if t['source']=='pump_grad')}, "
+             f"live_trades={sum(1 for t in tokens if t['source']=='live_trades')}, "
+             f"scartati {skipped_loss} non-win)")
     return tokens
 
 # ---------------------------------------------------------------------------
@@ -174,38 +280,82 @@ def load_seed_tokens() -> list[dict]:
 
 def get_pool_signatures(pair_address: str, signal_ts: float) -> list[str]:
     """
-    Recupera le firme delle prime transazioni del pool dopo il segnale.
-    Usa getSignaturesForAddress con filtro temporale approssimato.
-    """
-    result = _rpc("getSignaturesForAddress", [
-        pair_address,
-        {"limit": MAX_SIGS_PER_POOL, "commitment": "confirmed"}
-    ])
-    if not result:
-        return []
+    Recupera le firme delle transazioni del pool nella finestra early
+    [signal_ts, signal_ts + EARLY_WINDOW_MIN].
 
-    # Filtra: solo tx nelle prime EARLY_WINDOW_MIN minuti dopo il segnale
+    getSignaturesForAddress restituisce newest-first: per pool ancora attivi
+    la finestra early è indietro nella history → si pagina con `before`
+    finché non si raggiunge signal_ts (max MAX_SIG_PAGES pagine).
+    """
     cutoff = signal_ts + EARLY_WINDOW_MIN * 60
-    sigs = []
-    for item in result:
-        block_time = item.get("blockTime", 0) or 0
-        if block_time == 0:
-            sigs.append(item["signature"])  # timestamp assente → includi comunque
-            continue
-        if signal_ts <= block_time <= cutoff:
-            sigs.append(item["signature"])
-        elif block_time > cutoff:
-            continue  # tx troppo recente
-        # block_time < signal_ts → tx precedente al segnale, skip
+    sigs: list[str] = []
+    before: Optional[str] = None
+
+    for _page in range(MAX_SIG_PAGES):
+        params: dict = {"limit": SIGS_PAGE_LIMIT, "commitment": "confirmed"}
+        if before:
+            params["before"] = before
+        result = _rpc("getSignaturesForAddress", [pair_address, params])
+        if not result:
+            break
+
+        oldest_bt = None
+        for item in result:
+            block_time = item.get("blockTime", 0) or 0
+            if block_time:
+                oldest_bt = block_time
+            if block_time == 0:
+                continue  # senza timestamp non possiamo collocarla nella finestra
+            if signal_ts <= block_time <= cutoff:
+                sigs.append(item["signature"])
+
+        if len(result) < SIGS_PAGE_LIMIT:
+            break  # history esaurita
+        if oldest_bt is not None and oldest_bt < signal_ts:
+            break  # superata (all'indietro) la finestra early
+        before = result[-1]["signature"]
+        time.sleep(0.2)
 
     return sigs
+
+
+_SOL_PRICE_CACHE = {"price": 0.0, "ts": 0.0}
+
+
+def _sol_price() -> float:
+    """Prezzo SOL via DexScreener (cache 10 min) per valorizzare buy in SOL."""
+    now = time.time()
+    if now - _SOL_PRICE_CACHE["ts"] < 600 and _SOL_PRICE_CACHE["price"] > 0:
+        return _SOL_PRICE_CACHE["price"]
+    try:
+        r = requests.get(
+            "https://api.dexscreener.com/tokens/v1/solana/So11111111111111111111111111111111111111112",
+            timeout=8)
+        r.raise_for_status()
+        pairs = r.json()
+        pairs.sort(key=lambda p: float((p.get("liquidity") or {}).get("usd", 0) or 0), reverse=True)
+        price = float(pairs[0].get("priceUsd") or 0)
+        if price > 0:
+            _SOL_PRICE_CACHE.update(price=price, ts=now)
+            return price
+    except Exception:
+        pass
+    return _SOL_PRICE_CACHE["price"] or 150.0
 
 
 def extract_buyers_from_parsed(parsed_txns: list[dict], pool_address: str) -> list[dict]:
     """
     Da transazioni Helius parsed, estrae wallet che hanno fatto BUY sul pool.
-    Restituisce [{wallet, amount_usdc, block_time}]
+    Restituisce [{wallet, amount_usd, block_time}]
+
+    Valore speso = USDC out + wSOL out + SOL nativo out (× prezzo SOL).
+    La versione precedente contava solo USDC → perdeva i buy in SOL,
+    cioè la maggioranza sui memecoin Solana.
     """
+    wsol = "So11111111111111111111111111111111111111112"
+    usdc = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    sol_px = _sol_price()
+
     buyers = []
     for tx in parsed_txns:
         if not tx or tx.get("transactionError"):
@@ -217,31 +367,39 @@ def extract_buyers_from_parsed(parsed_txns: list[dict], pool_address: str) -> li
 
         block_time = tx.get("timestamp", 0)
         fee_payer  = tx.get("feePayer", "")
+        if not fee_payer:
+            continue
 
-        token_transfers = tx.get("tokenTransfers", [])
-        usdc_out = 0.0
+        usd_out  = 0.0
+        sol_out  = 0.0
         non_stable_in = False
 
-        for transfer in token_transfers:
+        for transfer in tx.get("tokenTransfers", []) or []:
             mint = transfer.get("mint", "")
             from_acc = transfer.get("fromUserAccount", "")
             to_acc   = transfer.get("toUserAccount", "")
             amount   = float(transfer.get("tokenAmount", 0) or 0)
 
-            # USDC uscente dal wallet = sta comprando qualcosa con USDC
-            if mint == "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v":
-                if from_acc == fee_payer:
-                    usdc_out += amount
-            # Token non-stablecoin in entrata nel wallet = ha ricevuto il token
-            elif mint not in STABLECOIN_MINTS:
-                if to_acc == fee_payer:
-                    non_stable_in = True
+            if from_acc == fee_payer:
+                if mint == usdc:
+                    usd_out += amount
+                elif mint == wsol:
+                    sol_out += amount
+            elif to_acc == fee_payer and mint and mint not in STABLECOIN_MINTS:
+                non_stable_in = True
 
-        # Valida: ha speso USDC e ricevuto un token → è un buy
-        if fee_payer and usdc_out > 0 and non_stable_in:
+        # SOL nativo in uscita (lamports) — i buy pump.fun/Raydium passano da qui
+        for nt in tx.get("nativeTransfers", []) or []:
+            if nt.get("fromUserAccount") == fee_payer:
+                sol_out += float(nt.get("amount", 0) or 0) / 1e9
+
+        if sol_out > 0.001:   # sopra le fee/rent tipiche
+            usd_out += sol_out * sol_px
+
+        if usd_out > 0 and non_stable_in:
             buyers.append({
                 "wallet":     fee_payer,
-                "amount_usd": usdc_out,
+                "amount_usd": usd_out,
                 "block_time": block_time,
             })
 
@@ -284,9 +442,19 @@ def aggregate_wallet_stats(token_buyers: dict[str, list[dict]]) -> dict[str, dic
     })
 
     for mint, buyers in token_buyers.items():
-        # Ordina per block_time per assegnare rank
-        buyers_sorted = sorted(buyers, key=lambda x: x["block_time"])
-        for rank, buyer in enumerate(buyers_sorted, start=1):
+        # Dedup per wallet: tieni il primo buy, somma le size dei successivi
+        # (prima ogni buy contava come "token early" separato → score gonfiato
+        # per i bot che spammano acquisti nella finestra)
+        first_buy: dict[str, dict] = {}
+        for b in sorted(buyers, key=lambda x: x["block_time"]):
+            w = b["wallet"]
+            if w in first_buy:
+                first_buy[w]["amount_usd"] += b["amount_usd"]
+            else:
+                first_buy[w] = dict(b)
+
+        ordered = sorted(first_buy.values(), key=lambda x: x["block_time"])
+        for rank, buyer in enumerate(ordered, start=1):
             w = buyer["wallet"]
             wallet_stats[w]["tokens_early"].append({
                 "mint":       mint,
@@ -369,13 +537,20 @@ def compute_score(stats: dict) -> float:
     rank_bonus = max(0, 6 - avg_rank)
     score += rank_bonus * 2
 
-    # Penalità inattività
+    # Penalità "non davvero early": rank medio >300 nella finestra di 10 min
+    # = partecipante generico/bot spray, non smart money selettiva
+    if avg_rank > 300:
+        score *= 0.5
+    elif avg_rank > 100:
+        score *= 0.8
+
+    # Penalità inattività (ramo >60 PRIMA di >30, altrimenti irraggiungibile)
     if days_ago < 7:
         score *= 1.2
-    elif days_ago > 30:
-        score *= 0.6
     elif days_ago > 60:
         score *= 0.3
+    elif days_ago > 30:
+        score *= 0.6
 
     return round(score, 2)
 
@@ -421,7 +596,7 @@ def build_report(ranked: list[dict]) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def main(min_tokens: int = 2, top: int = 50, enrich: bool = True):
+def main(min_tokens: int = 2, top: int = 50, enrich: bool = True, winners_only: bool = True):
     if not HELIUS_API_KEY:
         log.error("HELIUS_API_KEY mancante in .env — necessario per parsare le tx")
         log.error("Ottieni una chiave gratis su https://www.helius.dev (free: 1M req/mese)")
@@ -430,7 +605,7 @@ def main(min_tokens: int = 2, top: int = 50, enrich: bool = True):
     log.info("=== WALLET ALPHA FINDER ===")
 
     # 1. Carica token seed
-    tokens = load_seed_tokens()
+    tokens = load_seed_tokens(winners_only=winners_only)
     if not tokens:
         log.error("Nessun token seed trovato. Verifica i path dei CSV.")
         return
@@ -471,9 +646,13 @@ def main(min_tokens: int = 2, top: int = 50, enrich: bool = True):
     log.info(f"Wallet con >= {min_tokens} token early: {len(candidates)}")
 
     # 5. Enrich con history Helius (opzionale, costoso in req)
+    # Ordina per score preliminare PRIMA di arricchire: l'ordine di inserzione
+    # del dict era arbitrario → i top reali restavano senza history/recency
     if enrich and candidates:
-        log.info(f"Arricchimento history per {min(len(candidates), top*2)} wallet...")
-        for j, (w, stats) in enumerate(list(candidates.items())[:top * 2], 1):
+        prelim = sorted(candidates.items(),
+                        key=lambda kv: len(kv[1]["tokens_early"]), reverse=True)
+        log.info(f"Arricchimento history per {min(len(prelim), top*2)} wallet...")
+        for j, (w, stats) in enumerate(prelim[:top * 2], 1):
             log.info(f"  [{j}] Wallet {w[:8]}...")
             candidates[w] = enrich_with_history(w, stats)
             time.sleep(0.3)
@@ -502,10 +681,13 @@ if __name__ == "__main__":
                         help="Quanti wallet analizzare in depth (default: 50)")
     parser.add_argument("--no-enrich",  action="store_true",
                         help="Salta l'enrichment history (più veloce ma meno dati)")
+    parser.add_argument("--all-seeds",  action="store_true",
+                        help="Usa tutti i token seed, anche quelli con esito loss")
     args = parser.parse_args()
 
     main(
         min_tokens=args.min_tokens,
         top=args.top,
         enrich=not args.no_enrich,
+        winners_only=not args.all_seeds,
     )

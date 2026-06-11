@@ -537,17 +537,24 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         return False
 
     decimals   = _get_decimals(token_address)
-    eth_wei    = int(TRADE_SIZE_ETH * 10**18)
+    weth_usd   = _get_weth_usd()
+
+    # DRY_RUN: notional fisso $100 (allineato a CAPITAL_EUR del simulator) invece
+    # del size reale da .env — il dry serve a validare i segnali, non il capitale
+    trade_size_eth = TRADE_SIZE_ETH
+    if DRY_RUN and weth_usd > 0:
+        trade_size_eth = round(100.0 / weth_usd, 6)
+
+    eth_wei    = int(trade_size_eth * 10**18)
     slippage   = SLIPPAGE_BPS / 10_000
 
-    log.info(f"[BUY] {signal_id} | {token_symbol} | {TRADE_SIZE_ETH} ETH | slippage={SLIPPAGE_BPS}bps")
+    log.info(f"[BUY] {signal_id} | {token_symbol} | {trade_size_eth} ETH | slippage={SLIPPAGE_BPS}bps")
 
     # Stima token out per calcolo min_out (usa prezzo oracle se disponibile)
     price_usd   = quote_onchain(token_address)
-    weth_usd    = _get_weth_usd()
     tokens_est  = 0.0
     if price_usd and price_usd > 0:
-        tokens_est = (TRADE_SIZE_ETH * weth_usd) / price_usd
+        tokens_est = (trade_size_eth * weth_usd) / price_usd
 
     tx_hash = "DRY_RUN"
     status  = "dry_run"
@@ -567,7 +574,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
             log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                            "token_symbol": token_symbol, "action": "buy_failed",
                            "token_address": token_address, "tokens_amount": "0",
-                           "eth_amount": TRADE_SIZE_ETH, "tx_hash": "", "status": "error",
+                           "eth_amount": trade_size_eth, "tx_hash": "", "status": "error",
                            "note": "no_route"})
             return False
 
@@ -590,7 +597,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
             if eth_balance < weth_needed + GAS_RESERVE:
                 log.error(
                     f"[BUY] ETH+WETH insufficienti: ETH={eth_balance/1e18:.5f} "
-                    f"WETH={weth_balance/1e18:.5f} serve {TRADE_SIZE_ETH:.4f} ETH equiv. + gas"
+                    f"WETH={weth_balance/1e18:.5f} serve {trade_size_eth:.4f} ETH equiv. + gas"
                 )
                 return False
             try:
@@ -642,7 +649,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
             log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                            "token_symbol": token_symbol, "action": "buy_failed",
                            "token_address": token_address, "tokens_amount": "0",
-                           "eth_amount": TRADE_SIZE_ETH, "tx_hash": "", "status": "error",
+                           "eth_amount": trade_size_eth, "tx_hash": "", "status": "error",
                            "note": "no_route"})
             return False
 
@@ -658,10 +665,10 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         except Exception:
             pass
     else:
-        log.info(f"[DRY BUY] ~{tokens_est:.4f} {token_symbol} per {TRADE_SIZE_ETH} ETH")
+        log.info(f"[DRY BUY] ~{tokens_est:.4f} {token_symbol} per {trade_size_eth} ETH (notional $100)")
 
     _eth_usd  = _get_weth_usd()
-    _usd_spent = round(TRADE_SIZE_ETH * _eth_usd, 4)
+    _usd_spent = round(trade_size_eth * _eth_usd, 4)
     real_state[signal_id] = {
         "signal_id":      signal_id,
         "token_symbol":   token_symbol,
@@ -672,11 +679,11 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         "decimals":       decimals,
         "tokens_held":    tokens_est,
         "tokens_bought":  tokens_est,
-        "eth_spent":      TRADE_SIZE_ETH,
+        "eth_spent":      trade_size_eth,
         "eth_received":   0.0,
         "usdc_spent":     _usd_spent,     # USD equiv. per executor_report
         "usdc_received":  0.0,
-        "real_pnl_eth":   -TRADE_SIZE_ETH,
+        "real_pnl_eth":   -trade_size_eth,
         "real_pnl_usdc":  -_usd_spent,
         "status":         "open",
         "entry_ts":       datetime.now().isoformat(),
@@ -687,7 +694,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
     log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                    "token_symbol": token_symbol, "action": "buy",
                    "token_address": token_address, "tokens_amount": f"{tokens_est:.6f}",
-                   "eth_amount": TRADE_SIZE_ETH, "tx_hash": tx_hash,
+                   "eth_amount": trade_size_eth, "tx_hash": tx_hash,
                    "status": status, "note": f"system={system}"})
     return True
 
@@ -944,8 +951,10 @@ def process_row(row: dict, processed: set, real_state: dict, token_lookup: dict)
         if sid in real_state and real_state[sid].get("status") == "open":
             processed.add(key)
             return False
+        # In DRY_RUN nessun limite posizioni: deve replicare il simulator
+        # (capitale virtuale illimitato), il limite protegge solo il capitale reale
         open_pos = sum(1 for p in real_state.values() if p.get("status") == "open")
-        if open_pos >= MAX_POS:
+        if not DRY_RUN and open_pos >= MAX_POS:
             log.info(f"[BUY] Limite {MAX_POS} posizioni aperte raggiunto — skip {sid}")
             processed.add(key)
             return False

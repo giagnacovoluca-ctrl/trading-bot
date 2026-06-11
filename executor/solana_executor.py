@@ -685,17 +685,29 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
     riprova con slippage crescente (token neolistati o liquidità frammentata).
     """
     base_slippage = SLIPPAGE_BPS.get(system, 100)
+    dry = _is_dry_run(system)
+
+    # DRY: notional fisso $100 (allineato a CAPITAL_EUR del simulator) invece dei
+    # size reali da .env — il dry valida i segnali, non la gestione del capitale
+    _DRY_NOTIONAL_USD = 100.0
+    _size_usdc = TRADE_SIZE_USDC
+    _size_sol  = TRADE_SIZE_SOL_PRE_GRAD
+    if dry:
+        _size_usdc = _DRY_NOTIONAL_USD
+        _sol_px = _get_sol_price_usd()
+        if _sol_px and _sol_px > 0:
+            _size_sol = round(_DRY_NOTIONAL_USD / _sol_px, 6)
 
     # pre_grad: compra sulla bonding curve con SOL (non USDC)
     _is_pre_grad  = (system == "pre_grad")
     WSOL_MINT     = "So11111111111111111111111111111111111111112"
     if _is_pre_grad:
-        _sol_lamports = int(TRADE_SIZE_SOL_PRE_GRAD * 1e9)
+        _sol_lamports = int(_size_sol * 1e9)
         input_mint    = WSOL_MINT
         input_amount  = _sol_lamports
     else:
         input_mint   = USDC_MINT
-        input_amount = int(TRADE_SIZE_USDC * (10 ** USDC_DECIMALS))
+        input_amount = int(_size_usdc * (10 ** USDC_DECIMALS))
 
     usdc_lamports = input_amount  # variabile usata anche più avanti nei retry
     # Tentativi: (slippage_bps, delay_sec_prima_del_tentativo)
@@ -707,22 +719,21 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         (min(int(base_slippage * 2.5), SLIPPAGE_MAX_BPS), 15),
     ]
 
-    _size_label = (f"{TRADE_SIZE_SOL_PRE_GRAD} SOL" if _is_pre_grad
-                   else f"{TRADE_SIZE_USDC} USDC")
+    _size_label = (f"{_size_sol} SOL" if _is_pre_grad
+                   else f"{_size_usdc} USDC")
     log.info(f"[BUY] {signal_id} | {token_symbol} | {_size_label} | base_slippage={base_slippage}bps")
 
-    dry = _is_dry_run(system)
     if not dry:
         if _is_pre_grad:
             sol_bal = rpc_call("getBalance", [keypair_pubkey, {"commitment": "confirmed"}])
             sol_available = (sol_bal or 0) / 1e9
-            if sol_available < TRADE_SIZE_SOL_PRE_GRAD + 0.01:  # +0.01 SOL per fee
-                log.error(f"[BUY] Saldo SOL insufficiente: {sol_available:.4f} < {TRADE_SIZE_SOL_PRE_GRAD}")
+            if sol_available < _size_sol + 0.01:  # +0.01 SOL per fee
+                log.error(f"[BUY] Saldo SOL insufficiente: {sol_available:.4f} < {_size_sol}")
                 return False
         else:
             balance = get_usdc_balance(keypair_pubkey)
-            if balance < TRADE_SIZE_USDC:
-                log.error(f"[BUY] Saldo USDC insufficiente: {balance:.2f} < {TRADE_SIZE_USDC}")
+            if balance < _size_usdc:
+                log.error(f"[BUY] Saldo USDC insufficiente: {balance:.2f} < {_size_usdc}")
                 return False
 
     # RugCheck: blocca token con LP non bloccato (rug risk)
@@ -791,7 +802,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
     # 6-vs-9 decimali che gonfia/sgonfia tokens_out di 1000x
     decimals   = get_token_decimals(token_address)
     tokens_out = tokens_out_lamports / (10 ** decimals)
-    price_actual  = TRADE_SIZE_USDC / tokens_out if tokens_out > 0 else 0
+    price_actual  = _size_usdc / tokens_out if tokens_out > 0 else 0
 
     # Filtro prezzo stantio: segnale già dumpato prima dell'acquisto → skip.
     # La soglia è slippage_pct + 12% per escludere la differenza fisiologica
@@ -862,11 +873,11 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
             return False
 
         tokens_out = actual_balance  # usa saldo reale invece dello stimato dal quote
-        price_actual = TRADE_SIZE_USDC / tokens_out if tokens_out > 0 else price_actual
+        price_actual = _size_usdc / tokens_out if tokens_out > 0 else price_actual
         status = "confirmed"
         log.info(f"[BUY] ✅ TX confermata via {provider}: {tx_hash} | saldo reale={tokens_out:.4f} {token_symbol}")
     else:
-        log.info(f"[DRY BUY] {TRADE_SIZE_USDC} USDC → ~{tokens_out:.2f} {token_symbol} "
+        log.info(f"[DRY BUY] {_size_usdc} USDC → ~{tokens_out:.2f} {token_symbol} "
                  f"| price≈${price_actual:.8g} | impact={price_impact:.2f}%")
 
     # Salva stato
@@ -877,7 +888,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         "system":        system,
         "tokens_held":   tokens_out,
         "tokens_bought": tokens_out,
-        "usdc_spent":    TRADE_SIZE_USDC,
+        "usdc_spent":    _size_usdc,
         "usdc_received": 0.0,
         "status":        "open",
         "entry_ts":      datetime.now().isoformat(),
@@ -894,7 +905,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         "action":           "buy",
         "token_address":    token_address,
         "tokens_amount":    f"{tokens_out:.6f}",
-        "usdc_amount":      f"{TRADE_SIZE_USDC:.2f}",
+        "usdc_amount":      f"{_size_usdc:.2f}",
         "price_actual":     f"{price_actual:.8g}",
         "slippage_pct":     f"{used_slippage/100:.2f}",
         "price_impact_pct": f"{price_impact:.2f}",
@@ -1205,7 +1216,9 @@ def process_row(row: dict, processed: set, real_state: dict,
             and not _is_dry_run(p.get("system", ""))
             and p.get("sell_fail_count", 0) == 0
         )
-        if open_pos >= MAX_OPEN_POS:
+        # Il limite protegge solo il capitale reale: i segnali dry (sistema in
+        # DRY_RUN_SYSTEMS o DRY_RUN globale) passano sempre, come nel simulator
+        if open_pos >= MAX_OPEN_POS and not _is_dry_run(system):
             log.warning(f"[ENTRY] {sid}: max posizioni live raggiunto ({MAX_OPEN_POS}) → skip")
             processed.add(key)
             return False
