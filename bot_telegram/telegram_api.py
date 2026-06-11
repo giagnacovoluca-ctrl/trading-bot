@@ -6,6 +6,7 @@ Nessuna dipendenza extra oltre `requests` (già nel venv).
 from __future__ import annotations
 
 import logging
+import threading
 import time
 
 import requests
@@ -17,8 +18,25 @@ log = logging.getLogger("telegram_api")
 _BASE = "https://api.telegram.org/bot{token}/{method}"
 _SESSION = requests.Session()
 
+# Throttle client-side: Telegram limita ~20 msg/min per canale. Senza questo,
+# un burst di chiusure + i retry sui timeout generava tempeste di 429 da 10+
+# minuti (visto 11/06 12:09-12:21).
+_MIN_SEND_INTERVAL = 3.0
+_send_lock = threading.Lock()
+_last_send_per_chat: dict = {}
 
-def _call(method: str, params: dict, timeout: int = 30, retries: int = 3):
+
+def _throttle(chat_id: str):
+    with _send_lock:
+        last = _last_send_per_chat.get(chat_id, 0.0)
+        wait = _MIN_SEND_INTERVAL - (time.time() - last)
+        if wait > 0:
+            time.sleep(wait)
+        _last_send_per_chat[chat_id] = time.time()
+
+
+def _call(method: str, params: dict, timeout: int = 30, retries: int = 3,
+          retry_read_timeout: bool = True):
     if not config.BOT_TOKEN:
         log.warning("[tg] BOT_TOKEN mancante — chiamata %s ignorata", method)
         return None
@@ -34,8 +52,19 @@ def _call(method: str, params: dict, timeout: int = 30, retries: int = 3):
             data = r.json()
             if not data.get("ok"):
                 log.warning("[tg] %s fallito: %s", method, data.get("description"))
-                return None
+                time.sleep(2 * (attempt + 1))
+                continue
             return data["result"]
+        except requests.exceptions.ReadTimeout as e:
+            # La richiesta è arrivata a Telegram (è la risposta che si è persa):
+            # per sendMessage il retry produce un DUPLICATO sul canale e consuma
+            # budget rate-limit. Meglio un raro messaggio perso.
+            if not retry_read_timeout:
+                log.warning("[tg] read-timeout su %s — probabile consegna avvenuta, "
+                            "niente retry (anti-duplicato)", method)
+                return None
+            log.warning("[tg] errore %s (tentativo %d): %s", method, attempt + 1, e)
+            time.sleep(2 * (attempt + 1))
         except (requests.RequestException, ValueError) as e:
             log.warning("[tg] errore %s (tentativo %d): %s", method, attempt + 1, e)
             time.sleep(2 * (attempt + 1))
@@ -54,7 +83,8 @@ def send_message(chat_id: str, text: str, parse_mode: str = "HTML",
     }
     if reply_markup:
         params["reply_markup"] = reply_markup
-    return _call("sendMessage", params)
+    _throttle(str(chat_id))
+    return _call("sendMessage", params, retry_read_timeout=False)
 
 
 def get_updates(offset: int | None = None, timeout: int = 25):

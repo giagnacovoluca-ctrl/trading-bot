@@ -53,7 +53,11 @@ class _TradeClosureTracker:
             "prev_remaining": 1.0,
         })
 
-        state["pnl"] += pnl
+        # pnl_eur in live_trades.csv è CUMULATIVO per segnale (ogni riga di uscita
+        # porta il totale corrente): si tiene l'ultimo valore, NON si somma.
+        # Il += gonfiava le chiusure postate sul FREE (tp1 +12 → trail +18
+        # veniva pubblicato come +30).
+        state["pnl"] = pnl
 
         # Deriva capitale investito dalla prima uscita con pnl != 0
         if state["invested_eur"] is None and pnl and change_pct:
@@ -85,12 +89,64 @@ class _TradeClosureTracker:
 class Publisher:
     def __init__(self):
         self.tailers = [
-            CsvTailer(config.SIGNALS_DIR / fname, key=fname, skip_backlog=True)
-            for fname in config.SIGNAL_FILES
+            CsvTailer(path, key=path.name, skip_backlog=True)
+            for path, _system in config.SIGNAL_SOURCES
         ]
-        self.file_system = dict(config.SIGNAL_FILES)
+        self.file_system = {path.name: system for path, system in config.SIGNAL_SOURCES}
         self._trades_tailer = CsvTailer(config.TRADES_CSV, key="_live_trades", skip_backlog=True)
+        self._events_tailer = CsvTailer(config.WALLET_EVENTS_CSV, key="_wallet_events", skip_backlog=True)
         self._closure_tracker = _TradeClosureTracker()
+        # Anti-flood alert whale (10/06: confl>=2 da solo = 3610 alert/gg, sell
+        # micro ripetuti = 2202/gg → storm di 429 Telegram alle 07:13)
+        self._wallet_alert_last: dict = {}      # (mint, side) → epoch ultimo alert
+        self._wallet_alert_window: list = []    # epoch degli alert nell'ultima ora
+        self._wallet_alert_dropped = 0
+
+    # ── alert whale (wallet_events.csv) su PREMIUM ─────────────────────────────
+    def _publish_wallet_event(self, row: dict):
+        if not config.PREMIUM_CHANNEL_ID:
+            return
+        side  = (row.get("side") or "").lower()
+        usd   = _to_float(row.get("usd")) or 0.0
+        confl = _to_float(row.get("confluence")) or 1.0
+        wake  = _to_float(row.get("wake_days")) or 0.0
+        note  = row.get("note", "") or ""
+
+        # Criteri stretti (10/06): l'OR originale faceva passare ~5800 alert/gg
+        # (confl>=2 è quasi sempre vero col bot-spray; i sell sono micro-dump
+        # ripetuti dello stesso wallet a distanza di secondi) → 429 a raffica.
+        if side == "sell":
+            # sell su token segnalati di recente, ma solo di taglia significativa
+            if "sell_after_signal" not in note or usd < config.WHALE_ALERT_MIN_USD / 2:
+                return
+        elif side == "buy":
+            # buy: taglia minima SEMPRE; confluenza/risveglio da soli non bastano.
+            # Eccezione: buy molto grossi (4x soglia) passano comunque.
+            big = usd >= config.WHALE_ALERT_MIN_USD * 4
+            qualified = usd >= config.WHALE_ALERT_MIN_USD and (confl >= 2 or wake >= 1)
+            if not (big or qualified):
+                return
+        else:
+            return
+
+        # Dedup per (mint, side): max 1 alert ogni 30 min sullo stesso token
+        now = time.time()
+        key = (row.get("mint", ""), side)
+        if now - self._wallet_alert_last.get(key, 0) < 1800:
+            return
+        # Tetto globale: max 20 alert/h (limite Telegram canale ≈ 20 msg/min,
+        # ma qui il collo è l'utilità del canale, non l'API)
+        self._wallet_alert_window = [t for t in self._wallet_alert_window if now - t < 3600]
+        if len(self._wallet_alert_window) >= 20:
+            self._wallet_alert_dropped += 1
+            if self._wallet_alert_dropped % 50 == 1:
+                log.warning("[pub] tetto 20 alert whale/h raggiunto — %d scartati",
+                            self._wallet_alert_dropped)
+            return
+
+        self._wallet_alert_last[key] = now
+        self._wallet_alert_window.append(now)
+        tg.send_message(config.PREMIUM_CHANNEL_ID, formatter.format_wallet_event(row))
 
     # ── pubblicazione segnale full su PREMIUM ──────────────────────────────────
     def _publish_full(self, row: dict, system: str):
@@ -115,10 +171,18 @@ class Publisher:
                     for row in tailer.new_rows():
                         self._publish_full(row, system)
                 for row in self._trades_tailer.new_rows():
+                    # PREMIUM: ciclo di vita completo del trade (TP/trailing/SL
+                    # gestiti dal simulator) per i segnali già pubblicati
+                    action = (row.get("action") or "").strip()
+                    if action in formatter._EXIT_LABEL and config.PREMIUM_CHANNEL_ID:
+                        tg.send_message(config.PREMIUM_CHANNEL_ID,
+                                        formatter.format_exit_premium(row))
                     closure = self._closure_tracker.feed(row)
                     if closure and config.FREE_CHANNEL_ID:
                         tg.send_message(config.FREE_CHANNEL_ID,
                                         formatter.format_closure_free(closure))
+                for row in self._events_tailer.new_rows():
+                    self._publish_wallet_event(row)
             except Exception as e:  # daemon resiliente
                 log.exception("[pub] errore nel loop: %s", e)
             _sleep(config.POLL_INTERVAL_SEC, stop_event)

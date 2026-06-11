@@ -53,7 +53,23 @@ SIGNAL_FILES = {
     "pre_grad_signals.csv":   "pre_grad",
     "mirror_signals.csv":     "mirror",
     "midcap_signals.csv":     "midcap",
+    "base_pump_signals.csv":  "base_pump",
 }
+
+# Sorgenti fuori da SIGNALS_DIR (path assoluti). gems_log_v3.csv è il CSV che
+# gemmeV3/gem_tracker scrive per OGNI gemma segnalata: senza questo il canale
+# Premium riceveva solo il lifecycle TP/SL ma mai le call v3.
+GEMME_REPORTS_DIR = ROOT_DIR / "gemme" / "reports"
+SIGNAL_SOURCES = [
+    *((SIGNALS_DIR / fname, system) for fname, system in SIGNAL_FILES.items()),
+    (GEMME_REPORTS_DIR / "gems_log_v3.csv", "v3"),
+]
+
+# Eventi wallet alpha (wallet_events.csv dal wallet_mirror_bot) → alert whale
+# su PREMIUM. Pubblicati: buy ≥ WHALE_ALERT_MIN_USD, confluenza ≥2 wallet,
+# risveglio post-inattività, sell su token segnalato di recente.
+WALLET_EVENTS_CSV   = SIGNALS_DIR / "wallet_events.csv"
+WHALE_ALERT_MIN_USD = _envf("WHALE_ALERT_MIN_USD", 500.0)
 
 # ── Publisher ───────────────────────────────────────────────────────────────────
 FREE_DELAY_MIN        = _envf("FREE_DELAY_MIN", 15.0)

@@ -69,17 +69,22 @@ def compute() -> dict:
             if pnl is None:
                 continue
             sid = row.get("signal_id") or row.get("token_symbol") or "?"
-            pnl_by_signal[sid] += pnl
-            total_pnl += pnl
+            # pnl_eur è CUMULATIVO per segnale: l'esito è l'ULTIMA riga, non la
+            # somma (la somma double-contava le uscite parziali: +1236€ pubblicati
+            # vs +291€ reali al 10/06). Le righe sono in ordine cronologico.
+            pnl_by_signal[sid] = pnl
             sys_by_signal[sid] = row.get("system", "")
             sym_by_signal[sid] = row.get("token_symbol", sid)
             ts = _parse_ts(row.get("ts", ""))
             if ts:
                 last_ts_by_signal[sid] = max(last_ts_by_signal.get(sid, 0), ts)
-                if now - ts <= 86400:
-                    pnl_24h += pnl
 
-    closed = list(pnl_by_signal.items())
+    # Esclude i segnali mai tradati (pnl=0: purged_stale, skip, duplicati…):
+    # contarli come "loss" deprimeva il win-rate (30.4% vs 49.9% reale al 10/06)
+    closed = [(s, p) for s, p in pnl_by_signal.items() if p != 0.0]
+    total_pnl = sum(p for _, p in closed)
+    pnl_24h = sum(p for s, p in closed
+                  if now - last_ts_by_signal.get(s, 0) <= 86400)
     wins = [s for s, p in closed if p > 0]
     losses = [s for s, p in closed if p <= 0]
     n = len(closed)
@@ -130,6 +135,15 @@ def recap_text(stats: dict | None = None) -> str:
         f"Avg/trade: {s['avg_pnl_eur']:+.2f}€",
         f"🏆 Best: ${_e(s['best']['symbol'])} {s['best']['pnl_eur']:+.2f}€  ·  "
         f"Worst: ${_e(s['worst']['symbol'])} {s['worst']['pnl_eur']:+.2f}€",
+    ]
+    # Top strategie attive (per pnl, min 10 trade) — il dato che vende davvero
+    top = sorted(((k, v) for k, v in s.get("by_system", {}).items()
+                  if v.get("n", 0) >= 10 and v.get("pnl_eur", 0) > 0),
+                 key=lambda kv: kv[1]["pnl_eur"], reverse=True)[:3]
+    if top:
+        lines.append("🔥 Top strategies: " + " · ".join(
+            f"{_e(k)} <b>{v['pnl_eur']:+.0f}€</b> (WR {v['win_rate']:.0f}%)" for k, v in top))
+    lines += [
         "",
         "💎 Real-time signals: /plans",
         f"<i>Updated {s['updated_iso']}</i>",
