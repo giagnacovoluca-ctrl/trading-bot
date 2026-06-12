@@ -1,6 +1,7 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
-Aggiornato: 2026-06-10 (sessione mattina — riattivazione sistema wallet mirror)
+Aggiornato: 2026-06-12 (bot_telegram UI a pulsanti + funnel FREE→PREMIUM + X promo draft,
+fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, whale alert RPC fix)
 
 ---
 
@@ -67,6 +68,10 @@ Aggiornato: 2026-06-10 (sessione mattina — riattivazione sistema wallet mirror
                                0.80+0.05/wallet cap 0.95 + log 🔥), alert "smart money in uscita" se un
                                alpha vende un token segnalato di recente, risveglio post-inattività ≥30gg
                                (mirror_state.json persiste last_seen per wallet)
+                               FIX 12/06: _get_fee_payer() chiamava getTransaction senza commitment
+                               (default "finalized") → result=None per le firme appena notificate da
+                               logsSubscribe ("confirmed"), ogni evento scartato in silenzio → 0 alert
+                               whale dal 10/06. Aggiunto "commitment":"confirmed" alla request.
         mirror_state.json   ← stato mirror bot (wallet → last_seen_ts)
         alpha_wallets.json  ← GENERATO 10/06 (prima non esisteva: sistema mirror mai stato attivo)
         real_state.json     ← stato posizioni reali Solana
@@ -78,27 +83,55 @@ Aggiornato: 2026-06-10 (sessione mattina — riattivazione sistema wallet mirror
     bot_telegram/           ← Signal SaaS Telegram (read-only sui CSV, processo isolato — NUOVO 04/06)
         config.py           ← env (riusa executor/.env per RPC); mappa SIGNAL_FILES→sistema; routing canali
                                NUOVO: BOT_USERNAME, FREE_CHANNEL_USERNAME, PREMIUM_CHANNEL_USERNAME
+                               NUOVO 12/06: blocco "Promo X" — X_PROMO_ENABLED/MIN_PNL_EUR/MIN_PNL_PCT/
+                               MIN_INTERVAL_MIN/MAX_PER_DAY (nessuna credenziale: vedi x_poster.py)
         csv_tail.py         ← tail incrementale CSV, offset-byte persistente (anti-repost, skip backlog)
         formatter.py        ← messaggi HTML: format_full (Premium) / format_teaser (Free)
                                AGGIORNATO: format_teaser ora mostra entry price storico con label "⏱ Entry al segnale (15m fa)"
+                               NUOVO 12/06: format_teaser_live (teaser censurato ████ per canale FREE) +
+                               premium_keyboard() (bottone CTA Premium riusato da closure/teaser)
         telegram_api.py     ← Bot API via requests, retry 429
+                               NUOVO 12/06: edit_message_text (navigazione inline bot.py),
+                               send_photo (multipart, per x_poster.py)
         publisher.py        ← daemon: full su Premium/VIP, teaser FREE ritardato 15m
                                NUOVO 10/06: tail wallet_events.csv → alert whale su PREMIUM
                                (buy ≥ WHALE_ALERT_MIN_USD=500 | confluence ≥2 | risveglio;
                                sell solo se sell_after_signal). formatter.format_wallet_event()
+                               NUOVO 12/06: _maybe_publish_teaser() → teaser live censurato su FREE dopo
+                               ogni full Premium (rate limit FREE_TEASER_MIN_INTERVAL_MIN=45/
+                               FREE_TEASER_MAX_PER_DAY=6, filtro FREE_MIN_PROBABILITY); su chiusura vincente
+                               chiama x_poster.maybe_send_x_draft(closure); skip righe "shadow=true" (pre_grad shadow)
+        x_poster.py         ← NUOVO 12/06: per ogni chiusura vincente sopra soglia (X_PROMO_MIN_PNL_EUR/PCT,
+                               rate-limited via state/x_promo.json) genera card PNG (Pillow, dark theme
+                               1200x675) + testo pronto con $TICKER/hashtag/CTA canale FREE, e li manda
+                               all'admin (ADMIN_CHAT_ID) via send_photo per post manuale su X.
+                               (L'API X richiede piano Basic $200/mese per scrivere: niente auto-post.)
         bot.py              ← comandi /start /plans /subscribe /status /referral + admin /grant /stats /broadcast
+                               RISCRITTO 12/06: navigazione a pulsanti inline (menu/pay/stats/back) via
+                               edit_message_text; callback router menu:* , pay:premium:<chain> (crea invoice
+                               via payments.create_invoice, ritorna anche `ref`), chk:<ref> (bottone "I've
+                               paid" → payments.get_invoice(ref)); /subscribe legacy (sub:premium) ancora
+                               routato per compatibilità coi vecchi messaggi
         subscriptions.py    ← store abbonati (tier/scadenza/referral) in state/subscribers.json
         payments.py         ← verifica USDC on-chain (Base+Solana) via invoice a importo univoco; settle→grant
+                               NUOVO 12/06: get_invoice(ref) per il bottone "I've paid" di bot.py
         track_record.py     ← P&L da live_trades.csv → recap FREE + state/stats.json (landing)
                                AGGIORNATO: post_recap() chiama landing.generate() dopo ogni ciclo daily
+                               NUOVO 12/06: compute() produce anche stats["weekly"] (finestra 7gg:
+                               trades/wins/losses/WR/pnl/best/by_system); weekly_recap_text() +
+                               post_weekly_recap() agganciato a post_recap(), throttle ≥6.5gg via
+                               state/weekly_recap.json. Fix ticker "$$SYM" → lstrip("$"). Recap Telegram
+                               ridisegnato a colonne (best/worst rimossi dal testo, restano in stats.json)
         landing.py          ← NUOVO: genera landing/index.html statico con stats baked-in (dark theme, WR%/P&L/by_system/best_worst/CTA)
                                Se LANDING_PAGES_REPO_PATH impostato: auto-commit+push su repo GitHub Pages dopo ogni rigenerazione
         run_bot.py          ← orchestratore thread daemon + gating scadenze (--no-publisher/bot/payments/track)
         store.py            ← persistenza JSON atomica
         landing/            ← output HTML generato (gitignored nel repo principale, pushato su repo separato)
-        state/              ← offsets, subscribers, invoices, stats, ecc. (gitignored)
+        state/              ← offsets, subscribers, invoices, stats, x_promo.json, weekly_recap.json, ecc. (gitignored)
         .env / .env.example ← TELEGRAM_BOT_TOKEN, channel id, PAY_WALLET_*, prezzi tier
                                NUOVO: LANDING_PAGES_REPO_PATH, TELEGRAM_BOT_USERNAME, TELEGRAM_FREE/PREMIUM_CHANNEL_USERNAME
+                               ⚠️ PAY_WALLET_SOL/PAY_WALLET_EVM ancora VUOTI (12/06): servono wallet di
+                               incasso DEDICATI (non riusare wallet executor — match invoice solo per importo)
     trade/
         structural_bot.py          ← bot strutturale BTC (multi-timeframe EMA/RSI/ADX + S/R + bounce)
                                       NUOVO 09/06: lock file in run() — impedisce doppia istanza (fcntl LOCK_EX)
@@ -116,16 +149,28 @@ Aggiornato: 2026-06-10 (sessione mattina — riattivazione sistema wallet mirror
                                       uvicorn install_signal_handlers=lambda: None (no override SIGINT)
         config/settings.py         ← config Pydantic (INJ_ env prefix); claude_timeout=90s, rate_limit=20/h
                                       AGGIORNATO 09/06: paper_max_daily_drawdown_pct=0.15 (live rimane 0.05)
+                                      NUOVO 12/06: recheck_after_min=90, recheck_min_overlap=1 (recheck tesi
+                                      di trade, NO max-hold fisso — vedi paper_trading/engine.py)
         core/sentinel.py           ← scansiona 29 market ogni 60s, trigger composito (≥2 segnali Tier A/B o 1 Tier S)
+                                      NUOVO 12/06: MarketContext.last_signal_types (set dei "tipi" di segnale
+                                      attivi nel tick, es. CVD_DIV/ZSCORE) + Sentinel.get_signal_overlap(
+                                      market_id, original_signals) → quanti segnali originali sono ancora attivi
         core/decision_engine.py    ← chiama claude CLI (--bare --print --max-turns 1) per decisione finale JSON
                                       AGGIORNATO 09/06: --bare + stdin=DEVNULL + timeout 45→90s
         core/risk_engine.py        ← risk management (max DD, margin, position sizing)
                                       AGGIORNATO 09/06: check_kill_switch usa paper_max_daily_drawdown_pct se mode=PAPER/BACKTEST
                                       reset_kill_switch() disponibile, usata da /admin/reset-kill-switch
         core/executor.py           ← esecuzione ordini su Injective
+                                      NUOVO 12/06: close_trade(trade, exit_price, reason, funding_rate) —
+                                      wrapper pubblico su _close_trade, per chiusure manuali (recheck tesi)
         paper_trading/engine.py    ← paper trading engine (PAPER mode default)
                                       BUG FIX 09/06: max_open_positions mai enforced; fetch_positions() restituisce posizioni
                                       on-chain (vuote in PAPER) → ora usa self._executor.open_trades
+                                      NUOVO 12/06: _recheck_open_positions() in _monitoring_loop — dopo
+                                      recheck_after_min (90min) dall'apertura, se overlap tra segnali
+                                      originali e segnali attivi ora sul market < recheck_min_overlap (1),
+                                      chiude a mercato con reason="SIGNALS_GONE" (no max-hold fisso, si esce
+                                      solo se la tesi di trade non sussiste più)
         signals/                   ← orderbook.py, volume.py, derivatives.py, volatility.py, anomaly.py
         data/injective_client.py   ← client gRPC/REST Injective mainnet
         data/cache.py              ← buffer rolling (prezzi, funding, OI)
@@ -285,6 +330,14 @@ def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippar
 #   colonne: ts, chain, n_raw, n_hard_pass, n_signals, bsr_med, vol_med, chg_med
 #   n_raw=token API pre-filtro; n_raw OK+n_hard_pass basso → filtri troppo restrittivi
 #   n_raw basso → problema mercato/API
+# AGGIORNATO 12/06: soglie pre-pump PER-CHAIN (blocco condizioni ~3222) — Base
+#   emetteva 0 segnali in 600 cicli (soglie calibrate su Solana) nonostante
+#   pump-rate Base ≥+20%/60min = 1.48% vs Solana 1.28% (backtest debug_candidates).
+#   Base: accel 0.7→0.5, PVD 0.08→0.04, comp 0.55→0.45. Solana invariata.
+#   Nota: fast-poll near-miss su Base di fatto disabilitato (comp_min==_FASTPOLL_COMP_MIN=0.45).
+#   debug_candidates.csv esteso: volume_5m_usd, change_5m_pct, change_1h_pct, buys_5m, sells_5m
+#   (rotazione automatica). DA VALIDARE ~19/06: WR>50% su trade chain=base nativi
+#   (non via_gemmeV3) in live_trades.csv; se <50% ripristinare soglie Solana.
 ```
 
 ### `defi/rugcheck.py`
@@ -326,6 +379,25 @@ def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippar
 #   conta wallet alpha distinti che hanno comprato il mint nelle ultime 6h; all'entry di segnali
 #   solana non-mirror aggiunge "smart_money=N" al note + log 🐋. SOLO annotazione: nessun
 #   filtro/boost finché un backtest non valida l'edge
+# FIX 12/06 (pre_grad/pump_grad stuck-open): nel ramo `if not fetch:` di _process_position,
+#   `now` era usato PRIMA di essere definito → NameError ingoiato da `except Exception: pass`
+#   → exit_time_limit (20min pre_grad / 45min pump_grad senza prezzo) mai scattava. Fix:
+#   `now = datetime.now()` in testa al ramo + log dell'eccezione. Inoltre exit_max_age ("mai
+#   avuto prezzo, >3x max hold") era codice morto DOPO il fetch riuscito → spostato dentro
+#   il ramo `if not fetch:` (elif su last_fetch None). Aggiunto _nofetch_count + log.warning
+#   (1° fallimento e ogni 20) per capire perché il fetch bonding-curve fallisce solo live.
+#   Le 13 posizioni pre_grad stuck verranno purgate al restart (_load_state: età>2×0.33h).
+# FIX 12/06: oracle Base on-chain scartato se diverge >50% da prezzo DexScreener (~riga 2221)
+#   — quote_onchain agganciava pool sbagliato/vuoto → 3 chiusure -100% fantasma (PEAK×2, ECLYPSE)
+# FIX 12/06: _compute_daily_pnl sommava pnl_eur CUMULATIVO per riga → 24h gonfiato (+156 vs
+#   +64 reali, stessa bug class del track record 4x del 10/06). Fix: delta per segnale
+#   (ultima riga − ultima riga pre-finestra). Alimenta il circuit breaker (0/disattivato).
+# FIX 12/06 dashboard sim_report.html (JS, in closed_row/applyFilter):
+#   (a) filtro data tabella chiuse usava sigdate (apertura) invece di exitdate (chiusura) →
+#       aggiunto data-exitdate/data-exitts; ctbody loop usa r.dataset.exitdate||sigdate
+#   (b) bottone "Ultime 24h" usava preset calendario (date string, finestra 24-48h) invece di
+#       rolling 86400s vero → nuova setPreset24h()/_last24h, cutoff24h=Date.now()/1000-86400,
+#       confronto su data-exitts. Default DOMContentLoaded ora chiama setPreset24h().
 class LiveEngine:
     def _load_new_signals()    # filtri cooldown differenziati + prezzo re-entry + anti-dump
     def _process_position(sid, pos)
@@ -355,6 +427,9 @@ def main(stop_event)   # loop 5s su live_trades.csv, BASE_DRY_RUN=false
 # valore residuo $0.69 + 1 fantasma dry; backup real_state.json.bak_archive_rug)
 # RPC auto: Helius se HELIUS_API_KEY presente, altrimenti mainnet pubblico
 RPC_URL = HELIUS_RPC if HELIUS_API_KEY else "https://api.mainnet-beta.solana.com"
+# FIX 12/06: process_row (ramo entry) ora skippa righe con "shadow=true" in note —
+#   le entry pre_grad shadow (size=0 nel simulator) venivano comprate dry-run lo stesso
+#   (3 BUY il 12/06: ZEROHOUSE/MEMECOIN/KAI), nessun danno solo perché DRY_RUN=true.
 ```
 
 ### `defi/run.py`
@@ -483,6 +558,37 @@ base_real_state.json + base_executions.csv
 **Mirror flow**: Helius WS → wallet_mirror_bot → mirror_signals.csv → LiveEngine → solana_executor
 
 ---
+
+## 9-0. Note Importanti / Bug Fix Recenti (12/06/2026)
+
+- **bot_telegram riscritto a pulsanti**: bot.py ora naviga via callback inline (menu/pay/stats/back,
+  edit_message_text); i bottoni Pay creano invoice a importo univoco (gap fixato: il vecchio
+  /subscribe mostrava solo il wallet, payments.py non poteva mai fare auto-settle). ⚠️
+  PAY_WALLET_SOL/EVM ancora vuoti — servono wallet di incasso dedicati.
+- **Funnel FREE→PREMIUM**: teaser live censurato su FREE dopo ogni full Premium (rate-limited,
+  format_teaser_live) + recap settimanale "delta Premium" (track_record.weekly_recap_text,
+  throttle ≥6.5gg). Fix ticker "$$SYM"→lstrip("$"). Recap Telegram ridisegnato a colonne.
+- **Promo X**: x_poster.py genera card+testo (hashtag/$TICKER/CTA) per chiusure vincenti sopra
+  soglia e li manda all'admin via Telegram (post manuale) — l'API X richiede piano $200/mese
+  per scrivere, niente auto-post.
+- **pre_grad/pump_grad stuck-open FIXATO**: NameError `now` + exit_max_age morto impedivano
+  ogni exit_time_limit; 3 entry shadow comprate per errore dall'executor (fix skip shadow).
+- **Base pre-pump nativo sbloccato**: soglie per-chain rilassate (comp 0.45), da validare
+  WR>50% dopo il 19/06. Oracle Base: scarto se diverge >50% da DexScreener (fix -100% fantasma).
+- **Dashboard sim_report.html**: "Ultime 24h" ora è una vera finestra rolling 86400s su
+  exit timestamp (prima: calendar-date su entry date, disallineata dalla landing).
+  _compute_daily_pnl idem (delta per segnale, non somma cumulativi).
+- **INJ autopilot — recheck tesi di trade**: niente max-hold fisso; dopo recheck_after_min
+  (90min), se i segnali che hanno aperto il trade non sono più attivi sul market
+  (overlap < recheck_min_overlap), chiusura a mercato (SIGNALS_GONE).
+- **Whale alert silenziosi dal 10/06 FIXATI**: wallet_mirror_bot._get_fee_payer() ora usa
+  commitment="confirmed" (il default "finalized" ritornava sempre result=None per le firme
+  fresche da logsSubscribe).
+
+⚠️ **Restart necessari** (non ancora eseguiti a fine sessione 12/06, chiedere prima di farli):
+`run_bot.py` (bot.py, publisher teaser+x_poster, track_record weekly), `run.py` (trade_simulator
+fixes pre_grad/oracle/dashboard/daily_pnl, defi_optimized soglie Base, wallet_mirror_bot
+commitment fix, solana_executor shadow-skip), `injective_autopilot/main.py` (recheck tesi).
 
 ## 9. Note Importanti / Bug Fix Recenti (10/06/2026)
 

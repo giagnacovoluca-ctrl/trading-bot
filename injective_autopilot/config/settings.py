@@ -120,6 +120,11 @@ class Settings(BaseSettings):
     sentinel_trigger_cooldown_min: int = 2    # per-market cooldown (PAPER: avoid exact duplicates; LIVE: raise to 30+)
     orderbook_depth: int = 20                # levels to fetch
     lookback_candles: int = 200              # candles kept in memory
+    rpc_timeout_sec: float = 10.0            # max wait per Injective RPC call before treating it as failed
+
+    # ── Re-check tesi di trade (no max-hold fisso) ────────────────────
+    recheck_after_min: float = 90.0          # dopo N min, verifica se i segnali di apertura sono ancora attivi
+    recheck_min_overlap: int = 1             # se < N segnali originali sono ancora attivi → tesi invalidata, chiudi a mercato
 
     # ── Signal thresholds ─────────────────────────────────────────────
     obi_threshold: float = 0.60              # |OBI| > threshold → signal

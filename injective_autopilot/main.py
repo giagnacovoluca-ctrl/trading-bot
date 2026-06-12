@@ -121,6 +121,7 @@ async def run_paper_or_live(mode: str) -> None:
         private_key=cfg.private_key if mode == "LIVE" else "",
         subaccount_index=cfg.subaccount_index,
         fee_recipient=cfg.fee_recipient,
+        rpc_timeout_sec=cfg.rpc_timeout_sec,
     )
     await client.connect()
 

@@ -101,6 +101,7 @@ class Publisher:
         self._wallet_alert_last: dict = {}      # (mint, side) → epoch ultimo alert
         self._wallet_alert_window: list = []    # epoch degli alert nell'ultima ora
         self._wallet_alert_dropped = 0
+        self._teaser_times: list = []           # epoch teaser live FREE (ultime 24h)
 
     # ── alert whale (wallet_events.csv) su PREMIUM ─────────────────────────────
     def _publish_wallet_event(self, row: dict):
@@ -153,11 +154,36 @@ class Publisher:
         prob = _to_float(row.get("pump_probability"))
         if prob is not None and prob < config.PREMIUM_MIN_PROBABILITY:
             return
+        # pre_grad shadow (12/06): segnali a size=0 (rugcheck rilassato 25-55%),
+        # tracciati solo nel simulator per stimare l'edge — non vanno su Telegram.
+        if "shadow=true" in (row.get("top_features", "") or ""):
+            return
         chan = config.channel_for_system(system)
         if not chan:
             log.warning("[pub] nessun canale Premium configurato — segnale non inviato")
             return
         tg.send_message(chan, formatter.format_full(row, system))
+        self._maybe_publish_teaser(row, system)
+
+    # ── teaser live censurato su FREE ──────────────────────────────────────────
+    def _maybe_publish_teaser(self, row: dict, system: str):
+        """Dopo ogni full su Premium, valuta un teaser censurato sul FREE.
+        Rate limit: min FREE_TEASER_MIN_INTERVAL_MIN tra teaser e max
+        FREE_TEASER_MAX_PER_DAY/24h — il FREE deve incuriosire, non spammare."""
+        if not (config.FREE_TEASER_ENABLED and config.FREE_CHANNEL_ID):
+            return
+        prob = _to_float(row.get("pump_probability"))
+        if prob is not None and prob < config.FREE_MIN_PROBABILITY:
+            return
+        now = time.time()
+        self._teaser_times = [t for t in self._teaser_times if now - t < 86400]
+        if len(self._teaser_times) >= config.FREE_TEASER_MAX_PER_DAY:
+            return
+        if self._teaser_times and now - self._teaser_times[-1] < config.FREE_TEASER_MIN_INTERVAL_MIN * 60:
+            return
+        self._teaser_times.append(now)
+        tg.send_message(config.FREE_CHANNEL_ID, formatter.format_teaser_live(row, system),
+                        reply_markup=formatter.premium_keyboard())
 
     # ── loop principale ────────────────────────────────────────────────────────
     def run(self, stop_event=None):
@@ -171,6 +197,10 @@ class Publisher:
                     for row in tailer.new_rows():
                         self._publish_full(row, system)
                 for row in self._trades_tailer.new_rows():
+                    # pre_grad shadow: trade a size=0, mai pubblicati su Telegram
+                    # (entry shadow non è mai stata pubblicata, gli update non lo siano)
+                    if "shadow=true" in (row.get("note", "") or ""):
+                        continue
                     # PREMIUM: ciclo di vita completo del trade (TP/trailing/SL
                     # gestiti dal simulator) per i segnali già pubblicati
                     action = (row.get("action") or "").strip()
@@ -180,7 +210,14 @@ class Publisher:
                     closure = self._closure_tracker.feed(row)
                     if closure and config.FREE_CHANNEL_ID:
                         tg.send_message(config.FREE_CHANNEL_ID,
-                                        formatter.format_closure_free(closure))
+                                        formatter.format_closure_free(closure),
+                                        reply_markup=formatter.premium_keyboard())
+                    if closure:
+                        try:
+                            import x_poster
+                            x_poster.maybe_send_x_draft(closure)
+                        except Exception as e:
+                            log.warning("[pub] x_poster: %s", e)
                 for row in self._events_tailer.new_rows():
                     self._publish_wallet_event(row)
             except Exception as e:  # daemon resiliente

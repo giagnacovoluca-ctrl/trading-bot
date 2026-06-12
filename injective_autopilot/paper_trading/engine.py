@@ -181,6 +181,7 @@ class PaperTradingEngine:
                 self._deriv.update_funding(snap.funding_rate)
 
                 closed = await self._executor.monitor_positions(snap.funding_rate)
+                closed += await self._recheck_open_positions(snap.funding_rate)
                 for trade in closed:
                     self._risk.update_equity(self._risk.equity.current_equity + trade.pnl_usdt)
                     await self._repo.save_trade(trade)
@@ -212,6 +213,32 @@ class PaperTradingEngine:
                 log.warning("Monitoring loop error: %s", exc)
 
             await asyncio.sleep(30)
+
+    async def _recheck_open_positions(self, funding_rate: float = 0.0) -> list[TradeRecord]:
+        """Dopo recheck_after_min dall'apertura, verifica che i segnali che hanno
+        generato il trade siano ancora attivi sul market. Se la tesi è invalidata
+        (overlap < recheck_min_overlap) chiude a mercato senza aspettare SL/TP —
+        niente max-hold fisso, si esce solo se le condizioni non sussistono più."""
+        closed: list[TradeRecord] = []
+        now = time.time()
+        threshold = self._cfg.recheck_after_min * 60
+        for trade in self._executor.open_trades:
+            if now - trade.entry_ts < threshold:
+                continue
+            overlap = self._sentinel.get_signal_overlap(trade.market_id, trade.active_signals)
+            if overlap is None or overlap >= self._cfg.recheck_min_overlap:
+                continue
+            try:
+                snap = await self._client.fetch_orderbook(depth=1, market_id=trade.market_id)
+                exit_price = snap.mid
+            except Exception:
+                continue
+            if exit_price < 1e-10:
+                continue
+            log.info("[%s] tesi invalidata dopo %.0fmin (overlap=%d) → chiusura a mercato",
+                     trade.ticker, (now - trade.entry_ts) / 60, overlap)
+            closed.append(await self._executor.close_trade(trade, exit_price, "SIGNALS_GONE", funding_rate))
+        return closed
 
     @staticmethod
     def _record_to_dict(t: TradeRecord) -> dict:

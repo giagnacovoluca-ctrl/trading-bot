@@ -281,23 +281,32 @@ CONFIGS = {
 }
 
 def _compute_daily_pnl() -> float:
-    """Somma pnl_eur delle ultime 24h da live_trades.csv (cache 2 min)."""
+    """P&L reale delle ultime 24h da live_trades.csv (cache 2 min).
+    pnl_eur è CUMULATIVO per segnale: il 24h corretto è il delta tra l'ultima
+    riga del segnale e l'ultima riga PRIMA della finestra. Sommare le righe
+    double-conta le uscite parziali (+156€ mostrati vs +64€ reali al 12/06 —
+    stesso bug class del track record gonfiato 4x fixato il 10/06)."""
     now = time.time()
     if now - _daily_pnl_cache["ts"] < _DAILY_PNL_CACHE_TTL:
         return _daily_pnl_cache["val"]
-    total = 0.0
+    last: dict[str, float] = {}    # sid → pnl cumulativo ultima riga in finestra
+    base: dict[str, float] = {}    # sid → pnl cumulativo ultima riga pre-finestra
     try:
         with open(LIVE_LOG_CSV, "r", encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 try:
                     pnl = float((row.get("pnl_eur") or "0").replace("+", ""))
                     ts  = datetime.fromisoformat(row["ts"]).timestamp()
-                    if now - ts <= 86400:
-                        total += pnl
                 except (ValueError, KeyError):
                     continue
+                sid = row.get("signal_id") or row.get("token_symbol") or "?"
+                if now - ts > 86400:
+                    base[sid] = pnl
+                else:
+                    last[sid] = pnl
     except OSError:
         pass
+    total = sum(p - base.get(sid, 0.0) for sid, p in last.items())
     _daily_pnl_cache.update({"val": total, "ts": now})
     return total
 
@@ -1894,6 +1903,15 @@ class LiveEngine:
                     # restano riconoscibili nelle statistiche per sistema
                     if system == "v3" and effective_system == "defi":
                         entry_note += " | via_gemmeV3"
+
+                    # pre_grad shadow (12/06): segnali passati con rugcheck rilassato
+                    # (top_holder 25-55%) ma sotto soglia originale → size=0, il pnl
+                    # viene comunque tracciato per stimare il costo/beneficio futuro
+                    # di una soglia rugcheck più permissiva.
+                    is_shadow = "shadow=true" in str(row.get("top_features", ""))
+                    if is_shadow:
+                        entry_note += " | shadow=true"
+                        sig_capital = 0.0
                     if effective_system != "mirror" and chain == "solana":
                         sm_n = _smart_money_count(token_address)
                         if sm_n > 0:
@@ -1940,6 +1958,8 @@ class LiveEngine:
                             "current_bsr": 1.0, "last_update": None,
                             "capital": sig_capital,
                             "prev_liq": entry_liq,
+                            "shadow": is_shadow,
+                            "shadow_pnl_eur": 0.0,
                         }
             except Exception as e:
                 log.warning(f"[live/{system}] {e}")
@@ -2096,6 +2116,16 @@ class LiveEngine:
                 if fetch:
                     log.debug(f"[live] {sid}: prezzo da CoinGecko fallback ({fetch[0]:.6g})")
         if not fetch:
+            # `now` qui non è ancora definito (viene assegnato dopo il fetch):
+            # senza questa riga il blocco sotto moriva di NameError silenzioso
+            # (except: pass) e i pre_grad senza prezzo restavano aperti per sempre.
+            now = datetime.now()
+            # Contatore fetch falliti: rende visibile in run.log il motivo per cui
+            # una posizione non si aggiorna (prima era log.debug invisibile).
+            pos["_nofetch_count"] = pos.get("_nofetch_count", 0) + 1
+            if pos["_nofetch_count"] == 1 or pos["_nofetch_count"] % 20 == 0:
+                log.warning(f"[live] {sid} ({pos.get('token_symbol','?')}): nessun prezzo "
+                            f"({pos['_nofetch_count']} fetch falliti consecutivi)")
             # pre_grad / pump_grad senza prezzo: controlla il time_limit
             # (pool morta o bonding curve non risponde → exit_time_limit non scatterebbe mai)
             _time_limits = {"pump_grad": 45.0, "pre_grad": 20.0}
@@ -2119,8 +2149,33 @@ class LiveEngine:
                         })
                         pos["last_update"] = now
                         log.info(f"[live] {sid}: exit_time_limit (no price, {_age_min:.0f}min)")
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning(f"[live] {sid}: errore exit_time_limit: {e}")
+            # Max hold zombie per gli altri sistemi: posizione che non ha MAI
+            # avuto un prezzo oltre 3x il max hold → chiusura. (Il check originale
+            # stava dopo il fetch riuscito, dove last_fetch è sempre valorizzato:
+            # codice morto, spostato qui dove serve.)
+            elif pos.get("last_fetch") is None:
+                try:
+                    _pos_age_h = (now - datetime.fromisoformat(pos["entry_ts"])).total_seconds() / 3600
+                    _max_hold_h = MAX_SIGNAL_AGE_H.get(pos.get("system", ""), MAX_SIGNAL_AGE_H_DEFAULT) * 3
+                    if _pos_age_h > _max_hold_h:
+                        pos["remaining"] = 0.0
+                        pos["exit_reason"] = "exit_max_age"
+                        _log_trade({
+                            "ts": now.isoformat(), "signal_id": sid,
+                            "system": pos["system"], "token_symbol": pos["token_symbol"],
+                            "chain": pos["chain"], "pair_address": pos.get("pair_address", ""),
+                            "action": "exit_max_age", "price": f"{pos.get('entry_price', 0):.8g}",
+                            "change_pct": "+0.00", "vol_h1": "0", "bsr": "0",
+                            "remaining": "0.00", "pnl_eur": f"{pos.get('pnl_eur', 0.0):+.2f}",
+                            "exit_reason": "exit_max_age",
+                            "note": f"nessun prezzo da {_pos_age_h:.1f}h > {_max_hold_h:.0f}h max",
+                        })
+                        pos["last_update"] = now
+                        log.info(f"[live] {sid}: exit_max_age (mai avuto prezzo, {_pos_age_h:.1f}h)")
+                except Exception as e:
+                    log.warning(f"[live] {sid}: errore exit_max_age: {e}")
             return
         cur_price, cur_vol, cur_bsr, cur_liq = fetch[0], fetch[1], fetch[2], fetch[3]
         if cur_price <= 0:
@@ -2209,9 +2264,17 @@ class LiveEngine:
                 from base_executor import quote_onchain as _base_quote
                 _oc_price = _base_quote(pos["token_address"])
                 if _oc_price and _oc_price > 0:
-                    if cur_price > 0:
-                        log.debug(f"[live] {sid}: prezzo on-chain {_oc_price:.8g} (Dex: {cur_price:.8g}, diff={(_oc_price/cur_price-1)*100:+.1f}%)")
-                    cur_price = _oc_price
+                    # Sanity check: se l'oracle diverge >50% da DexScreener, è
+                    # quasi certamente un pool sbagliato/vuoto (es. V3 garbage
+                    # vs V2 reale) → caso PEAK/ECLYPSE 12/06, -100% fantasma.
+                    if cur_price > 0 and abs(_oc_price / cur_price - 1) > 0.5:
+                        log.warning(f"[live] {sid}: prezzo on-chain {_oc_price:.8g} "
+                                    f"diverge troppo da Dex {cur_price:.8g} "
+                                    f"→ scartato, uso DexScreener")
+                    else:
+                        if cur_price > 0:
+                            log.debug(f"[live] {sid}: prezzo on-chain {_oc_price:.8g} (Dex: {cur_price:.8g}, diff={(_oc_price/cur_price-1)*100:+.1f}%)")
+                        cur_price = _oc_price
             except Exception as _e_oc:
                 log.warning(f"[live] {sid}: oracle Base errore ({_e_oc})")
 
@@ -2271,36 +2334,30 @@ class LiveEngine:
 
         def _exit(action, note, chg_val=None, exit_r="open"):
             nonlocal remaining, pnl
-            pnl_new = _capital * remaining * max(min(chg if chg_val is None else chg_val, MAX_CAP), -100) / 100
+            _chg = chg if chg_val is None else chg_val
+            _factor = max(min(_chg, MAX_CAP), -100) / 100
+            pnl_new = _capital * remaining * _factor
             pnl    += pnl_new
+            if pos.get("shadow"):
+                shadow_pnl = pos.get("shadow_pnl_eur", 0.0) + CAPITAL_EUR * remaining * _factor
+                pos["shadow_pnl_eur"] = shadow_pnl
+                note = f"{note} | shadow_pnl={shadow_pnl:+.2f}€ (size reale=0)"
             remaining = 0.0
             pos["remaining"] = 0.0; pos["pnl_eur"] = pnl; pos["exit_reason"] = exit_r
             _log_trade({
                 "ts": now.isoformat(), "signal_id": sid, "system": pos["system"],
                 "token_symbol": pos["token_symbol"], "chain": pos["chain"],
                 "action": action, "price": f"{cur_price:.8g}",
-                "change_pct": f"{(chg if chg_val is None else chg_val):+.2f}",
+                "change_pct": f"{_chg:+.2f}",
                 "vol_h1": f"{cur_vol:.0f}", "bsr": f"{cur_bsr:.3f}",
                 "remaining": "0.00", "pnl_eur": f"{pnl:+.2f}",
                 "exit_reason": exit_r, "note": note,
             })
 
         snap1_exit = cfg["adaptive_snap1_exit"]
-        # 0a. Max hold time zombie: chiude solo posizioni che non hanno MAI ricevuto un prezzo
-        #     oltre il limite del sistema. Lascia aperte quelle che avevano prezzi e li hanno persi
-        #     (potrebbero recuperare o essere chiuse da altri trigger).
-        if pos.get("last_fetch") is None:
-            try:
-                _pos_age_h = (now - datetime.fromisoformat(pos["entry_ts"])).total_seconds() / 3600
-                _max_hold_h = MAX_SIGNAL_AGE_H.get(pos.get("system", ""), MAX_SIGNAL_AGE_H_DEFAULT) * 3
-                if _pos_age_h > _max_hold_h:
-                    _exit("exit_max_age",
-                          f"nessun prezzo da {_pos_age_h:.1f}h > {_max_hold_h:.0f}h max",
-                          exit_r="exit_max_age")
-                    pos["last_update"] = now
-                    return
-            except Exception:
-                pass
+        # 0a. (rimosso) Il check exit_max_age "mai avuto prezzo" stava qui, ma a
+        #     questo punto last_fetch è appena stato valorizzato → non scattava mai.
+        #     Spostato nel ramo `if not fetch:` sopra.
         # 0b. Timeout prezzo: defi/v2 senza fetch riusciti per >15 min → exit preventivo
         #    Protegge da rug silenziosi dove DexScreener smette di rispondere.
         #    Nota: usa last_fetch (aggiornato ad ogni fetch riuscito), NON last_update
@@ -2483,6 +2540,11 @@ class LiveEngine:
             pos["bsr_at_tp1"]    = round(cur_bsr, 3)
             pos["vol_at_tp1"]    = round(cur_vol, 0)
             pos["chg_at_tp1"]    = round(chg, 2)
+            tp1_note = f"Δ={chg:.1f}% >= TP1={cfg['tp1_pct']}% | bsr_tp1={cur_bsr:.3f} vol_tp1={cur_vol:.0f}"
+            if pos.get("shadow"):
+                shadow_pnl = pos.get("shadow_pnl_eur", 0.0) + CAPITAL_EUR * tp1_frac * cfg["tp1_pct"] / 100
+                pos["shadow_pnl_eur"] = shadow_pnl
+                tp1_note += f" | shadow_pnl={shadow_pnl:+.2f}€ (size reale=0)"
             _log_trade({
                 "ts": now.isoformat(), "signal_id": sid, "system": pos["system"],
                 "token_symbol": pos["token_symbol"], "chain": pos["chain"],
@@ -2491,7 +2553,7 @@ class LiveEngine:
                 "vol_h1": f"{cur_vol:.0f}", "bsr": f"{cur_bsr:.3f}",
                 "remaining": f"{remaining:.2f}", "pnl_eur": f"{pnl:+.2f}",
                 "exit_reason": "open",
-                "note": f"Δ={chg:.1f}% >= TP1={cfg['tp1_pct']}% | bsr_tp1={cur_bsr:.3f} vol_tp1={cur_vol:.0f}",
+                "note": tp1_note,
             })
 
         # 7. TP2 o attivazione trail dopo TP1
@@ -2515,6 +2577,11 @@ class LiveEngine:
                 tp2_gain = _capital * tp2_frac * cfg["tp2_pct"] / 100
                 pnl += tp2_gain; remaining = 0.0
                 pos["tp2_hit"] = True; pos["remaining"] = 0.0; pos["pnl_eur"] = pnl; pos["exit_reason"] = "tp1_tp2"
+                tp2_note = f"Δ={chg:.1f}% >= TP2={cfg['tp2_pct']}%"
+                if pos.get("shadow"):
+                    shadow_pnl = pos.get("shadow_pnl_eur", 0.0) + CAPITAL_EUR * tp2_frac * cfg["tp2_pct"] / 100
+                    pos["shadow_pnl_eur"] = shadow_pnl
+                    tp2_note += f" | shadow_pnl={shadow_pnl:+.2f}€ (size reale=0)"
                 _log_trade({
                     "ts": now.isoformat(), "signal_id": sid, "system": pos["system"],
                     "token_symbol": pos["token_symbol"], "chain": pos["chain"],
@@ -2522,7 +2589,7 @@ class LiveEngine:
                     "change_pct": f"{cfg['tp2_pct']:+.2f}",
                     "vol_h1": f"{cur_vol:.0f}", "bsr": f"{cur_bsr:.3f}",
                     "remaining": "0.00", "pnl_eur": f"{pnl:+.2f}",
-                    "exit_reason": "tp1_tp2", "note": f"Δ={chg:.1f}% >= TP2={cfg['tp2_pct']}%",
+                    "exit_reason": "tp1_tp2", "note": tp2_note,
                 })
                 pos["last_update"] = now; return
 
@@ -2557,7 +2624,9 @@ class LiveEngine:
                 for sid, pos in pos_list:
                     if pos["remaining"] > 0 and (pos.get("pair_address") or pos.get("system") == "pre_grad"):
                         try: self._process_position(sid, pos)
-                        except Exception as e: log.debug(f"[live] {sid}: {e}")
+                        # warning, non debug: un'eccezione qui significa posizione
+                        # mai aggiornata/chiusa, deve essere visibile in run.log
+                        except Exception as e: log.warning(f"[live] {sid}: _process_position fallita: {e}")
                 try: self._generate_html()
                 except Exception as e: log.warning(f"[live] HTML: {e}")
                 try: self._load_new_signals()
@@ -3311,12 +3380,19 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
 
     _SYS_LABELS = {"defi_v3": "DEFI·V3"}
 
+    # pre_grad shadow (12/06): segnali a size=0 (rugcheck rilassato), pnl reale
+    # sempre 0€ — esclusi da WR/contatori per non sporcare le statistiche, ma
+    # restano visibili nelle tabelle con shadow_pnl=...€ nella nota.
+    def _is_shadow(s):
+        return "shadow=true" in s.get("note", "")
+
     # ── Stats per sistema ───────────────────────────────────────────────────
     sys_stats = {}
     for sys_name in ("defi", "defi_v3", "v3", "v3_large", "midcap", "pump_grad", "pre_grad", "mirror"):
         open_n   = sum(1 for sid, s in open_list if _disp_sys(sid, s) == sys_name)
         closed_s = [(sid, s) for sid, s in all_states.items()
-                    if _disp_sys(sid, s) == sys_name and float(s.get("remaining", 0) or 0) <= 0]
+                    if _disp_sys(sid, s) == sys_name and float(s.get("remaining", 0) or 0) <= 0
+                    and not _is_shadow(s)]
         wins     = sum(1 for _, s in closed_s if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
         wr       = wins / len(closed_s) * 100 if closed_s else 0
         pnl_tot  = sum(float(s.get("pnl_eur","0").replace("+","") or 0) for _, s in closed_s)
@@ -3334,10 +3410,11 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
     total_closed = sum(s["closed"] for s in sys_stats.values())
     total_pnl    = sum(float(s.get("pnl_eur","0").replace("+","") or 0)
                        for _, s in all_states.items()
-                       if float(s.get("remaining", 0) or 0) <= 0)
-    # WR reale (esclude vol_na)
+                       if float(s.get("remaining", 0) or 0) <= 0 and not _is_shadow(s))
+    # WR reale (esclude vol_na e shadow)
     real_closed_all = [(sid, s) for sid, s in all_states.items()
-                       if float(s.get("remaining", 0) or 0) <= 0 and s.get("note","") != "vol_na"]
+                       if float(s.get("remaining", 0) or 0) <= 0 and s.get("note","") != "vol_na"
+                       and not _is_shadow(s)]
     real_wins_all   = sum(1 for _, s in real_closed_all
                           if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
     real_wr_all     = real_wins_all / len(real_closed_all) * 100 if real_closed_all else 0
@@ -3471,9 +3548,12 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         entry_tag  = (f'<span style="font-size:.68rem;color:#484f58;display:block;margin-top:1px">'
                       f'apertura {entry_time}</span>') if entry_time else ""
         ep_str     = _fmt_price((entry_prices or {}).get(sid, s.get("price","")))
+        shadow_tag = (' <span class="tag" style="background:#8b949e22;color:#8b949e" '
+                      'title="rugcheck rilassato, size=0: pnl tracciato ma escluso dal totale">SHADOW</span>') \
+            if "shadow=true" in note else ""
         return (
             f'<tr class="orow"{opacity} {data_attrs}>'
-            f'<td><a href="{dex_link}" target="_blank" style="color:#58a6ff;font-weight:600">{sym}</a>'
+            f'<td><a href="{dex_link}" target="_blank" style="color:#58a6ff;font-weight:600">{sym}</a>{shadow_tag}'
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
             f'<br><span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
@@ -3532,11 +3612,24 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         exit_r    = reason.replace("exit_","").replace("_collapse","_coll")
         ep_str    = _fmt_price((entry_prices or {}).get(sid, ""))
         ex_str    = _fmt_price(s.get("price",""))
+        shadow_flag = 1 if "shadow=true" in s.get("note", "") else 0
+        shadow_tag = (' <span class="tag" style="background:#8b949e22;color:#8b949e" '
+                      'title="rugcheck rilassato, size=0: pnl tracciato ma escluso dal totale">SHADOW</span>') \
+            if shadow_flag else ""
+        # Data/epoch di USCITA (da ts, ISO) — usati per il filtro 24h/range: sig_date
+        # è l'apertura, ma "Ultime 24h" deve riflettere il pnl REALIZZATO in 24h
+        # (sigdate vecchio causava +148 vs +64 reali del recap, stesso bug class)
+        exit_date = ts_str[:10] if ts_str else sig_date
+        try:
+            exit_ts_epoch = exit_ts_dt.timestamp()
+        except NameError:
+            exit_ts_epoch = 0
         return (
-            f'<tr class="crow" style="opacity:.8" data-sigdate="{sig_date}" data-sys="{sys_name}" '
-            f'data-chain="{chain_c}" data-exitr="{exit_r}" '
+            f'<tr class="crow" style="opacity:.8" data-sigdate="{sig_date}" data-exitdate="{exit_date}" '
+            f'data-exitts="{exit_ts_epoch:.0f}" data-sys="{sys_name}" '
+            f'data-chain="{chain_c}" data-exitr="{exit_r}" data-shadow="{shadow_flag}" '
             f'data-pnl="{pnl:.2f}" data-pct="{chg:.2f}" data-win="{win_flag}" data-token="{sym_lower}">'
-            f'<td style="font-weight:600">{sym} '
+            f'<td style="font-weight:600">{sym}{shadow_tag} '
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
             f'<span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
@@ -3546,7 +3639,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'<td style="color:{chg_c};font-size:.8rem">{chg:+.1f}%</td>'
             f'<td style="font-size:.72rem;color:#8b949e;font-family:monospace">{ep_str}</td>'
             f'<td style="font-size:.72rem;color:#8b949e;font-family:monospace">{ex_str}</td>'
-            f'<td style="font-size:.75rem;color:#484f58">{note[:40]}</td>'
+            f'<td style="font-size:.75rem;color:#484f58">{note[:70] if shadow_flag else note[:40]}</td>'
             f'</tr>'
         )
 
@@ -3651,7 +3744,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'<div class="filters">\n'
         f'  <span class="lbl2">Dal:</span>\n'
         f'  <div class="btn-grp">\n'
-        f'    <button id="btn24h" class="preset-btn" data-v="24h" onclick="setPreset(this,dateNDaysAgo(1),dateToday())">Ultime 24h</button>\n'
+        f'    <button id="btn24h" class="preset-btn" data-v="24h" onclick="setPreset24h(this)">Ultime 24h</button>\n'
         f'    <button class="preset-btn" data-v="7d" onclick="setPreset(this,dateNDaysAgo(7),\'\')">7 giorni</button>\n'
         f'    <button class="preset-btn" data-v="all" onclick="setPreset(this,\'\',\'\')">Tutto</button>\n'
         f'  </div>\n'
@@ -3746,7 +3839,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'<div class="disclaimer">&#9888; Solo a scopo educativo. '
         f'Non costituisce consulenza finanziaria.</div>\n'
         f'<script>\n'
-        f'var _sys="", _chain="", _outcome="", _exitr="", _tokSearch="", _sortCol="", _sortDir=-1;\n'
+        f'var _sys="", _chain="", _outcome="", _exitr="", _tokSearch="", _sortCol="", _sortDir=-1, _last24h=false;\n'
         f'function dateNDaysAgo(n){{\n'
         f'  var d=new Date(); d.setDate(d.getDate()-n);\n'
         f'  return d.toISOString().slice(0,10);\n'
@@ -3755,8 +3848,17 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  return new Date().toISOString().slice(0,10);\n'
         f'}}\n'
         f'function setPreset(btn,df,dt){{\n'
+        f'  _last24h=false;\n'
         f'  document.getElementById("df").value=df;\n'
         f'  document.getElementById("dt").value=dt;\n'
+        f'  document.querySelectorAll(".preset-btn").forEach(b=>b.classList.remove("active"));\n'
+        f'  btn.classList.add("active");\n'
+        f'  applyFilter();\n'
+        f'}}\n'
+        f'function setPreset24h(btn){{\n'
+        f'  _last24h=true;\n'
+        f'  document.getElementById("df").value="";\n'
+        f'  document.getElementById("dt").value="";\n'
         f'  document.querySelectorAll(".preset-btn").forEach(b=>b.classList.remove("active"));\n'
         f'  btn.classList.add("active");\n'
         f'  applyFilter();\n'
@@ -3811,12 +3913,14 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    r.style.display=show?"":"none";\n'
         f'    if(show){{ vo++; var sys=r.dataset.sys||""; if(sysStat[sys]) sysStat[sys].o++; }}\n'
         f'  }});\n'
+        f'  var cutoff24h=Date.now()/1000-86400;\n'
         f'  document.querySelectorAll("#ctbody tr.crow").forEach(function(r){{\n'
-        f'    var sd=r.dataset.sigdate||"";\n'
+        f'    var sd=r.dataset.exitdate||r.dataset.sigdate||"";\n'
         f'    var win=parseInt(r.dataset.win||0);\n'
         f'    var tok=(r.dataset.token||"");\n'
-        f'    var ok_df  = !df         || sd>=df;\n'
-        f'    var ok_dt  = !dt         || sd<=dt;\n'
+        f'    var ok_df, ok_dt;\n'
+        f'    if(_last24h){{ var et=parseFloat(r.dataset.exitts||0); ok_df=ok_dt=(et>=cutoff24h); }}\n'
+        f'    else {{ ok_df = !df || sd>=df; ok_dt = !dt || sd<=dt; }}\n'
         f'    var ok_sys = !_sys       || r.dataset.sys===_sys;\n'
         f'    var ok_ch  = !_chain     || r.dataset.chain===_chain;\n'
         f'    var ok_out = !_outcome   || (_outcome==="win"&&win>0) || (_outcome==="loss"&&win===0);\n'
@@ -3826,11 +3930,13 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    r.style.display=show?"":"none";\n'
         f'    if(show){{\n'
         f'      vc++;\n'
+        f'      if(r.dataset.shadow!=="1"){{\n'
         f'      var p=parseFloat(r.dataset.pnl||0); tot_pnl+=p;\n'
         f'      if(win>0) wins++; else losses++;\n'
         f'      var sys=r.dataset.sys||""; if(sysStat[sys]){{\n'
         f'        sysStat[sys].c++; sysStat[sys].pnl+=p;\n'
         f'        if(win>0) sysStat[sys].wins++;\n'
+        f'      }}\n'
         f'      }}\n'
         f'    }}\n'
         f'  }});\n'
@@ -3903,7 +4009,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'document.addEventListener("DOMContentLoaded",function(){{\n'
         f'  // Default: ultime 24h\n'
         f'  var b=document.getElementById("btn24h");\n'
-        f'  if(b) setPreset(b,dateNDaysAgo(1),dateToday());\n'
+        f'  if(b) setPreset24h(b);\n'
         f'  else applyFilter();\n'
         f'}});\n'
         '</script>\n'

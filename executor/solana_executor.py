@@ -1188,6 +1188,13 @@ def process_row(row: dict, processed: set, real_state: dict,
         if key in processed:
             return False
 
+        # Segnali shadow (rugcheck rilassato, size=0 nel simulator): solo
+        # tracciamento dati, mai eseguire l'acquisto on-chain
+        if "shadow=true" in (row.get("note") or ""):
+            log.info(f"[ENTRY] {sid}: segnale shadow (size=0) → skip")
+            processed.add(key)
+            return False
+
         # Già in portafoglio reale (evita doppio acquisto)
         if sid in real_state and real_state[sid].get("status") == "open":
             processed.add(key)

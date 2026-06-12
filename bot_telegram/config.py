@@ -77,6 +77,22 @@ FREE_MIN_PROBABILITY  = _envf("FREE_MIN_PROBABILITY", 0.65)
 PREMIUM_MIN_PROBABILITY = _envf("PREMIUM_MIN_PROBABILITY", 0.0)
 POLL_INTERVAL_SEC     = _envf("POLL_INTERVAL_SEC", 5.0)
 
+# Teaser live su FREE: segnale appena inviato ai Premium, ticker censurato.
+# Rate-limited per non trasformare il FREE in spam (e non svalutare il Premium).
+FREE_TEASER_ENABLED          = _env("FREE_TEASER_ENABLED", "true").lower() != "false"
+FREE_TEASER_MIN_INTERVAL_MIN = _envf("FREE_TEASER_MIN_INTERVAL_MIN", 45.0)
+FREE_TEASER_MAX_PER_DAY      = int(_envf("FREE_TEASER_MAX_PER_DAY", 6))
+
+# ── Promo X (Twitter) ────────────────────────────────────────────────────────────
+# L'API X richiede un piano a pagamento per postare: niente posting automatico.
+# Per ogni trade vincente sopra soglia, il bot manda all'admin (Telegram) una
+# card immagine + testo pronto (con hashtag/$TICKER) da copiare e postare a mano.
+X_PROMO_ENABLED        = _env("X_PROMO_ENABLED", "false").lower() == "true"
+X_PROMO_MIN_PNL_EUR    = _envf("X_PROMO_MIN_PNL_EUR", 15.0)   # ignora micro-win
+X_PROMO_MIN_PNL_PCT    = _envf("X_PROMO_MIN_PNL_PCT", 8.0)    # ignora % marginali
+X_PROMO_MIN_INTERVAL_MIN = _envf("X_PROMO_MIN_INTERVAL_MIN", 120.0)
+X_PROMO_MAX_PER_DAY    = int(_envf("X_PROMO_MAX_PER_DAY", 4))
+
 # ── Monetizzazione ──────────────────────────────────────────────────────────────
 PRICE_PREMIUM_USD = _envf("PRICE_PREMIUM_USD", 49.0)
 SUB_DAYS          = int(_envf("SUB_DAYS", 30))

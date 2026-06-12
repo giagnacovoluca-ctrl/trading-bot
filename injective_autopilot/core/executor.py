@@ -313,6 +313,12 @@ class Executor:
         )
         return trade
 
+    async def close_trade(
+        self, trade: TradeRecord, exit_price: float, reason: str, funding_rate: float = 0.0,
+    ) -> TradeRecord:
+        """Chiude manualmente una posizione aperta (es. tesi di trade invalidata)."""
+        return await self._close_trade(trade, exit_price, reason, funding_rate)
+
     async def close_all(self) -> None:
         """Emergency close all positions."""
         for trade in list(self._open_trades.values()):

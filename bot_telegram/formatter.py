@@ -92,6 +92,17 @@ def _format_midcap(row: dict, teaser: bool) -> str:
     return "\n".join(lines)
 
 
+def premium_keyboard() -> dict | None:
+    """Bottone deep-link al bot per i post sul canale FREE: nei canali i
+    comandi /plans NON sono cliccabili (funzionano solo in chat privata)."""
+    if not config.BOT_USERNAME:
+        return None
+    return {"inline_keyboard": [[{
+        "text": f"💎 Premium — ${config.PRICE_PREMIUM_USD:.0f}/mo",
+        "url": f"https://t.me/{config.BOT_USERNAME}?start=premium",
+    }]]}
+
+
 def format_closure_free(info: dict) -> str:
     """Positive closure notification for FREE channel."""
     sym = _e(info.get("symbol", "?"))
@@ -112,7 +123,7 @@ def format_closure_free(info: dict) -> str:
         lines.append(f"📈 Result: <b>{pct:+.1f}%</b> · <b>+€{pnl:.2f}</b>")
     else:
         lines.append(f"📈 Profit: <b>+€{pnl:.2f}</b>")
-    lines += ["", "💎 Get real-time entry signals → /plans"]
+    lines += ["", "💎 Get real-time entry signals 👇"]
     return "\n".join(lines)
 
 
@@ -315,6 +326,33 @@ def format_exit_premium(row: dict) -> str:
     elif pnl is not None:
         lines.append(f"Position closed · P&L <b>{pnl:+.2f}€</b> <i>(simulated, €100/trade)</i>")
     lines.append("\n<i>⚠️ Not financial advice. DYOR.</i>")
+    return "\n".join(lines)
+
+
+def format_teaser_live(row: dict, system: str) -> str:
+    """Teaser FREE in tempo reale: il segnale è APPENA partito sul Premium,
+    ticker censurato. FOMO su un'opportunità ancora aperta (la closure FREE
+    arriva invece a trade finito)."""
+    import time as _time
+    chain = (row.get("chain", "") or "").lower()
+    emoji = _CHAIN_EMOJI.get(chain, "🔹")
+    label = _SYS_LABEL.get(system, system)
+    checks = ["Scanner checks ✅"]
+    liq = _f(row.get("liquidity_usd"), None)
+    if liq:
+        checks.append(f"Liq {_fmt_usd(row.get('liquidity_usd'))}")
+    prob = _f(row.get("pump_probability"), None)
+    if prob is not None and prob > 0.001:
+        checks.append(f"prob {prob:.2f}")
+    lines = [
+        f"🔒 <b>LIVE SIGNAL</b> · {emoji} {_e(chain.upper())} · {_time.strftime('%H:%M')}",
+        f"Token: <b>████</b> · {_e(label)}",
+        " · ".join(checks),
+        "",
+        "Entry, TP and SL just hit Premium members — in real time.",
+        "You'll see this trade here only after it closes.",
+        "⚡ Real-time access 👇",
+    ]
     return "\n".join(lines)
 
 

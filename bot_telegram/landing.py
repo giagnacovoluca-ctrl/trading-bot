@@ -78,8 +78,6 @@ def generate(stats: dict | None = None) -> Path:
     pnl   = stats.get("total_pnl_eur", 0.0)
     p24   = stats.get("pnl_24h_eur", 0.0)
     avg   = stats.get("avg_pnl_eur", 0.0)
-    best  = stats.get("best",  {"symbol": "—", "pnl_eur": 0.0})
-    worst = stats.get("worst", {"symbol": "—", "pnl_eur": 0.0})
     upd   = stats.get("updated_iso", "—")
     sys_rows = _system_rows(stats.get("by_system", {}))
 
@@ -136,15 +134,6 @@ def generate(stats: dict | None = None) -> Path:
   td {{ padding: 12px 16px; font-size: .95rem; border-bottom: 1px solid #1e1e1e; }}
   tr:last-child td {{ border-bottom: none; }}
 
-  /* ── BEST/WORST ── */
-  .bw-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }}
-  .bw-card {{ background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; }}
-  .bw-card .bw-label {{ font-size: .75rem; color: var(--muted); text-transform: uppercase;
-    letter-spacing: .08em; margin-bottom: 8px; }}
-  .bw-card .bw-sym {{ font-size: 1.3rem; font-weight: 700; }}
-  .bw-card .bw-pnl {{ font-size: 1rem; font-weight: 600; margin-top: 4px; }}
-
   /* ── CTA ── */
   .cta {{ text-align: center; padding: 48px 24px 72px; }}
   .cta h2 {{ font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }}
@@ -200,22 +189,6 @@ def generate(stats: dict | None = None) -> Path:
 {sys_rows}
     </tbody>
   </table>
-</section>
-
-<section class="section">
-  <h2>Best &amp; Worst trade</h2>
-  <div class="bw-grid">
-    <div class="bw-card">
-      <div class="bw-label">🏆 Best trade</div>
-      <div class="bw-sym">${best['symbol']}</div>
-      <div class="bw-pnl" style="color:#00e676">{_pnl_str(best['pnl_eur'])}</div>
-    </div>
-    <div class="bw-card">
-      <div class="bw-label">📉 Worst trade</div>
-      <div class="bw-sym">${worst['symbol']}</div>
-      <div class="bw-pnl" style="color:#ff5252">{_pnl_str(worst['pnl_eur'])}</div>
-    </div>
-  </div>
 </section>
 
 <section class="cta">

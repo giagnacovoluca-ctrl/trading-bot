@@ -107,12 +107,14 @@ class InjectiveClient:
         private_key: str = "",
         subaccount_index: int = 0,
         fee_recipient: str = "",
+        rpc_timeout_sec: float = 10.0,
     ) -> None:
         self.network = network
         self.market_id = market_id
         self.private_key = private_key
         self.subaccount_index = subaccount_index
         self.fee_recipient = fee_recipient
+        self._rpc_timeout = rpc_timeout_sec
 
         self._client: Any = None
         self._composer: Any = None
@@ -174,8 +176,9 @@ class InjectiveClient:
             reraise=True,
         ):
             with attempt:
-                res = await self._client.fetch_l3_derivative_orderbook(
-                    market_id=mid
+                res = await asyncio.wait_for(
+                    self._client.fetch_l3_derivative_orderbook(market_id=mid),
+                    timeout=self._rpc_timeout,
                 )
 
         # SDK v1.15 uses capital keys "Bids"/"Asks" (from protobuf MessageToDict)
@@ -204,8 +207,9 @@ class InjectiveClient:
         """Fetch recent historical trades."""
         mid = market_id or self.market_id
         try:
-            res = await self._client.fetch_historical_trade_records(
-                market_id=mid
+            res = await asyncio.wait_for(
+                self._client.fetch_historical_trade_records(market_id=mid),
+                timeout=self._rpc_timeout,
             )
         except Exception as exc:
             log.warning("fetch_recent_trades failed: %s", exc)
@@ -235,8 +239,9 @@ class InjectiveClient:
             oi_task = asyncio.create_task(
                 self._client.fetch_open_interest(market_id=mid)
             )
-            funding_res, mid_res, oi_res = await asyncio.gather(
-                funding_task, mid_task, oi_task, return_exceptions=True
+            funding_res, mid_res, oi_res = await asyncio.wait_for(
+                asyncio.gather(funding_task, mid_task, oi_task, return_exceptions=True),
+                timeout=self._rpc_timeout,
             )
         except Exception as exc:
             log.warning("fetch_market_snapshot partial failure: %s", exc)
@@ -276,8 +281,9 @@ class InjectiveClient:
         if not self._subaccount_id:
             return []
         try:
-            res = await self._client.fetch_chain_positions_in_market(
-                market_id=self.market_id
+            res = await asyncio.wait_for(
+                self._client.fetch_chain_positions_in_market(market_id=self.market_id),
+                timeout=self._rpc_timeout,
             )
         except Exception as exc:
             log.warning("fetch_positions failed: %s", exc)
@@ -305,9 +311,12 @@ class InjectiveClient:
         try:
             # USDT on Injective: peggy denom
             denom = "peggy0xdAC17F958D2ee523a2206206994597C13D831ec7"
-            res = await self._client.fetch_subaccount_deposit(
-                subaccount_id=self._subaccount_id,
-                denom=denom,
+            res = await asyncio.wait_for(
+                self._client.fetch_subaccount_deposit(
+                    subaccount_id=self._subaccount_id,
+                    denom=denom,
+                ),
+                timeout=self._rpc_timeout,
             )
             deposit = res.get("deposits", res)
             if isinstance(deposit, dict):

@@ -74,7 +74,8 @@ def compute() -> dict:
             # vs +291€ reali al 10/06). Le righe sono in ordine cronologico.
             pnl_by_signal[sid] = pnl
             sys_by_signal[sid] = row.get("system", "")
-            sym_by_signal[sid] = row.get("token_symbol", sid)
+            # alcuni scanner salvano il ticker già con "$" → evita "$$SCUP" nei recap
+            sym_by_signal[sid] = (row.get("token_symbol") or sid).lstrip("$")
             ts = _parse_ts(row.get("ts", ""))
             if ts:
                 last_ts_by_signal[sid] = max(last_ts_by_signal.get(sid, 0), ts)
@@ -101,8 +102,34 @@ def compute() -> dict:
         by_system[s]["n"] += 1
         by_system[s]["wins"] += 1 if p > 0 else 0
 
+    # ── finestra 7 giorni (recap settimanale FREE) ──────────────────────────
+    WEEK = 7 * 86400
+    w_closed = [(s, p) for s, p in closed
+                if now - last_ts_by_signal.get(s, 0) <= WEEK]
+    w_wins = [(s, p) for s, p in w_closed if p > 0]
+    w_best = max(w_closed, key=lambda kv: kv[1], default=(None, 0.0))
+    w_by_sys: dict[str, dict] = defaultdict(lambda: {"pnl": 0.0, "n": 0, "wins": 0})
+    for sid, p in w_closed:
+        s = sys_by_signal.get(sid, "")
+        w_by_sys[s]["pnl"] += p
+        w_by_sys[s]["n"] += 1
+        w_by_sys[s]["wins"] += 1 if p > 0 else 0
+    weekly = {
+        "trades": len(w_closed),
+        "wins": len(w_wins),
+        "losses": len(w_closed) - len(w_wins),
+        "win_rate": round(len(w_wins) / len(w_closed) * 100, 1) if w_closed else 0.0,
+        "pnl_eur": round(sum(p for _, p in w_closed), 2),
+        "best": {"symbol": sym_by_signal.get(w_best[0], "—"),
+                 "pnl_eur": round(w_best[1], 2)},
+        "by_system": {k: {"pnl_eur": round(v["pnl"], 2), "n": v["n"],
+                          "win_rate": round(v["wins"] / v["n"] * 100, 1) if v["n"] else 0.0}
+                      for k, v in w_by_sys.items()},
+    }
+
     stats = {
         "available": True,
+        "weekly": weekly,
         "updated_at": now,
         "updated_iso": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "trades_closed": n,
@@ -128,27 +155,79 @@ def recap_text(stats: dict | None = None) -> str:
         return "📊 Track record: not enough data yet."
     s = stats
     sign = "🟢" if s["total_pnl_eur"] >= 0 else "🔴"
+    sign24 = "🟢" if s["pnl_24h_eur"] >= 0 else "🔴"
     lines = [
-        "📊 <b>Track record</b> (auto)",
-        f"Closed trades: <b>{s['trades_closed']}</b> · Win-rate: <b>{s['win_rate']}%</b>",
-        f"{sign} Total P&L: <b>{s['total_pnl_eur']:+.2f}€</b> · last 24h: {s['pnl_24h_eur']:+.2f}€",
-        f"Avg/trade: {s['avg_pnl_eur']:+.2f}€",
-        f"🏆 Best: ${_e(s['best']['symbol'])} {s['best']['pnl_eur']:+.2f}€  ·  "
-        f"Worst: ${_e(s['worst']['symbol'])} {s['worst']['pnl_eur']:+.2f}€",
+        "📊 <b>TRACK RECORD</b>",
+        "━━━━━━━━━━━━━━━",
+        f"{sign} Total P&L      <b>{s['total_pnl_eur']:+.2f}€</b>",
+        f"{sign24} Last 24h       <b>{s['pnl_24h_eur']:+.2f}€</b>",
+        f"🎯 Win-rate       <b>{s['win_rate']}%</b>",
+        f"📈 Trades closed  <b>{s['trades_closed']}</b> · avg {s['avg_pnl_eur']:+.2f}€",
     ]
     # Top strategie attive (per pnl, min 10 trade) — il dato che vende davvero
     top = sorted(((k, v) for k, v in s.get("by_system", {}).items()
                   if v.get("n", 0) >= 10 and v.get("pnl_eur", 0) > 0),
                  key=lambda kv: kv[1]["pnl_eur"], reverse=True)[:3]
     if top:
-        lines.append("🔥 Top strategies: " + " · ".join(
+        lines += ["", "🔥 <b>Top strategies</b>"]
+        lines += [f"  • {_e(k)}  <b>{v['pnl_eur']:+.0f}€</b>  (WR {v['win_rate']:.0f}%)"
+                  for k, v in top]
+    lines += [
+        "━━━━━━━━━━━━━━━",
+        "💎 Real-time signals 👇",
+        f"<i>Updated {s['updated_iso']} · €100/signal, all trades counted</i>",
+    ]
+    return "\n".join(lines)
+
+
+def weekly_recap_text(stats: dict | None = None) -> str | None:
+    """Recap settimanale FREE con 'delta Premium': cosa hanno visto gli abbonati.
+    Numeri reali dal CSV (verificabili) — niente % sparate, è il differenziatore
+    rispetto ai canali scam. None se la settimana non ha trade."""
+    stats = stats or compute()
+    w = stats.get("weekly") or {}
+    if not stats.get("available") or not w.get("trades"):
+        return None
+    sign = "🟢" if w["pnl_eur"] >= 0 else "🔴"
+    lines = [
+        "📊 <b>Weekly recap — what Premium members saw</b>",
+        f"Signals traded: <b>{w['trades']}</b> · "
+        f"Wins: <b>{w['wins']}</b> · Stop loss: {w['losses']} (WR {w['win_rate']}%)",
+        f"{sign} Net P&L (7d): <b>{w['pnl_eur']:+.2f}€</b>",
+    ]
+    if w["best"]["pnl_eur"] > 0:
+        lines.append(f"🏆 Best trade: ${_e(w['best']['symbol'])} <b>{w['best']['pnl_eur']:+.2f}€</b>")
+    top = sorted(((k, v) for k, v in w.get("by_system", {}).items()
+                  if v.get("pnl_eur", 0) > 0),
+                 key=lambda kv: kv[1]["pnl_eur"], reverse=True)[:2]
+    if top:
+        lines.append("🔥 Top systems: " + " · ".join(
             f"{_e(k)} <b>{v['pnl_eur']:+.0f}€</b> (WR {v['win_rate']:.0f}%)" for k, v in top))
     lines += [
         "",
-        "💎 Real-time signals: /plans",
-        f"<i>Updated {s['updated_iso']}</i>",
+        "Every one of these hit Premium <b>in real time</b>, with entry, TP and SL.",
+        "Here on Free you only see them after they close.",
+        "💎 Get the next one live 👇",
     ]
     return "\n".join(lines)
+
+
+_WEEKLY_STATE = "weekly_recap.json"
+
+
+def post_weekly_recap(stats: dict | None = None) -> bool:
+    """Posta il recap settimanale sul FREE se sono passati ≥6.5 giorni dall'ultimo."""
+    state = store.load(_WEEKLY_STATE, {})
+    if time.time() - state.get("last_ts", 0) < 6.5 * 86400:
+        return False
+    text = weekly_recap_text(stats)
+    if not text or not config.FREE_CHANNEL_ID:
+        return False
+    import formatter
+    tg.send_message(config.FREE_CHANNEL_ID, text,
+                    reply_markup=formatter.premium_keyboard())
+    store.save(_WEEKLY_STATE, {"last_ts": time.time()})
+    return True
 
 
 def _e(x) -> str:
@@ -157,11 +236,18 @@ def _e(x) -> str:
 
 
 def post_recap():
-    """Calcola, posta il recap sul canale FREE e rigenera la landing page."""
+    """Calcola, posta il recap sul canale FREE e rigenera la landing page.
+    Una volta a settimana posta anche il recap 'delta Premium'."""
     stats = compute()
     text = recap_text(stats)
     if config.FREE_CHANNEL_ID:
-        tg.send_message(config.FREE_CHANNEL_ID, text)
+        import formatter
+        tg.send_message(config.FREE_CHANNEL_ID, text,
+                        reply_markup=formatter.premium_keyboard())
+    try:
+        post_weekly_recap(stats)
+    except Exception as e:
+        log.warning("[track] recap settimanale non postato: %s", e)
     try:
         import landing
         landing.generate(stats)

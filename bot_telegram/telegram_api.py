@@ -71,6 +71,35 @@ def _call(method: str, params: dict, timeout: int = 30, retries: int = 3,
     return None
 
 
+def send_photo(chat_id: str, photo_bytes: bytes, caption: str | None = None,
+               parse_mode: str | None = None):
+    if not chat_id:
+        return None
+    if not config.BOT_TOKEN:
+        log.warning("[tg] BOT_TOKEN mancante — sendPhoto ignorato")
+        return None
+    url = _BASE.format(token=config.BOT_TOKEN, method="sendPhoto")
+    data = {"chat_id": chat_id}
+    if caption:
+        data["caption"] = caption
+    if parse_mode:
+        data["parse_mode"] = parse_mode
+    files = {"photo": ("card.png", photo_bytes, "image/png")}
+    _throttle(str(chat_id))
+    for attempt in range(3):
+        try:
+            r = _SESSION.post(url, data=data, files=files, timeout=30)
+            res = r.json()
+            if res.get("ok"):
+                return res["result"]
+            log.warning("[tg] sendPhoto fallito: %s", res.get("description"))
+            time.sleep(2 * (attempt + 1))
+        except (requests.RequestException, ValueError) as e:
+            log.warning("[tg] errore sendPhoto (tentativo %d): %s", attempt + 1, e)
+            time.sleep(2 * (attempt + 1))
+    return None
+
+
 def send_message(chat_id: str, text: str, parse_mode: str = "HTML",
                  disable_preview: bool = True, reply_markup: dict | None = None):
     if not chat_id:
@@ -85,6 +114,24 @@ def send_message(chat_id: str, text: str, parse_mode: str = "HTML",
         params["reply_markup"] = reply_markup
     _throttle(str(chat_id))
     return _call("sendMessage", params, retry_read_timeout=False)
+
+
+def edit_message_text(chat_id: str, message_id: int, text: str,
+                      parse_mode: str = "HTML", disable_preview: bool = True,
+                      reply_markup: dict | None = None):
+    """Modifica un messaggio esistente (navigazione inline senza spam di messaggi)."""
+    if not chat_id or not message_id:
+        return None
+    params = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": disable_preview,
+    }
+    if reply_markup:
+        params["reply_markup"] = reply_markup
+    return _call("editMessageText", params, retry_read_timeout=False)
 
 
 def get_updates(offset: int | None = None, timeout: int = 25):

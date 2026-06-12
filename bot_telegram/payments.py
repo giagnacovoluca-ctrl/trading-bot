@@ -67,11 +67,16 @@ def create_invoice(chat_id, tier: str, chain: str) -> dict | None:
     amount = round(price + cents, 2)
     ref = secrets.token_hex(4)
     inv[ref] = {
+        "ref": ref,
         "chat_id": str(chat_id), "tier": tier, "chain": chain,
         "amount": amount, "status": "pending", "created_at": time.time(),
     }
     _save_invoices(inv)
     return inv[ref]
+
+
+def get_invoice(ref: str) -> dict | None:
+    return _invoices().get(ref)
 
 
 def _settle(ref: str):

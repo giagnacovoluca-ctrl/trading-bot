@@ -444,7 +444,11 @@ def _get_fee_payer(signature: str) -> Optional[str]:
     try:
         r = requests.post(SOLANA_RPC_URL, json={
             "jsonrpc": "2.0", "id": 1, "method": "getTransaction",
-            "params": [signature, {"encoding": "json", "maxSupportedTransactionVersion": 0}],
+            # commitment "confirmed": il default "finalized" ritorna result=None
+            # per le tx appena notificate da logsSubscribe (non ancora finalized)
+            # → ogni evento veniva scartato silenziosamente (0 alert dal 10/06)
+            "params": [signature, {"encoding": "json", "maxSupportedTransactionVersion": 0,
+                                    "commitment": "confirmed"}],
         }, timeout=10)
         r.raise_for_status()
         result = (r.json() or {}).get("result")

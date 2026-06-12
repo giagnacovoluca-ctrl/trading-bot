@@ -105,9 +105,10 @@ def _send_pre_grad_email(sig: dict) -> bool:
         return False
 
 try:
-    from rugcheck import is_safe as rugcheck_safe
+    from rugcheck import is_safe_detailed as rugcheck_safe_detailed, SHADOW_TOP_HOLDER_PCT
 except ImportError:
-    def rugcheck_safe(mint, scanner, chain="solana"): return True
+    def rugcheck_safe_detailed(mint, scanner, chain="solana"): return True, None
+    SHADOW_TOP_HOLDER_PCT = 25.0
 
 log = logging.getLogger("pre_grad")
 
@@ -392,7 +393,8 @@ def _get_sol_price_usd() -> float:
 
 
 def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min: float,
-                          dex_pair: Optional[dict] = None, v_tok: float = 0.0):
+                          dex_pair: Optional[dict] = None, v_tok: float = 0.0,
+                          shadow: bool = False):
     """Scrive segnale pre-graduation su pre_grad_signals.csv.
 
     `dex_pair`: oggetto pair DexScreener già disponibile (path "scoperto da poll
@@ -454,12 +456,13 @@ def _emit_pre_grad_signal(mint: str, symbol: str, v_sol: float, velocity_sol_min
             f"pre_grad=true | vSol={v_sol:.1f} | entry_vsol={v_sol:.2f} | "
             f"velocity=+{velocity_sol_min:.2f}SOL/min | "
             f"mcap=${mcap_usd:,.0f}"
+            + (" | shadow=true" if shadow else "")
         ),
     }
     with open(_PRE_GRAD_CSV, "a", newline="", encoding="utf-8") as f:
         csv.DictWriter(f, fieldnames=_PRE_GRAD_CSV_HEADER).writerow(row)
     log.info(
-        f"[pre_grad] 🚀 PRE-GRAD SIGNAL {symbol} | "
+        f"[pre_grad] 🚀 PRE-GRAD SIGNAL {symbol}{' (shadow, size=0)' if shadow else ''} | "
         f"vSol={v_sol:.1f} | vel=+{velocity_sol_min:.2f}SOL/min | "
         f"price=${price_usd:.8g} | liq=${liq_usd:,.0f}"
     )
@@ -893,20 +896,26 @@ class PreGradMonitor:
                     and entry.get("rugcheck_ok") is True):
                 _v = v_sol
                 _vel = velocity_sol_min
+                _shadow = entry.get("rugcheck_shadow", False)
                 threading.Thread(
                     target=_emit_pre_grad_signal,
                     args=(mint, symbol, _v, _vel),
+                    kwargs={"shadow": _shadow},
                     daemon=True,
                 ).start()
 
     def _precheck_rug(self, mint: str, symbol: str):
         """Rugcheck in anticipo mentre il token si avvicina alla graduation."""
-        ok = rugcheck_safe(mint, "pre_grad", chain="solana")
+        ok, top_pct = rugcheck_safe_detailed(mint, "pre_grad", chain="solana")
+        shadow = ok and top_pct is not None and top_pct > SHADOW_TOP_HOLDER_PCT
         with _lock:
             if mint in _watchlist:
-                _watchlist[mint]["rugcheck_ok"] = ok
+                _watchlist[mint]["rugcheck_ok"]     = ok
+                _watchlist[mint]["rugcheck_shadow"] = shadow
         if not ok:
             log.info(f"[pre_grad] {symbol}: BLOCCATO da rugcheck preventivo")
+        elif shadow:
+            log.info(f"[pre_grad] {symbol}: rugcheck OK ma top_holder={top_pct:.1f}% > {SHADOW_TOP_HOLDER_PCT}% → segnale shadow (size=0)")
 
     def _poll_vsol_loop(self):
         """
@@ -1004,6 +1013,7 @@ class PreGradMonitor:
                         with _lock:
                             already = mint in _pre_grad_signaled
                             rug_ok  = _watchlist.get(mint, {}).get("rugcheck_ok")
+                            rug_shadow = _watchlist.get(mint, {}).get("rugcheck_shadow", False)
                         # Emetti segnale anche se velocity==0 ma vSol è cresciuto dall'ultimo poll
                         # (token che pompano velocemente hanno un solo punto di storia)
                         vel_use = velocity if velocity > 0 else max(0.05, v_sol - old_vsol)
@@ -1011,7 +1021,7 @@ class PreGradMonitor:
                             threading.Thread(
                                 target=_emit_pre_grad_signal,
                                 args=(mint, symbol, v_sol, vel_use),
-                                kwargs={"v_tok": v_tok},
+                                kwargs={"v_tok": v_tok, "shadow": rug_shadow},
                                 daemon=True,
                             ).start()
 

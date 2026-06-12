@@ -1630,7 +1630,15 @@ def fetch_onchain_and_market_data(chain: str = "ethereum") -> pd.DataFrame:
                 "liquidity_usd": riga["liquidity_usd"],
                 "volume_1h_usd": riga["volume_1h_usd"],
                 "buys_1h": riga.get("buys_1h", 0),
-                "sells_1h": riga.get("sells_1h", 0)
+                "sells_1h": riga.get("sells_1h", 0),
+                # Feature 5m per backtest offline condizioni pre-pump (c2/c6/c11)
+                # su Base: il flusso nativo emette 0 segnali ma il pump-rate Base
+                # è pari a Solana — servono questi dati per ricalibrare le soglie.
+                "volume_5m_usd": riga.get("volume_5m_usd", 0),
+                "change_5m_pct": riga.get("change_5m_pct", 0),
+                "change_1h_pct": riga.get("change_1h_pct", 0),
+                "buys_5m": riga.get("buys_5m", 0),
+                "sells_5m": riga.get("sells_5m", 0),
             })
         # --- fine blocco debug ---
 
@@ -1656,8 +1664,17 @@ def fetch_onchain_and_market_data(chain: str = "ethereum") -> pd.DataFrame:
 
     if debug_candidates:
         keys2 = ["timestamp", "chain", "token_address", "symbol",
-                 "price_usd", "liquidity_usd", "volume_1h_usd", "buys_1h", "sells_1h"]
+                 "price_usd", "liquidity_usd", "volume_1h_usd", "buys_1h", "sells_1h",
+                 "volume_5m_usd", "change_5m_pct", "change_1h_pct", "buys_5m", "sells_5m"]
         candidates_file = out_dir / "debug_candidates.csv"
+        # Schema cambiato (colonne 5m aggiunte): ruota il file vecchio per non
+        # disallineare l'header esistente con le nuove righe.
+        if candidates_file.exists():
+            with candidates_file.open(encoding="utf-8") as fh:
+                old_header = fh.readline().strip()
+            if old_header != ",".join(keys2):
+                candidates_file.rename(
+                    out_dir / f"debug_candidates_old_{datetime.now():%Y%m%d_%H%M%S}.csv")
         write_header2 = not candidates_file.exists()
         with candidates_file.open("a", newline="", encoding="utf-8") as fh:
             writer = csv.DictWriter(fh, fieldnames=keys2)
@@ -3220,19 +3237,28 @@ def generate_signals(
     #          su dati reali le probabilità sono sistematicamente basse (~0.10-0.22).
     #          Il filtro principale è il prepump_composite_score (c9_comp).
     c1_prob  = df_scored["pump_probability"] >= threshold
+    # Soglie rilassate SOLO su Base (BASE_DRY_RUN=true, flusso simulato): il nativo
+    # emetteva 0 segnali in 600 cicli ma il pump-rate Base ≥20%/60min è pari a
+    # Solana (1.48% vs 1.28%, backtest debug_candidates 12/06). Soglie calibrate
+    # su Solana strozzavano tutto; validazione live in corso, giudizio a WR>50%
+    # dopo ~1 settimana sui trade defi nativo chain=base in live_trades.csv.
+    _is_base   = df_scored.get("chain", pd.Series("", index=df_scored.index)).astype(str).str.lower().eq("base")
+    _accel_min = pd.Series(0.7,  index=df_scored.index).mask(_is_base, 0.5)
+    _pvd_min   = pd.Series(0.08, index=df_scored.index).mask(_is_base, 0.04)
+    _comp_min  = pd.Series(0.55, index=df_scored.index).mask(_is_base, 0.45)
     # c2_accel: abbassato a 0.7x (era 1.0). Su Solana vol5m è spesso basso
     #           → accel raramente supera 1.0 su token legittimi non in pump.
-    c2_accel = df_scored.get("vol_accel_5m_vs_1h",  pd.Series(0.5, index=df_scored.index)) >= 0.7
+    c2_accel = df_scored.get("vol_accel_5m_vs_1h",  pd.Series(0.5, index=df_scored.index)) >= _accel_min
     c3_bsr   = df_scored.get("buy_sell_ratio_1h",   pd.Series(1.0, index=df_scored.index)) >= 1.0
     c4_max   = df_scored["change_1h_pct"] <= CONFIG["MAX_CHANGE_1H_PCT"]
     c5_min   = df_scored["change_1h_pct"] >= CONFIG["MIN_CHANGE_1H_PCT"]
-    c6_pvd   = df_scored.get("price_vol_divergence", pd.Series(0.0, index=df_scored.index)) >= 0.08
+    c6_pvd   = df_scored.get("price_vol_divergence", pd.Series(0.0, index=df_scored.index)) >= _pvd_min
     c7_age   = df_scored["pair_age_hours"] >= 0.25
     c8_tax   = (df_scored["buy_tax"].fillna(0) + df_scored["sell_tax"].fillna(0) + slippage) < CONFIG["PUMP_THRESHOLD_PCT"]
     # c9_comp: gate principale basato su composite score (NON dipende dall'ML sintetico).
     #          Aggrega: vol_accel, BSR, PVD, age score, holder quality, squeeze_momentum.
     #          Soglia alzata 0.38 → 0.42 → 0.55 (analisi 7g: score<0.55 = 12% WR, -30€).
-    c9_comp  = df_scored.get("prepump_composite_score", pd.Series(0.0, index=df_scored.index)) >= 0.55
+    c9_comp  = df_scored.get("prepump_composite_score", pd.Series(0.0, index=df_scored.index)) >= _comp_min
     # c10_notfall: prezzo NON in caduta >3% rispetto al ciclo lento precedente.
     #   Le metriche 1h sono lagging: il segnale spesso scatta nel retrace post-pump
     #   (STEPHEN/KINS/YETZY: prezzo in calo da 2-3 cicli all'allineamento).
@@ -3754,22 +3780,27 @@ def main():
                 for sig in signals:
                     stampa_segnale(sig)
 
-                # Aggiorna lo storico BSR DOPO aver generato i segnali (il trend usato
-                # nei segnali di questo ciclo riflette solo i cicli precedenti — leading)
-                _update_bsr_history(df_raw)
-
-                # Calcola metriche di funnel per il cycle_stats log
-                bsr_med = float(df_raw["buy_sell_ratio_1h"].median()) if "buy_sell_ratio_1h" in df_raw.columns else 0
-                vol_med = float(df_raw["volume_1h_usd"].median())     if "volume_1h_usd" in df_raw.columns else 0
-                chg_med = float(df_raw["change_1h_pct"].median())     if "change_1h_pct" in df_raw.columns else 0
-
                 # n_hard_pass: applica i filtri hard allo stesso df per contare quanti passano
+                # (df_eng ha buy_sell_ratio_1h, df_raw NO — serve anche sotto per bsr_history/bsr_med)
                 try:
                     _df_eng = engineer_features(df_raw.copy())
                     _df_pass = apply_hard_filters(_df_eng)
                     n_hard_pass = len(_df_pass)
                 except Exception:
+                    _df_eng = None
                     n_hard_pass = -1
+
+                # Aggiorna lo storico BSR DOPO aver generato i segnali (il trend usato
+                # nei segnali di questo ciclo riflette solo i cicli precedenti — leading).
+                # 12/06 fix: df_raw non ha mai buy_sell_ratio_1h (calcolato solo in
+                # engineer_features su copia) → _update_bsr_history era no-op da sempre.
+                if _df_eng is not None:
+                    _update_bsr_history(_df_eng)
+
+                # Calcola metriche di funnel per il cycle_stats log
+                bsr_med = float(_df_eng["buy_sell_ratio_1h"].median()) if _df_eng is not None and "buy_sell_ratio_1h" in _df_eng.columns else 0
+                vol_med = float(df_raw["volume_1h_usd"].median())     if "volume_1h_usd" in df_raw.columns else 0
+                chg_med = float(df_raw["change_1h_pct"].median())     if "change_1h_pct" in df_raw.columns else 0
 
                 with _cycle_stats_file.open("a", newline="", encoding="utf-8") as fh:
                     w = csv.DictWriter(fh, fieldnames=["ts","chain","n_raw","n_hard_pass","n_signals","bsr_med","vol_med","chg_med"])

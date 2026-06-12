@@ -67,6 +67,7 @@ class MarketContext:
     deriv_analyzer: DerivativesAnalyzer
     volatility_analyzer: VolatilityAnalyzer
     anomaly_detector: AnomalyDetector
+    last_signal_types: set[str] = field(default_factory=set)
 
 
 class Sentinel:
@@ -138,6 +139,15 @@ class Sentinel:
 
             elapsed = time.monotonic() - tick_start
             await asyncio.sleep(max(0.0, self._cfg.sentinel_interval_sec - elapsed))
+
+    def get_signal_overlap(self, market_id: str, original_signals: list[str]) -> int | None:
+        """Quanti dei segnali (per tipo, es. CVD_DIV/ZSCORE) che hanno aperto un
+        trade sono ancora attivi ora sul market. None se il market non è tracciato."""
+        ctx = self._markets.get(market_id)
+        if ctx is None:
+            return None
+        original_types = {s.split("(")[0] for s in original_signals}
+        return len(original_types & ctx.last_signal_types)
 
     async def _tick_all(self) -> list[SentinelTrigger]:
         """Poll all markets in parallel, return triggers for markets that fired."""
@@ -265,6 +275,11 @@ class Sentinel:
                 votes_long += 1
             elif z_signal.direction == "SHORT_MR":
                 votes_short += 1
+
+        # Snapshot dei "tipi" di segnale attivi in questo tick, indipendentemente
+        # dal trigger: serve per il recheck periodico delle posizioni aperte
+        # (verifica se la tesi di trade originale è ancora valida).
+        ctx.last_signal_types = {s.split("(")[0] for s in active_signals}
 
         tier_s_active = funding.is_extreme
         min_signals_required = 1 if tier_s_active else 2
