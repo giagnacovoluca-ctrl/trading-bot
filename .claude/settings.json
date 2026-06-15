@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(*run.py*)",
+      "Bash(*run_bot.py*)",
+      "Bash(*main.py*)"
+    ]
+  }
+}
