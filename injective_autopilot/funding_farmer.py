@@ -9,6 +9,7 @@ import asyncio
 import csv
 import logging
 import os
+import signal
 import smtplib
 import sys
 from datetime import datetime
@@ -50,10 +51,10 @@ def _get_market_names() -> dict[str, str]:
 async def _scan_all_markets() -> list[dict]:
     """Fetch funding rate per tutti i market configurati, filtra sopra soglia."""
     from config.settings import Settings
-    from data.injective_client import InjClient
+    from data.injective_client import InjectiveClient
 
     cfg    = Settings()
-    client = InjClient(cfg)
+    client = InjectiveClient(cfg)
     names  = _get_market_names()
 
     try:
@@ -65,7 +66,9 @@ async def _scan_all_markets() -> list[dict]:
     results = []
     for market_id in cfg.market_ids:
         try:
-            snap = await client.fetch_market_snapshot(market_id=market_id)
+            snap = await asyncio.wait_for(
+                client.fetch_market_snapshot(market_id=market_id), timeout=10.0
+            )
             if not snap:
                 continue
             fr = snap.funding_rate   # cumulativo come decimal (es. 0.0005 = 0.05%/8h)
@@ -87,6 +90,8 @@ async def _scan_all_markets() -> list[dict]:
             log.info(
                 f"[funding] {ticker:10s}  fr={fr*100:+.4f}%/8h  APY≈{apy_pct:.1f}%  → {side}  {results[-1]['rating']}"
             )
+        except asyncio.TimeoutError:
+            log.warning(f"[funding] {market_id[:16]}: fetch timeout (10s)")
         except Exception as e:
             log.debug(f"[funding] {market_id[:16]}: {e}")
 
@@ -178,9 +183,17 @@ async def _loop():
 
 
 def main():
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    _REPORTS.mkdir(parents=True, exist_ok=True)
+    log_file = _REPORTS / "funding_farmer.log"
+    handlers: list[logging.Handler] = [
+        logging.StreamHandler(),
+        logging.FileHandler(log_file, encoding="utf-8"),
+    ]
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        handlers=handlers,
     )
     asyncio.run(_loop())
 

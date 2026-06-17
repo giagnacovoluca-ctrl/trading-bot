@@ -1,5 +1,55 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-17 sera-8 (FIX WS 429 BACKOFF + DASHBOARD MIGLIORAMENTI:
+trade_simulator _RugWatcher: rimosso reconnect= da run_forever (era fisso 10s anche su 429);
+backoff manuale: _got_429 flag rilevato in _on_error/_on_close → wait 300s su 429 (5min)
+invece di 10s. wallet_mirror_bot: stesso fix. gemmeV3: _MAX_RESULT_AGE_H 1.0→0.5h (Dune
+re-execute ogni 30min invece di 1h per ridurre rischio dati congelati).
+Dashboard sim_report.html: bottone MIRROR aggiunto al filtro Sistema; apertura ora mostra
+"17/06 ore 18:12" (data+ora) invece del solo orario, su posizioni aperte e chiuse;
+mirror escluso da tot_pnl nel JS (data-sys!=="mirror"); filtri temporali (7gg/30gg/Tutto)
+unificati su _cutoff_ts+data-exitts come le 24h (invece di confronto stringa exitdate).
+run.py: aggiunto _consume_shadow_queue() e _process_shadows() nel loop principale.
+Serve restart run.py + run_bot.py.)
+
+Aggiornato: 2026-06-17 sera-7 (MIRROR ISOLATO DA STATS PUBBLICHE + DASHBOARD:
+trade_simulator: sistema "mirror" escluso da _compute_daily_pnl() (circuit breaker),
+total_pnl/real_closed_all/_build_kpi_section() in _generate_html() — appare ancora nel
+breakdown per-sistema per debug ma non inquina i totali. Aggiunto bottone "Ultimo mese"
+(dateNDaysAgo(30)) nella dashboard accanto a "7 giorni".
+track_record.py: mirror_signals set escluso da closed/total_pnl/pnl_24h/weekly recap
+(stessa logica shadow_signals già esistente).
+publisher.py: system=="mirror" → skip in _publish_full() (entry) e nel loop live_trades
+(exit) — nessuna notifica mirror su Premium/FREE finché WR non validato.
+Serve restart run.py + run_bot.py.)
+
+Aggiornato: 2026-06-17 sera-6 (LIQ SHADOW QUEUE + DEDUP TELEGRAM PUBLISHER:
+liq_event_monitor: pool $10k-$25k ora scritte in liq_shadow_queue.csv (nuovo file separato,
+NON in pump_grad_signals.csv — evita rumore). Pool ≥$25k filtrate in _notify() con stessi
+criteri simulator (chg>20% e 0<vol<5k → skip alert admin). Nuovo _build_signal_row() helper
+condiviso tra _write_pump_grad_signal() e _write_shadow_queue().
+trade_simulator: aggiunto LIQ_SHADOW_QUEUE costante + _shadow_queue_seen set + metodo
+_consume_shadow_queue() che legge il file, chiama _shadow_register() per ogni entry nuova,
+poi tronca lasciando solo l'header (cut & paste). run.py: aggiunto _consume_shadow_queue()
+e _process_shadows() nel loop principale (REGOLA: ogni fix a LiveEngine.run() va replicato
+qui — era il bug che impediva il funzionamento).
+publisher.py: _pump_grad_notified dict → max 1 entry notify per token_symbol ogni 30min
+(fix spam MOON×4/HermeWorld×3 pool multiple); liq_collapse rimosso da _EXIT_LABEL exit
+notifications Premium (pool che muoiono in <60s non meritano alert). Serve restart
+run.py + run_bot.py.)
+
+Aggiornato: 2026-06-17 sera-5 (FIX EXECUTOR + SHADOW TRACKING + COINGECKO CACHE:
+trade_simulator: _PROFILES["mirror"] separato da pump_grad (tp1_fraction=0.50, tp2_pct=300%);
+effective_system="mirror" (non sovrascrive più pump_grad); shadow tracking segnali scartati →
+defi/reports/pump_grad_shadow.csv (log controfattuale per liq<25k/chg1h>20%/vol_h1<5k, aggiornato
+ogni ciclo DexScreener, chiude per TP1/SL/time_limit); midcap_scanner: cg_universe_cache.json
+su disco TTL=4h per evitare 8 call CoinGecko ad ogni restart (era causa 80% quota a metà mese).
+solana_executor: LIQ_* skip rugcheck (liq_monitor già filtra liq>$25k); "mirror" in SLIPPAGE_BPS=800bps;
+base_executor: PUMP_GRAD_SIGNALS aggiunto a build_token_lookup() → LIQ Base ora eseguiti
+(confermato: ORBIS/MRBASE/Juno/UNO comprati DRY_RUN post-restart).
+Discrepanza executor vs simulator per token thin-liquidity: ATTESA (Jupiter routing vs DexScreener spot).
+Serve restart per mirror SLIPPAGE_BPS.)
+
 Aggiornato: 2026-06-17 sera-4 (INTEGRAZIONE scanner con engine:
 liq_monitor: pool <5min liq>$25k → scrive DIRETTAMENTE in pump_grad_signals.csv
 (bypass Dune lag ore; LiveEngine processa con config pump_grad TP1+25%/SL-12%/hold1h);
@@ -100,10 +150,12 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
                                trackarli. Thread in run.py, poll 5min, no nuove dipendenze.
         liquidity_event_monitor.py ← NUOVO 17/06: polling GeckoTerminal /networks/{chain}/new_pools
                                ogni 30s su Solana e Base. Pool nuovi <5min:
-                               liq>$10k → Telegram alert immediato (tg_alert.py)
-                               liq>$25k → scrive in pump_grad_signals.csv → LiveEngine apre trade
-                               con config pump_grad (TP1+25%, SL-12%, hold 1h). Bypass Dune lag.
-                               Log: reports/liq_event_signals.csv. Flag --no-liq. _seen TTL 1h.
+                               liq>$25k → _write_pump_grad_signal() → pump_grad_signals.csv → trade reale
+                               liq $10k-$25k → _write_shadow_queue() → liq_shadow_queue.csv → shadow only
+                               _notify() (admin): filtra chg>20% e 0<vol<5k (stessi criteri simulator)
+                               Log storico: reports/liq_event_signals.csv. Flag --no-liq. _seen TTL 1h.
+                               AGGIORNATO 17/06 sera: _build_signal_row() helper condiviso; shadow queue
+                               separata da pump_grad_signals.csv (era inquinato); _notify filtra spam.
         cex_listing_watcher.py ← NUOVO 17/06: polling Binance announcements + Coinbase products
                                ogni 2 min. Ticker nuovi cercati su DexScreener (solana/base,
                                liq>$5k) → Telegram alert immediato + reports/cex_listing_signals.csv
@@ -135,7 +187,11 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
                                   ⚠️ pump_probability vuota per righe via_gemmeV3; top_features
                                   contiene tier/score/gem_class per le righe v3
             midcap_signals.csv      ← segnali midcap_scanner (NUOVO)
-            pump_grad_signals.csv   ← segnali pump_graduation_scanner
+            pump_grad_signals.csv   ← segnali pump_graduation_scanner + pool LIQ ≥$25k (liq_monitor)
+            liq_shadow_queue.csv    ← NUOVO 17/06: pool $10k-$25k da liq_monitor, consumato e
+                                  troncato (header mantenuto) da _consume_shadow_queue() ogni ciclo;
+                                  entries registrate in LiveEngine._shadows → pump_grad_shadow.csv
+            liq_event_signals.csv   ← log storico tutte le pool rilevate da liq_monitor (signal_sent=0/1)
             pre_grad_signals.csv    ← segnali pre_grad_monitor
             mirror_signals.csv      ← segnali wallet_mirror_bot
             live_state.json         ← stato posizioni LiveEngine (persistente)
@@ -229,6 +285,9 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
                                ogni full Premium (rate limit FREE_TEASER_MIN_INTERVAL_MIN=45/
                                FREE_TEASER_MAX_PER_DAY=6, filtro FREE_MIN_PROBABILITY); su chiusura vincente
                                chiama x_poster.maybe_send_x_draft(closure); skip righe "shadow=true" (pre_grad shadow)
+                               AGGIORNATO 17/06 sera: _pump_grad_notified dict → max 1 entry notify per
+                               token_symbol ogni 30min per pump_grad (fix spam pool multiple stesso token);
+                               liq_collapse escluso da exit notifications Premium (troppo rumoroso)
         x_poster.py         ← NUOVO 12/06: per ogni chiusura vincente sopra soglia (X_PROMO_MIN_PNL_EUR/PCT,
                                rate-limited via state/x_promo.json) genera card PNG (Pillow, dark theme
                                1200x675) + testo pronto con $TICKER/hashtag/CTA canale FREE, e li manda
@@ -570,6 +629,11 @@ class LiveEngine:
     def _load_new_signals()    # filtri cooldown differenziati + prezzo re-entry + anti-dump
     def _process_position(sid, pos)
     def _on_pool_activity(pa)  # callback _RugWatcher → fetch immediato prezzo (fast-check)
+    # NUOVO 17/06: shadow tracking pool liq $10k-$25k da liq_monitor
+    def _consume_shadow_queue() # legge liq_shadow_queue.csv, _shadow_register() per ogni entry,
+                                # poi tronca il file mantenendo l'header (cut & paste in memoria)
+    # NOTA: _consume_shadow_queue() e _process_shadows() chiamati dal loop di run.py
+    # (NON in LiveEngine.run() — run.py ha il suo loop principale, non usa engine.run())
 ```
 
 ### `executor/base_executor.py`

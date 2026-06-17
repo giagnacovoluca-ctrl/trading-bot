@@ -39,9 +39,10 @@ MIN_LIQ_ALERT     = 10_000   # soglia Telegram alert
 MIN_LIQ_SIGNAL    = 25_000   # soglia per aprire trade via pump_grad (backtest: <25k=69% rug)
 SEEN_TTL_SEC      = 3600
 
-_REPORTS         = _HERE / "reports"
-_CSV_OUT         = _REPORTS / "liq_event_signals.csv"
-_PUMP_GRAD_CSV   = _REPORTS / "pump_grad_signals.csv"
+_REPORTS          = _HERE / "reports"
+_CSV_OUT          = _REPORTS / "liq_event_signals.csv"
+_PUMP_GRAD_CSV    = _REPORTS / "pump_grad_signals.csv"
+_SHADOW_QUEUE_CSV = _REPORTS / "liq_shadow_queue.csv"
 _PUMP_GRAD_COLS  = [
     "signal_id", "timestamp_entry", "token_symbol", "token_name",
     "token_address", "chain", "pair_address", "price_entry_usd",
@@ -118,13 +119,20 @@ def _extract_pool_data(pool: dict, chain: str) -> dict:
 
 
 def _notify(d: dict, chain: str):
+    # Stessi filtri del simulator (publisher.py linee 163-169):
+    # evita alert per pool che verranno comunque scartate → era 87% spam
+    if d["chg_1h"] > 20:
+        log.debug(f"[liq] notify skip {d['token_symbol']}: chg1h={d['chg_1h']:+.0f}% > 20%")
+        return
+    if 0 < d["vol_h1"] < 5_000:
+        log.debug(f"[liq] notify skip {d['token_symbol']}: vol_h1=${d['vol_h1']:,.0f} < $5k")
+        return
     try:
         import tg_alert
         chain_emoji = {"solana": "🟣", "base": "🔵"}.get(chain, "🔹")
-        signal_tag = " 🚀 <b>→ segnale aperto</b>" if d["liq"] >= MIN_LIQ_SIGNAL else ""
         dex_url = f"https://dexscreener.com/{chain}/{d['addr']}"
         text = (
-            f"💧 <b>Nuova pool</b> · {chain_emoji} {chain.upper()}{signal_tag}\n"
+            f"💧 <b>Nuova pool</b> · {chain_emoji} {chain.upper()} 🚀\n"
             f"<b>${d['token_symbol']}</b> · età {d['age_min']:.1f} min\n"
             f"Liq: <b>${d['liq']:,.0f}</b> · Vol1h: ${d['vol_h1']:,.0f}\n"
             f"<a href='{dex_url}'>DexScreener</a>"
@@ -154,11 +162,9 @@ def _append_log_csv(d: dict, chain: str):
         w.writerow(row)
 
 
-def _write_pump_grad_signal(d: dict, chain: str):
-    """Scrive segnale diretto in pump_grad_signals.csv — LiveEngine lo processa
-    con la config pump_grad (TP1 25%, SL -12%, hold 1h).
-    Bypass totale del lag Dune Analytics: segnale emesso in <30s dalla creazione pool."""
-    ts = datetime.now().isoformat()
+def _build_signal_row(d: dict, chain: str) -> tuple[str, dict]:
+    """Costruisce sid e riga CSV comune per segnali e shadow."""
+    ts  = datetime.now().isoformat()
     sid = f"LIQ_{d['token_symbol']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     top_feat = (
         f"liq_monitor=true | pair_age_min={d['age_min']:.1f} | "
@@ -175,15 +181,21 @@ def _write_pump_grad_signal(d: dict, chain: str):
         "price_entry_usd":  f"{d['price']:.8g}",
         "volume_1h_usd":    f"{d['vol_h1']:.2f}",
         "liquidity_usd":    f"{d['liq']:.2f}",
-        "buy_sell_ratio_1h": "1.0",   # non disponibile da GeckoTerminal new_pools
+        "buy_sell_ratio_1h": "1.0",
         "change_1h_pct":    f"{d['chg_1h']:.2f}",
-        "pump_probability": "0.75",   # pool nuova con liq>$25k: probabilità alta per definizione
+        "pump_probability": "0.75",
         "buy_tax":          "0.0",
         "sell_tax":         "0.0",
         "lp_locked":        "0",
         "is_honeypot":      "0",
         "top_features":     top_feat,
     }
+    return sid, row
+
+
+def _write_pump_grad_signal(d: dict, chain: str):
+    """Scrive segnale reale in pump_grad_signals.csv (liq>=$25k)."""
+    sid, row = _build_signal_row(d, chain)
     new_file = not _PUMP_GRAD_CSV.exists()
     with open(_PUMP_GRAD_CSV, "a", newline="") as f:
         w = csv.DictWriter(f, fieldnames=_PUMP_GRAD_COLS)
@@ -191,8 +203,24 @@ def _write_pump_grad_signal(d: dict, chain: str):
             w.writeheader()
         w.writerow(row)
     log.info(
-        f"[liq] ✅ segnale pump_grad: {d['token_symbol']} {chain} "
+        f"[liq] ✅ segnale: {d['token_symbol']} {chain} "
         f"liq=${d['liq']:,.0f} vol1h=${d['vol_h1']:,.0f} → {sid}"
+    )
+
+
+def _write_shadow_queue(d: dict, chain: str):
+    """Scrive pool liq $10k-$25k in liq_shadow_queue.csv.
+    Il simulator lo legge, chiama _shadow_register, poi tronca il file."""
+    sid, row = _build_signal_row(d, chain)
+    new_file = not _SHADOW_QUEUE_CSV.exists()
+    with open(_SHADOW_QUEUE_CSV, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=_PUMP_GRAD_COLS)
+        if new_file:
+            w.writeheader()
+        w.writerow(row)
+    log.debug(
+        f"[liq] 👻 shadow_queue: {d['token_symbol']} {chain} "
+        f"liq=${d['liq']:,.0f} → {sid}"
     )
 
 
@@ -209,12 +237,18 @@ def _tick():
             if d["liq"] < MIN_LIQ_ALERT or d["age_min"] > MAX_POOL_AGE_MIN:
                 continue
             _append_log_csv(d, chain)
-            _notify(d, chain)
             if d["liq"] >= MIN_LIQ_SIGNAL:
+                _notify(d, chain)
                 try:
                     _write_pump_grad_signal(d, chain)
                 except Exception as e:
                     log.warning(f"[liq] write_pump_grad_signal: {e}")
+            else:
+                # liq $10k-$25k: shadow queue separata, pump_grad_signals.csv rimane pulito.
+                try:
+                    _write_shadow_queue(d, chain)
+                except Exception as e:
+                    log.warning(f"[liq] write_shadow_queue: {e}")
 
 
 def main(stop_event: threading.Event | None = None):

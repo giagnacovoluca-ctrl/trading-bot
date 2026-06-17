@@ -169,6 +169,7 @@ SLIPPAGE_BPS = {
     "v3":        int(_env("SLIPPAGE_V3_BPS",         "100")),
     "v3_large":  int(_env("SLIPPAGE_V3_LARGE_BPS",   "50")),
     "pump_grad": int(_env("SLIPPAGE_PUMP_GRAD_BPS",  "800")),  # token illiquidi appena graduati
+    "mirror":    int(_env("SLIPPAGE_MIRROR_BPS",     "800")),  # stesso di pump_grad: token volatili post-graduation
     "pre_grad":  int(_env("SLIPPAGE_PRE_GRAD_BPS",  "1000")), # bonding curve: più volatile, slippage più alto
 }
 
@@ -737,8 +738,11 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                 return False
 
     # RugCheck: blocca token con LP non bloccato (rug risk)
-    # pre_grad: skip rugcheck (token non ancora su DEX, LP non esiste)
-    if not _is_pre_grad and not rugcheck_safe(token_address, system, chain="solana"):
+    # pre_grad: skip (token non ancora su DEX, LP non esiste)
+    # LIQ_*: skip top_holder (liq_monitor filtra già liq>$25k; LP locked da pump.fun)
+    # mirror: dopo il fix effective_system, viene passato "mirror" → _check_lp_lock → None → True
+    _skip_rugcheck = _is_pre_grad or signal_id.startswith("LIQ_")
+    if not _skip_rugcheck and not rugcheck_safe(token_address, system, chain="solana"):
         log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                        "token_symbol": token_symbol, "action": "buy_skipped",
                        "token_address": token_address, "status": "skipped",

@@ -83,8 +83,10 @@ BF_SIGNALS    = os.path.join(BASE, "reports", "binance_futures_signals.csv")
 MIRROR_SIGNALS    = os.path.join(BASE, "reports", "mirror_signals.csv")
 PRE_GRAD_SIGNALS  = os.path.join(BASE, "reports", "pre_grad_signals.csv")
 REAL_EXEC_CSV     = os.path.join(BASE, "..", "executor", "real_executions.csv")
-BASE_PUMP_SIGNALS = os.path.join(BASE, "reports", "base_pump_signals.csv")
-MIDCAP_SIGNALS    = os.path.join(BASE, "reports", "midcap_signals.csv")
+BASE_PUMP_SIGNALS  = os.path.join(BASE, "reports", "base_pump_signals.csv")
+MIDCAP_SIGNALS     = os.path.join(BASE, "reports", "midcap_signals.csv")
+SHADOW_CSV         = os.path.join(BASE, "reports", "pump_grad_shadow.csv")
+LIQ_SHADOW_QUEUE   = os.path.join(BASE, "reports", "liq_shadow_queue.csv")
 V3_EXIT_SIGNALS   = os.path.join(BASE, "reports", "v3_exit_signals.csv")
 WALLET_EVENTS_CSV = os.path.join(BASE, "reports", "wallet_events.csv")
 
@@ -187,6 +189,23 @@ CONFIGS = {
         hard_sl_pct          = -12.0,  # SL leggermente più largo (volatilità graduation)
         vol_drop_exit_ratio  = 0.15,   # vol_crash stretto: se il volume crolla → exit
         bsr_exit_threshold   = 0.45,   # solo selling pressure forte giustifica exit
+    ),
+    "mirror": dict(
+        # Wallet alpha copiati: stessa volatilità pump_grad ma edge superiore (smart money)
+        # → vale tenere 50% per catturare outlier (SPX +893%, SPCXx +871% il 17/06)
+        tp1_pct              = 25.0,
+        tp2_pct              = 300.0,  # outlier mirror spesso vanno 5-10x
+        tp1_fraction         = 1.00,   # 100% al TP1: outlier mirror non raggiungibili in Jupiter (WR 86% LIQ)
+        tp1_trail_only       = False,
+        tp1_trail_atr_mult   = 2.0,
+        adaptive_snap1_exit  = -8.0,
+        trail_activate_pct   = 15.0,
+        trail_drop_pct       = 18.0,
+        sl_consecutive_neg   = 3,
+        sl_threshold_pct     = -20.0,
+        hard_sl_pct          = -12.0,
+        vol_drop_exit_ratio  = 0.15,
+        bsr_exit_threshold   = 0.45,
     ),
     "v2": dict(
         tp1_pct              = 15.0,   # abbassato da 25 (mediano TP1 era T+240min!)
@@ -319,6 +338,8 @@ def _compute_daily_pnl() -> float:
                     pnl = float((row.get("pnl_eur") or "0").replace("+", ""))
                     ts  = datetime.fromisoformat(row["ts"]).timestamp()
                 except (ValueError, KeyError):
+                    continue
+                if row.get("system") == "mirror":
                     continue
                 sid = row.get("signal_id") or row.get("token_symbol") or "?"
                 if now - ts > 86400:
@@ -678,7 +699,8 @@ class _RugWatcher:
     mancano o se l'RPC nega le subscription: resta inattivo, polling normale."""
 
     _SILENCE_MAX     = 90    # secondi senza messaggi con pool attivi → forza reconnect
-    _RECONNECT_S     = 10
+    _RECONNECT_S     = 10   # backoff base
+    _RECONNECT_429_S = 300  # backoff su 429 (Helius rate limit): 5 minuti
     _MAX_SUB_ERRORS  = 3     # subscription rifiutate consecutive → disabilita (piano non supportato)
 
     def __init__(self, on_pool_activity):
@@ -693,6 +715,7 @@ class _RugWatcher:
         self._stop         = threading.Event()
         self._sub_errors   = 0
         self._enabled      = bool(HELIUS_API_KEY and WS_OK)
+        self._got_429      = False     # flag: ultimo close era 429 → backoff lungo
 
     def start(self):
         if not self._enabled:
@@ -729,17 +752,23 @@ class _RugWatcher:
     def _run_forever(self):
         url = f"wss://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
         while not self._stop.is_set():
+            self._got_429 = False
             try:
                 ws = websocket.WebSocketApp(
                     url,
                     on_open=self._on_open, on_message=self._on_message,
                     on_error=self._on_error, on_close=self._on_close,
                 )
-                ws.run_forever(reconnect=self._RECONNECT_S, ping_interval=30, ping_timeout=10)
+                self._ws = ws
+                # reconnect= rimosso: gestione backoff manuale per distinguere 429 da altri errori
+                ws.run_forever(ping_interval=30, ping_timeout=10)
             except Exception as e:
                 log.debug(f"[rug_watch] WS crash: {e}")
             if not self._stop.is_set() and self._enabled:
-                time.sleep(self._RECONNECT_S)
+                wait = self._RECONNECT_429_S if self._got_429 else self._RECONNECT_S
+                if self._got_429:
+                    log.info(f"[rug_watch] 429 Helius — backoff {wait}s prima di riprovare")
+                time.sleep(wait)
 
     def _watchdog_loop(self):
         """Pattern ripreso da pre_grad_monitor: forza reconnect se il WS resta
@@ -855,9 +884,14 @@ class _RugWatcher:
             pass
 
     def _on_error(self, ws, err):
+        err_str = str(err)
+        if "429" in err_str or "max usage" in err_str.lower():
+            self._got_429 = True
         log.debug(f"[rug_watch] WS errore: {err}")
 
     def _on_close(self, ws, code, msg):
+        if code == 429 or "429" in str(msg or ""):
+            self._got_429 = True
         log.debug(f"[rug_watch] WS chiuso (code={code})")
 
 
@@ -1002,97 +1036,125 @@ def _real_buy_price(sid: str) -> float | None:
     return None
 
 
+_RAYDIUM_QUOTE_URL = "https://transaction-v1.raydium.io/compute/swap-base-in"
+
 def _fetch_price_jupiter(token_address: str, entry_price_usd: float,
-                          timeout: int = 8) -> float | None:
+                          timeout: int = 8,
+                          pair_address: str = "") -> float | None:
     """
-    Quota token → USDC su Jupiter e ritorna il prezzo corrente in USD/token.
-
-    Usa i decimali SPL reali (da _get_solana_token_decimals); se non disponibili
-    li determina per trial su (6, 9) scegliendo il risultato con ratio più vicino
-    a 1.0 rispetto all'entry price — questo evita il bug in cui formula a 6 dec
-    su un token a 9 dec restituisce un prezzo 1000x troppo basso (ratio≈0.001)
-    e triggera un hard_sl falso.
-
-    Ritorna None se: nessuna route (400), errore di rete, o nessun decimale
-    produce un prezzo entro 0.001x–1000x dell'entry.
+    Prezzo Solana token → USDC con cascata: Raydium → Jupiter → DexScreener.
+    Raydium: nessun throttle, nessuna API key, risponde in <1s.
+    Jupiter: throttle 1.5s/call, fallback se Raydium non ha route.
+    DexScreener: spot price da pair_address, ultimo fallback se entrambi down.
+    Mai restituisce None se almeno una fonte risponde con un prezzo plausibile.
     """
     import math
     global _jup_last_t
+
     if not token_address or entry_price_usd <= 0:
         return None
-    if token_address in _jup_no_route:
-        return None
 
-    # Throttle: min 1.5s tra chiamate per rispettare free tier Jupiter (30 req/min)
+    QUOTE_USD = 10.0
+    known_dec = _get_solana_token_decimals(token_address)
+    decimals_to_try = (known_dec,) if known_dec is not None else (6, 9)
+
+    def _price_from_output(usdc_out_lam: int, lamports: int, decimals: int) -> float | None:
+        usdc_out  = usdc_out_lam / 1_000_000
+        tokens_in = lamports / (10 ** decimals)
+        if usdc_out <= 0 or tokens_in <= 0:
+            return None
+        price = usdc_out / tokens_in
+        ratio = price / entry_price_usd
+        if not (0.001 <= ratio <= 1000):
+            return None
+        return price
+
+    # ── 1. Raydium (nessun throttle, no API key) ──────────────────────────────
+    if token_address not in _jup_no_route:
+        candidates = []
+        for decimals in decimals_to_try:
+            lamports = int((QUOTE_USD / entry_price_usd) * (10 ** decimals))
+            if lamports <= 0:
+                continue
+            try:
+                r = requests.get(_RAYDIUM_QUOTE_URL, params={
+                    "inputMint":   token_address,
+                    "outputMint":  _USDC_MINT_SOL,
+                    "amount":      str(lamports),
+                    "slippageBps": "50",
+                    "txVersion":   "V0",
+                }, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+                if r.status_code == 200:
+                    data = r.json()
+                    if data.get("success"):
+                        out_lam = int(data.get("data", {}).get("outputAmount", 0))
+                        price = _price_from_output(out_lam, lamports, decimals)
+                        if price:
+                            log_dist = abs(math.log10(price / entry_price_usd))
+                            candidates.append((log_dist, price, decimals))
+            except Exception as e:
+                log.debug(f"[Raydium] {token_address[:16]}… {e}")
+        if candidates:
+            candidates.sort()
+            best_price, best_dec = candidates[0][1], candidates[0][2]
+            if known_dec is None and token_address not in _token_dec_cache:
+                _token_dec_cache[token_address] = best_dec
+            return best_price
+
+    # ── 2. Jupiter (throttle 1.5s) ────────────────────────────────────────────
     elapsed = time.time() - _jup_last_t
     if elapsed < 1.5:
         time.sleep(1.5 - elapsed)
     _jup_last_t = time.time()
 
-    QUOTE_USD = 10.0
-
-    # Decimali corretti dal catalogo; se assenti proviamo entrambi
-    known_dec = _get_solana_token_decimals(token_address)
-    decimals_to_try = (known_dec,) if known_dec is not None else (6, 9)
-
-    candidates: list[tuple[float, float, int]] = []  # (log_dist, price, decimals)
-
-    for decimals in decimals_to_try:
-        tokens_for_10_usd = QUOTE_USD / entry_price_usd
-        lamports = int(tokens_for_10_usd * (10 ** decimals))
-        if lamports <= 0:
-            continue
-        params = {
-            "inputMint":        token_address,
-            "outputMint":       _USDC_MINT_SOL,
-            "amount":           str(lamports),
-            "slippageBps":      "50",
-            "onlyDirectRoutes": "false",
-            "maxAccounts":      "64",
-        }
-        try:
-            r = requests.get(_JUP_QUOTE_URL, params=params, timeout=timeout)
-            if r.status_code == 400:
-                _jup_no_route.add(token_address)
-                log.debug(f"[Jupiter] {token_address[:16]}… nessuna route (400) → skip sessione.")
-                return None
-            r.raise_for_status()
-            data     = r.json()
-            usdc_out  = int(data.get("outAmount", 0)) / 1_000_000
-            tokens_in = lamports / (10 ** decimals)
-            if usdc_out <= 0 or tokens_in <= 0:
+    if token_address not in _jup_no_route:
+        candidates = []
+        for decimals in decimals_to_try:
+            lamports = int((QUOTE_USD / entry_price_usd) * (10 ** decimals))
+            if lamports <= 0:
                 continue
-            jup_price = usdc_out / tokens_in
+            try:
+                r = requests.get(_JUP_QUOTE_URL, params={
+                    "inputMint":        token_address,
+                    "outputMint":       _USDC_MINT_SOL,
+                    "amount":           str(lamports),
+                    "slippageBps":      "50",
+                    "onlyDirectRoutes": "false",
+                    "maxAccounts":      "64",
+                }, timeout=timeout)
+                if r.status_code == 400:
+                    _jup_no_route.add(token_address)
+                    break
+                r.raise_for_status()
+                data    = r.json()
+                out_lam = int(data.get("outAmount", 0))
+                price   = _price_from_output(out_lam, lamports, decimals)
+                if price:
+                    log_dist = abs(math.log10(price / entry_price_usd))
+                    candidates.append((log_dist, price, decimals))
+            except Exception as e:
+                log.debug(f"[Jupiter] {token_address[:16]}… {e}")
+                break
+        if candidates:
+            candidates.sort()
+            best_price, best_dec = candidates[0][1], candidates[0][2]
+            if known_dec is None and token_address not in _token_dec_cache:
+                _token_dec_cache[token_address] = best_dec
+            return best_price
 
-            ratio = jup_price / entry_price_usd
-            if not (0.001 <= ratio <= 1000):
-                log.debug(
-                    f"[Jupiter] {token_address[:12]}… {jup_price:.4g} (ratio={ratio:.3g}, "
-                    f"dec={decimals}) fuori range → scartato"
-                )
-                continue
+    # ── 3. DexScreener (spot price da pair_address) ───────────────────────────
+    pa = pair_address.strip() if pair_address else ""
+    if pa and pa.lower() != "nan":
+        result = _fetch_price(pa, "solana")
+        if result:
+            price = result[0]  # tupla (price, vol_h1, bsr, liq, token_addr)
+            if price and price > 0:
+                ratio = price / entry_price_usd
+                if 0.001 <= ratio <= 1000:
+                    log.debug(f"[price] {token_address[:12]}… DexScreener fallback: {price:.4g}")
+                    return price
 
-            log_dist = abs(math.log10(ratio))   # 0 = ratio esattamente 1.0
-            candidates.append((log_dist, jup_price, decimals))
-
-        except Exception as e:
-            log.debug(f"[Jupiter] {token_address[:16]}… errore fetch: {e}")
-            return None
-
-    if not candidates:
-        return None
-
-    # Scegli il prezzo con ratio più vicino a 1.0 (decimali più probabilmente corretti)
-    candidates.sort()
-    best_log_dist, best_price, best_dec = candidates[0]
-
-    # Caching: se i decimali erano sconosciuti, salva quelli vincenti
-    if known_dec is None and token_address not in _token_dec_cache:
-        _token_dec_cache[token_address] = best_dec
-        log.debug(f"[Jupiter] {token_address[:12]}… decimali determinati: {best_dec} "
-                  f"(ratio={best_price/entry_price_usd:.3g})")
-
-    return best_price
+    return None
 
 
 _CG_API_KEY = os.environ.get("COINGECKO_API_KEY_SIM") or os.environ.get("COINGECKO_API_KEY", "")
@@ -1375,6 +1437,8 @@ class LiveEngine:
         self._signal_skip_cache: set = set()
         self.recent_tokens: dict  = {}   # sym_upper → (ts, action) — cooldown cross-sistema
         self.recent_taddrs: dict  = {}   # token_address_lower → (ts, action)
+        self._shadows: dict       = {}   # sid → shadow pos (segnali pump_grad scartati dai filtri)
+        self._shadow_queue_seen: set = set()  # sid già consumati da liq_shadow_queue.csv
         # ── Rug watcher (fast-check WS pump_grad, vedi _RugWatcher) ────────
         self._fast_lock          = threading.Lock()
         self._fast_check_pending: set  = set()   # pair_address con attività rilevata
@@ -1539,6 +1603,150 @@ class LiveEngine:
         if recovered or to_purge:
             log.info(f"[live] Pulizia: {recovered} pair_address recuperati, "
                      f"{len(to_purge)} posizioni stale purgiate.")
+
+    # ── Shadow tracking: segnali pump_grad/mirror scartati dai filtri ─────────
+
+    _SHADOW_COLS = [
+        "ts_entry", "ts_exit", "signal_id", "token_symbol", "chain",
+        "pair_address", "token_address", "entry_price",
+        "skip_reason", "skip_value",
+        "peak_pct", "exit_pct", "duration_min", "exit_reason",
+    ]
+    _SHADOW_TP1     = 25.0
+    _SHADOW_HARD_SL = -12.0
+    _SHADOW_LIMIT_M = 45.0
+
+    def _shadow_register(self, sid: str, row: dict, reason: str, skip_val: float,
+                         tok_addr: str, now: datetime):
+        """Registra un segnale scartato per tracking contrfattuale."""
+        if sid in self._shadows:
+            return
+        entry_price = float(row.get("price_entry_usd", row.get("price_usd", 0)) or 0)
+        pair_addr   = str(row.get("pair_address", "") or "")
+        if pair_addr.lower() == "nan":
+            pair_addr = ""
+        if not pair_addr or entry_price <= 0:
+            return
+        self._shadows[sid] = {
+            "ts_entry":    now,
+            "token_symbol": str(row.get("token_symbol", "") or ""),
+            "chain":        str(row.get("chain", "") or ""),
+            "pair_address": pair_addr,
+            "token_address": tok_addr,
+            "entry_price":  entry_price,
+            "skip_reason":  reason,
+            "skip_value":   skip_val,
+            "peak_pct":     float("-inf"),
+        }
+
+    def _shadow_close(self, sid: str, sh: dict, exit_pct: float, exit_reason: str, now: datetime):
+        """Scrive la riga finale su pump_grad_shadow.csv."""
+        dur = (now - sh["ts_entry"]).total_seconds() / 60
+        new_file = not os.path.exists(SHADOW_CSV)
+        try:
+            with open(SHADOW_CSV, "a", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=self._SHADOW_COLS)
+                if new_file:
+                    w.writeheader()
+                w.writerow({
+                    "ts_entry":    sh["ts_entry"].isoformat(),
+                    "ts_exit":     now.isoformat(),
+                    "signal_id":   sid,
+                    "token_symbol": sh["token_symbol"],
+                    "chain":       sh["chain"],
+                    "pair_address": sh["pair_address"],
+                    "token_address": sh["token_address"],
+                    "entry_price": f"{sh['entry_price']:.8g}",
+                    "skip_reason": sh["skip_reason"],
+                    "skip_value":  f"{sh['skip_value']:.4g}",
+                    "peak_pct":    f"{sh['peak_pct']:+.2f}" if sh["peak_pct"] != float("-inf") else "?",
+                    "exit_pct":    f"{exit_pct:+.2f}",
+                    "duration_min": f"{dur:.1f}",
+                    "exit_reason": exit_reason,
+                })
+        except Exception as e:
+            log.debug(f"[shadow] write error {sid}: {e}")
+
+    def _process_shadows(self):
+        """Aggiorna i shadow trades attivi: fetch prezzo, chiude per TP1/SL/time_limit."""
+        if not self._shadows:
+            return
+        now  = datetime.now()
+        done = []
+        for sid, sh in list(self._shadows.items()):
+            age_min = (now - sh["ts_entry"]).total_seconds() / 60
+            # Time limit superato: chiudi al prezzo corrente (o sconosciuto)
+            def _shadow_price(pair_addr, chain):
+                """_fetch_price ritorna tupla (price,...) — estrae solo il prezzo."""
+                r = _fetch_price(pair_addr, chain)
+                return r[0] if r else None
+
+            if age_min >= self._SHADOW_LIMIT_M:
+                fetch = _shadow_price(sh["pair_address"], sh["chain"])
+                ep    = sh["entry_price"]
+                pct   = ((fetch - ep) / ep * 100) if (fetch and ep > 0) else 0.0
+                self._shadow_close(sid, sh, pct, "time_limit", now)
+                done.append(sid)
+                continue
+            fetch = _shadow_price(sh["pair_address"], sh["chain"])
+            if not fetch or fetch <= 0:
+                continue
+            ep  = sh["entry_price"]
+            if ep <= 0:
+                continue
+            pct = (fetch - ep) / ep * 100
+            sh["peak_pct"] = max(sh.get("peak_pct", float("-inf")), pct)
+            if pct >= self._SHADOW_TP1:
+                self._shadow_close(sid, sh, pct, "tp1_would_hit", now)
+                done.append(sid)
+            elif pct <= self._SHADOW_HARD_SL:
+                self._shadow_close(sid, sh, pct, "hard_sl_would_hit", now)
+                done.append(sid)
+        for sid in done:
+            self._shadows.pop(sid, None)
+        if done:
+            log.info(f"[shadow] chiusi {len(done)} shadow trades → {SHADOW_CSV}")
+
+    def _consume_shadow_queue(self):
+        """Legge liq_shadow_queue.csv, registra nuovi shadow in memoria, poi tronca il file."""
+        if not os.path.exists(LIQ_SHADOW_QUEUE):
+            return
+        try:
+            with open(LIQ_SHADOW_QUEUE, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            log.debug(f"[shadow_queue] read: {e}")
+            return
+        if not content.strip():
+            return
+        try:
+            rows = list(csv.DictReader(content.splitlines()))
+        except Exception as e:
+            log.debug(f"[shadow_queue] parse: {e}")
+            rows = []
+        now = datetime.now()
+        new = 0
+        for row in rows:
+            sid = str(row.get("signal_id", ""))
+            if not sid or sid in self._shadow_queue_seen:
+                continue
+            self._shadow_queue_seen.add(sid)
+            try:
+                tok_addr = str(row.get("token_address", "") or "")
+                liq_val  = float(row.get("liquidity_usd", 0) or 0)
+                self._shadow_register(sid, row, f"liq_queue(${liq_val:,.0f})", liq_val, tok_addr, now)
+                new += 1
+            except Exception as e:
+                log.debug(f"[shadow_queue] register {sid}: {e}")
+        if new:
+            log.info(f"[shadow_queue] +{new} shadow registrati da liq_shadow_queue.csv")
+        # Tronca sempre: entry in memoria, header riscritto per il prossimo append
+        try:
+            cols = ",".join(next(csv.reader(content.splitlines()), []))
+            with open(LIQ_SHADOW_QUEUE, "w", newline="") as f:
+                f.write(cols + "\n" if cols else "")
+        except Exception as e:
+            log.debug(f"[shadow_queue] truncate: {e}")
 
     # ── Ricostruzione stato da CSV ──────────────────────────────────────────
 
@@ -1753,9 +1961,10 @@ class LiveEngine:
                         known.add(sid)
                         continue
                     # Routing sistema
+                    chain            = str(row.get("chain", "solana") or "solana")
                     effective_system = system
                     if system == "mirror":
-                        effective_system = "pump_grad"  # mirror usa config/logica pump_grad
+                        effective_system = "mirror"  # profilo dedicato: tp1_fraction=0.50, tp2=300%
                     elif system == "pre_grad":
                         pass  # mantiene "pre_grad" — ha config e logica dedicata
                     elif system == "v3":
@@ -1902,21 +2111,24 @@ class LiveEngine:
                     # Backtest 16/06: liq<25k → -197€ su 45 trade (WR invariato);
                     # chg1h>20% → token già pompato pre-graduation (es. SOLANA -53€)
                     # Backtest 17/06: vol_h1 1-5k → n=26 WR=19% PnL=-206€ (−7.9€/trade)
-                    if effective_system == "pump_grad":
+                    if effective_system in ("pump_grad", "mirror"):
                         _sig_liq = float(row.get("liquidity_usd", 0) or 0)
                         if 0 < _sig_liq < 25000:
                             self._signal_skip_cache.add(sid)
                             log.info(f"[live/pump_grad] {sym_check} liq=${_sig_liq:,.0f} < $25k → skip")
+                            self._shadow_register(sid, row, "liq<25k", _sig_liq, tok_addr_check, now)
                             continue
                         _sig_chg = float(row.get("change_1h_pct", 0) or 0)
                         if _sig_chg > 20:
                             self._signal_skip_cache.add(sid)
                             log.info(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 20% → già pompato, skip")
+                            self._shadow_register(sid, row, "chg1h>20%", _sig_chg, tok_addr_check, now)
                             continue
                         _sig_vol_pg = float(row.get("volume_1h_usd", 0) or 0)
                         if 0 < _sig_vol_pg < 5000:
                             self._signal_skip_cache.add(sid)
                             log.info(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $5k → skip")
+                            self._shadow_register(sid, row, "vol_h1<5k", _sig_vol_pg, tok_addr_check, now)
                             continue
 
                     # Filtro re-entry su token in downtrend:
@@ -2045,10 +2257,12 @@ class LiveEngine:
                     # NOTA 11/06: il check anti-stantio per i segnali gemmeV3 (anche Base)
                     # sta ALLA RADICE in gemmeV3.stampa_gemma — il segnale soppresso non
                     # arriva proprio qui (regola: filtri alla fonte, non all'entry).
-                    _ENTRY_DROP_THRESH = {"pump_grad": 0.20, "pre_grad": 0.50, "defi": 0.08}
+                    _ENTRY_DROP_THRESH = {"pump_grad": 0.20, "mirror": 0.20, "pre_grad": 0.50, "defi": 0.08}
                     _entry_drop_max = _ENTRY_DROP_THRESH.get(effective_system, 0.08)
                     if chain == "solana" and token_address and entry_price > 0:
-                        live_price = _fetch_price_jupiter(token_address, entry_price)
+                        _pa_fb = str(row.get("pair_address", "") or "")
+                        live_price = _fetch_price_jupiter(token_address, entry_price,
+                                                          pair_address=_pa_fb)
                         if live_price and live_price > 0:
                             drift = (live_price - entry_price) / entry_price
                             if drift < -_entry_drop_max:
@@ -2222,7 +2436,7 @@ class LiveEngine:
         pools = set()
         with self._lock:
             for pos in self.positions.values():
-                if (pos.get("system") in ("pump_grad", "pre_grad") and pos.get("remaining", 0) > 0
+                if (pos.get("system") in ("pump_grad", "mirror", "pre_grad") and pos.get("remaining", 0) > 0
                         and pos.get("pair_address")):
                     try:
                         ts = datetime.fromisoformat(pos.get("position_open_ts") or pos["entry_ts"])
@@ -2253,7 +2467,7 @@ class LiveEngine:
                 self._fast_check_last[pa] = now_t
             with self._lock:
                 targets = [(sid, pos) for sid, pos in self.positions.items()
-                           if pos.get("system") in ("pump_grad", "pre_grad") and pos.get("remaining", 0) > 0
+                           if pos.get("system") in ("pump_grad", "mirror", "pre_grad") and pos.get("remaining", 0) > 0
                            and pos.get("pair_address") in due]
             for sid, pos in targets:
                 try:
@@ -2374,7 +2588,7 @@ class LiveEngine:
                             f"({pos['_nofetch_count']} fetch falliti consecutivi)")
             # pre_grad / pump_grad senza prezzo: controlla il time_limit
             # (pool morta o bonding curve non risponde → exit_time_limit non scatterebbe mai)
-            _time_limits = {"pump_grad": 45.0, "pre_grad": 20.0}
+            _time_limits = {"pump_grad": 45.0, "mirror": 45.0, "pre_grad": 20.0}
             _sys_limit   = _time_limits.get(pos.get("system", ""))
             if _sys_limit and not pos.get("tp1_hit"):
                 try:
@@ -2473,7 +2687,8 @@ class LiveEngine:
         #   2. Jupiter KO + pair Dex viva → usa DexScreener come fallback (log warn)
         #   3. Jupiter KO + pair Dex secca → skip (prezzo inaffidabile)
         if pos.get("chain") == "solana" and pos.get("token_address"):
-            jup_price = _fetch_price_jupiter(pos["token_address"], pos["entry_price"])
+            jup_price = _fetch_price_jupiter(pos["token_address"], pos["entry_price"],
+                                             pair_address=pos.get("pair_address", ""))
             if jup_price and jup_price > 0:
                 log.debug(
                     f"[live] {sid}: prezzo Jupiter {jup_price:.8g} USD "
@@ -2923,6 +3138,10 @@ class LiveEngine:
                 except Exception as e: log.warning(f"[live] HTML: {e}")
                 try: self._load_new_signals()
                 except Exception as e: log.debug(f"[live] nuovi segnali: {e}")
+                try: self._consume_shadow_queue()
+                except Exception as e: log.debug(f"[live] shadow queue: {e}")
+                try: self._process_shadows()
+                except Exception as e: log.warning(f"[live] shadow tracking: {e}")
                 try: self._sync_rug_watcher()
                 except Exception as e: log.debug(f"[live] rug_watch sync: {e}")
                 try: self._save_state()
@@ -3679,6 +3898,8 @@ def _build_kpi_section(hours: float = 24) -> str:
     for r in last_by_sid.values():
         if r["exit_reason"] in SKIP or r["action"] in ("entry", "open"):
             continue
+        if r.get("system") == "mirror":
+            continue
         try:
             if datetime.fromisoformat(r["ts"]) >= cutoff:
                 closed.append(r)
@@ -3860,15 +4081,17 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         }
 
     total_open   = len(open_list)
-    total_closed = sum(s["closed"] for s in sys_stats.values())
+    total_closed = sum(s["closed"] for k, s in sys_stats.items() if k != "mirror")
     total_pnl    = sum(float(s.get("pnl_eur","0").replace("+","") or 0)
                        for sid, s in all_states.items()
                        if float(s.get("remaining", 0) or 0) <= 0 and not _is_shadow(s)
-                       and not _is_data_fault(sid, s))
-    # WR reale (esclude vol_na, shadow e data_fault)
+                       and not _is_data_fault(sid, s)
+                       and s.get("system") != "mirror")
+    # WR reale (esclude vol_na, shadow, data_fault e mirror)
     real_closed_all = [(sid, s) for sid, s in all_states.items()
                        if float(s.get("remaining", 0) or 0) <= 0 and s.get("note","") != "vol_na"
-                       and not _is_shadow(s) and not _is_data_fault(sid, s)]
+                       and not _is_shadow(s) and not _is_data_fault(sid, s)
+                       and s.get("system") != "mirror"]
     real_wins_all   = sum(1 for _, s in real_closed_all
                           if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
     real_wr_all     = real_wins_all / len(real_closed_all) * 100 if real_closed_all else 0
@@ -3990,7 +4213,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             _parts = sid.rsplit("_", 2)
             _d = _parts[-2]; _t = _parts[-1]
             sig_date   = f"{_d[:4]}-{_d[4:6]}-{_d[6:8]}"
-            entry_time = f"{_t[:2]}:{_t[2:4]}"
+            entry_time = f"{_d[6:8]}/{_d[4:6]} ore {_t[:2]}:{_t[2:4]}"
         except: pass
         sym_lower  = sym.lower()
         data_attrs = (f'data-sys="{sys_name}" data-chain="{chain}" '
@@ -4051,7 +4274,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             _parts = sid.rsplit("_", 2)
             _d = _parts[-2]; _t = _parts[-1]
             sig_date   = f"{_d[:4]}-{_d[4:6]}-{_d[6:8]}"
-            entry_time = f"{_t[:2]}:{_t[2:4]}"
+            entry_time = f"{_d[6:8]}/{_d[4:6]} ore {_t[:2]}:{_t[2:4]}"
         except: pass
         # Escludi righe con exit_reason da non mostrare
         EXCL = {"purged_stale","archiviato_pre_2026-05-20","duplicate_pair",
@@ -4200,8 +4423,9 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  <span class="lbl2">Dal:</span>\n'
         f'  <div class="btn-grp">\n'
         f'    <button id="btn24h" class="preset-btn" data-v="24h" onclick="setPreset24h(this)">Ultime 24h</button>\n'
-        f'    <button class="preset-btn" data-v="7d" onclick="setPreset(this,dateNDaysAgo(7),\'\')">7 giorni</button>\n'
-        f'    <button class="preset-btn" data-v="all" onclick="setPreset(this,\'\',\'\')">Tutto</button>\n'
+        f'    <button class="preset-btn" data-v="7d" onclick="setPresetDays(this,7)">7 giorni</button>\n'
+        f'    <button class="preset-btn" data-v="30d" onclick="setPresetDays(this,30)">Ultimo mese</button>\n'
+        f'    <button class="preset-btn" data-v="all" onclick="setPresetDays(this,0)">Tutto</button>\n'
         f'  </div>\n'
         f'  <input type="date" id="df" onchange="clearPreset();applyFilter()" '
         f'style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:4px;padding:4px 8px;font-size:.75rem">\n'
@@ -4219,6 +4443,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    <button class="sys-btn" onclick="setSys(this,\'midcap\')">MIDCAP</button>\n'
         f'    <button class="sys-btn pump-btn" onclick="setSys(this,\'pump_grad\')">🚀 PUMP</button>\n'
         f'    <button class="sys-btn pre-btn" onclick="setSys(this,\'pre_grad\')">⚡ PRE</button>\n'
+        f'    <button class="sys-btn" onclick="setSys(this,\'mirror\')">MIRROR</button>\n'
         f'  </div>\n'
         f'  <span class="lbl2" style="margin-left:8px">Chain:</span>\n'
         f'  <div class="btn-grp">\n'
@@ -4294,7 +4519,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'<div class="disclaimer">&#9888; Solo a scopo educativo. '
         f'Non costituisce consulenza finanziaria.</div>\n'
         f'<script>\n'
-        f'var _sys="", _chain="", _outcome="", _exitr="", _tokSearch="", _sortCol="", _sortDir=-1, _last24h=false;\n'
+        f'var _sys="", _chain="", _outcome="", _exitr="", _tokSearch="", _sortCol="", _sortDir=-1, _cutoff_ts=0;\n'
         f'function dateNDaysAgo(n){{\n'
         f'  var d=new Date(); d.setDate(d.getDate()-n);\n'
         f'  return d.toISOString().slice(0,10);\n'
@@ -4302,16 +4527,16 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'function dateToday(){{\n'
         f'  return new Date().toISOString().slice(0,10);\n'
         f'}}\n'
-        f'function setPreset(btn,df,dt){{\n'
-        f'  _last24h=false;\n'
-        f'  document.getElementById("df").value=df;\n'
-        f'  document.getElementById("dt").value=dt;\n'
+        f'function setPresetDays(btn,n){{\n'
+        f'  _cutoff_ts=n>0?(Date.now()/1000-n*86400):0;\n'
+        f'  document.getElementById("df").value="";\n'
+        f'  document.getElementById("dt").value="";\n'
         f'  document.querySelectorAll(".preset-btn").forEach(b=>b.classList.remove("active"));\n'
         f'  btn.classList.add("active");\n'
         f'  applyFilter();\n'
         f'}}\n'
         f'function setPreset24h(btn){{\n'
-        f'  _last24h=true;\n'
+        f'  _cutoff_ts=Date.now()/1000-86400;\n'
         f'  document.getElementById("df").value="";\n'
         f'  document.getElementById("dt").value="";\n'
         f'  document.querySelectorAll(".preset-btn").forEach(b=>b.classList.remove("active"));\n'
@@ -4368,14 +4593,12 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    r.style.display=show?"":"none";\n'
         f'    if(show){{ vo++; var sys=r.dataset.sys||""; if(sysStat[sys]) sysStat[sys].o++; }}\n'
         f'  }});\n'
-        f'  var cutoff24h=Date.now()/1000-86400;\n'
         f'  document.querySelectorAll("#ctbody tr.crow").forEach(function(r){{\n'
-        f'    var sd=r.dataset.exitdate||r.dataset.sigdate||"";\n'
         f'    var win=parseInt(r.dataset.win||0);\n'
         f'    var tok=(r.dataset.token||"");\n'
         f'    var ok_df, ok_dt;\n'
-        f'    if(_last24h){{ var et=parseFloat(r.dataset.exitts||0); ok_df=ok_dt=(et>=cutoff24h); }}\n'
-        f'    else {{ ok_df = !df || sd>=df; ok_dt = !dt || sd<=dt; }}\n'
+        f'    if(_cutoff_ts>0){{ var et=parseFloat(r.dataset.exitts||0); ok_df=ok_dt=(et>=_cutoff_ts); }}\n'
+        f'    else {{ var sd=r.dataset.exitdate||r.dataset.sigdate||""; ok_df = !df || sd>=df; ok_dt = !dt || sd<=dt; }}\n'
         f'    var ok_sys = !_sys       || r.dataset.sys===_sys;\n'
         f'    var ok_ch  = !_chain     || r.dataset.chain===_chain;\n'
         f'    var ok_out = !_outcome   || (_outcome==="win"&&win>0) || (_outcome==="loss"&&win===0);\n'
@@ -4385,7 +4608,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'    r.style.display=show?"":"none";\n'
         f'    if(show){{\n'
         f'      vc++;\n'
-        f'      if(r.dataset.shadow!=="1"){{\n'
+        f'      if(r.dataset.shadow!=="1" && r.dataset.sys!=="mirror"){{\n'
         f'      var p=parseFloat(r.dataset.pnl||0); tot_pnl+=p;\n'
         f'      if(win>0) wins++; else losses++;\n'
         f'      var sys=r.dataset.sys||""; if(sysStat[sys]){{\n'

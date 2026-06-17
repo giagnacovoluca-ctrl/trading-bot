@@ -102,6 +102,7 @@ class Publisher:
         self._wallet_alert_window: list = []    # epoch degli alert nell'ultima ora
         self._wallet_alert_dropped = 0
         self._teaser_times: list = []           # epoch teaser live FREE (ultime 24h)
+        self._pump_grad_notified: dict = {}     # token_symbol → epoch ultimo entry notify (dedup pool multiple)
 
     # ── alert whale (wallet_events.csv) su PREMIUM ─────────────────────────────
     def _publish_wallet_event(self, row: dict):
@@ -158,6 +159,26 @@ class Publisher:
         # tracciati solo nel simulator per stimare l'edge — non vanno su Telegram.
         if "shadow=true" in (row.get("top_features", "") or ""):
             return
+        # mirror: sistema in paper, WR~14%, escluso dal track record pubblico
+        # finché non validato — non pubblicare né entry né exit sui canali.
+        if system == "mirror":
+            return
+        # pump_grad: applica gli stessi filtri del simulator per evitare di
+        # pubblicare segnali che non verranno mai aperti (87% del totale era spam)
+        if system == "pump_grad":
+            liq = _to_float(row.get("liquidity_usd")) or 0.0
+            chg = _to_float(row.get("change_1h_pct")) or 0.0
+            vol = _to_float(row.get("volume_1h_usd")) or 0.0
+            if 0 < liq < 25_000:   return
+            if chg > 20:           return
+            if 0 < vol < 5_000:    return
+            # Dedup pool multiple per stesso token: max 1 entry notify ogni 30 min
+            sym = str(row.get("token_symbol", "") or "").upper()
+            now_e = time.time()
+            if sym and now_e - self._pump_grad_notified.get(sym, 0) < 1800:
+                return
+            if sym:
+                self._pump_grad_notified[sym] = now_e
         chan = config.channel_for_system(system)
         if not chan:
             log.warning("[pub] nessun canale Premium configurato — segnale non inviato")
@@ -198,13 +219,16 @@ class Publisher:
                         self._publish_full(row, system)
                 for row in self._trades_tailer.new_rows():
                     # pre_grad shadow: trade a size=0, mai pubblicati su Telegram
-                    # (entry shadow non è mai stata pubblicata, gli update non lo siano)
                     if "shadow=true" in (row.get("note", "") or ""):
+                        continue
+                    # mirror: in paper, WR~14%, escluso dal track record pubblico
+                    if row.get("system") == "mirror":
                         continue
                     # PREMIUM: ciclo di vita completo del trade (TP/trailing/SL
                     # gestiti dal simulator) per i segnali già pubblicati
                     action = (row.get("action") or "").strip()
-                    if action in formatter._EXIT_LABEL and config.PREMIUM_CHANNEL_ID:
+                    # liq_collapse = pool svuotata in secondi, non informativo su Premium
+                    if action in formatter._EXIT_LABEL and action != "liq_collapse" and config.PREMIUM_CHANNEL_ID:
                         tg.send_message(config.PREMIUM_CHANNEL_ID,
                                         formatter.format_exit_premium(row))
                     closure = self._closure_tracker.feed(row)

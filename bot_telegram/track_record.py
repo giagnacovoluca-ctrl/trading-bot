@@ -96,16 +96,21 @@ def compute() -> dict:
                     last_24h_by_signal[sid] = pnl
 
     # Esclude i segnali mai tradati (pnl=0: purged_stale, skip, duplicati…):
-    # contarli come "loss" deprimeva il win-rate (30.4% vs 49.9% reale al 10/06)
+    # contarli come "loss" deprimeva il win-rate (30.4% vs 49.9% reale al 10/06).
+    # Esclude anche "mirror": sistema in paper con WR~14%, escluderlo evita che
+    # inquini il track record pubblico finché non è validato.
+    mirror_signals: set[str] = {s for s, _ in pnl_by_signal.items()
+                                if sys_by_signal.get(s) == "mirror"}
+    _excluded = shadow_signals | mirror_signals
     closed = [(s, p) for s, p in pnl_by_signal.items()
-              if p != 0.0 and s not in shadow_signals]
+              if p != 0.0 and s not in _excluded]
     total_pnl = sum(p for _, p in closed)
     # pnl_eur è CUMULATIVO per segnale: il 24h corretto è il delta tra l'ultima
     # riga in finestra e l'ultima riga PRE-finestra (stesso fix di
     # trade_simulator._compute_daily_pnl del 12/06, non sommare i cumulativi).
     pnl_24h = sum(p - base_24h_by_signal.get(s, 0.0)
                   for s, p in last_24h_by_signal.items()
-                  if s not in shadow_signals)
+                  if s not in _excluded)
     wins = [s for s, p in closed if p > 0]
     losses = [s for s, p in closed if p <= 0]
     n = len(closed)

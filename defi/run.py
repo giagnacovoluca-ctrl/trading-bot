@@ -492,6 +492,10 @@ while not engine._stop.is_set():
         except Exception as e: ts.log.warning(f"[live] HTML: {e}")
         try:    engine._load_new_signals()
         except Exception as e: ts.log.debug(f"[live] segnali: {e}")
+        try:    engine._consume_shadow_queue()
+        except Exception as e: ts.log.debug(f"[live] shadow queue: {e}")
+        try:    engine._process_shadows()
+        except Exception as e: ts.log.warning(f"[live] shadow tracking: {e}")
         try:    engine._save_state()
         except Exception as e: ts.log.warning(f"[live] stato: {e}")
 

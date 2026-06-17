@@ -664,6 +664,7 @@ class _WalletWatcher:
     Se l'RPC nega le subscription (-32403) si disabilita con errore esplicito."""
 
     _RECONNECT_S    = 10
+    _RECONNECT_429_S = 300  # backoff su 429 Helius: 5 minuti
     _MAX_SUB_ERRORS = 3
 
     def __init__(self, stop_event: threading.Event):
@@ -679,18 +680,24 @@ class _WalletWatcher:
 
     # -- lifecycle -----------------------------------------------------------
     def run(self):
+        self._got_429 = False
         while not self._stop.is_set() and not self.disabled:
+            self._got_429 = False
             try:
                 ws = websocket.WebSocketApp(
                     HELIUS_WS_URL,
                     on_open=self._on_open, on_message=self._on_message,
                     on_error=self._on_error, on_close=self._on_close,
                 )
-                ws.run_forever(reconnect=self._RECONNECT_S, ping_interval=30, ping_timeout=10)
+                self._ws = ws
+                ws.run_forever(ping_interval=30, ping_timeout=10)
             except Exception as e:
                 log.warning(f"[WS] crash: {e}")
             if not self._stop.is_set() and not self.disabled:
-                time.sleep(self._RECONNECT_S)
+                wait = self._RECONNECT_429_S if self._got_429 else self._RECONNECT_S
+                if self._got_429:
+                    log.info(f"[WS] 429 Helius — backoff {wait}s")
+                time.sleep(wait)
 
     def close(self):
         if self._ws:
@@ -815,9 +822,13 @@ class _WalletWatcher:
         ).start()
 
     def _on_error(self, ws, err):
+        if "429" in str(err) or "max usage" in str(err).lower():
+            self._got_429 = True
         log.debug(f"[WS] errore: {err}")
 
     def _on_close(self, ws, code, msg):
+        if code == 429 or "429" in str(msg or ""):
+            self._got_429 = True
         log.warning(f"[WS] connessione chiusa (code={code}) — reconnect automatico")
 
 # ---------------------------------------------------------------------------

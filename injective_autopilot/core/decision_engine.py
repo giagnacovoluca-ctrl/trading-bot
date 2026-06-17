@@ -118,7 +118,7 @@ class DecisionEngine:
         open_tickers = {p.ticker for p in positions} if positions else set()
         max_new = max(0, max_open_positions - len(positions))
 
-        scored: list[tuple[float, Any, str]] = []
+        scored: list[tuple[float, float, Any, str]] = []  # (weighted, raw, trigger, reason)
         for trigger in triggers:
             if trigger.ticker in open_tickers:
                 continue
@@ -133,26 +133,26 @@ class DecisionEngine:
                 continue
 
             score, reason = self._score(trigger)
-            if score >= self.min_confidence:
-                scored.append((score, trigger, reason))
+            wf = self._weight_factor(trigger.active_signals)
+            weighted = score * wf
+            if weighted >= self.min_confidence:
+                scored.append((weighted, score, trigger, reason))
             else:
-                log.info("[%s] rejected: score=%.2f < %.2f (%s)", trigger.ticker, score, self.min_confidence, reason)
+                log.info("[%s] rejected: score=%.2f×w=%.3f=%.2f < %.2f (%s)", trigger.ticker, score, wf, weighted, self.min_confidence, reason)
                 self._rejected += 1
 
-        # Best signals first, capped at max_new.
-        # Ranking uses score * adaptive weight; the gate above used the raw score.
-        scored.sort(key=lambda x: -(x[0] * self._weight_factor(x[1].active_signals)))
+        scored.sort(key=lambda x: -x[0])
         results: dict[str, TradeDecision] = {}
-        for score, trigger, reason in scored[:max_new]:
-            decision = self._build_decision(trigger, score, reason)
+        for weighted, raw, trigger, reason in scored[:max_new]:
+            decision = self._build_decision(trigger, weighted, reason)
             if decision is None:
                 self._rejected += 1
                 continue
             results[trigger.ticker] = decision
             self._approved += 1
             log.info(
-                "Decision APPROVED: %s %s conf=%.2f entry=%.4f sl=%.4f tp=%.4f | %s",
-                trigger.ticker, trigger.direction_bias, score,
+                "Decision APPROVED: %s %s raw=%.2f weighted=%.2f entry=%.4f sl=%.4f tp=%.4f | %s",
+                trigger.ticker, trigger.direction_bias, raw, weighted,
                 decision.entry, decision.stop_loss, decision.take_profit, reason,
             )
 

@@ -63,8 +63,9 @@ EXCLUDE_SYMBOLS = {"USDT", "USDC", "BUSD", "DAI", "TUSD", "FDUSD", "USDP", "USDD
                    "WBTC", "WETH", "STETH", "WSTETH"}
 EXCLUDE_CATEGORIES = {"meme-token", "meme", "fan-token"}
 
-REPORTS_DIR = Path(__file__).parent / "reports"
-SIGNALS_CSV = REPORTS_DIR / "midcap_signals.csv"
+REPORTS_DIR       = Path(__file__).parent / "reports"
+SIGNALS_CSV       = REPORTS_DIR / "midcap_signals.csv"
+_CG_UNIVERSE_CACHE = REPORTS_DIR / "cg_universe_cache.json"
 
 def _env(k, d=""): return os.environ.get(k, d)
 
@@ -90,8 +91,20 @@ _EMAIL_CFG = {
 def fetch_coingecko_universe() -> dict:
     """
     Ritorna {SYMBOL: {mcap, volume_24h, change_7d, change_30d, categories, name}}.
-    Fetch top 500 per market cap (5 pagine × 100). Rate limit: 0.5s tra pagine.
+    Cache su disco (TTL=SCAN_INTERVAL_H): i restart non consumano quota CoinGecko.
     """
+    import json as _json
+    _cache_ttl_s = SCAN_INTERVAL_H * 3600
+    if _CG_UNIVERSE_CACHE.exists():
+        try:
+            cached = _json.loads(_CG_UNIVERSE_CACHE.read_text(encoding="utf-8"))
+            age_s  = (datetime.now() - datetime.fromisoformat(cached["ts"])).total_seconds()
+            if age_s < _cache_ttl_s:
+                log.info(f"[CoinGecko] universo da cache disco ({age_s/3600:.1f}h < {SCAN_INTERVAL_H}h) — 0 call API")
+                return cached["data"]
+        except Exception as e:
+            log.debug(f"[CoinGecko] cache disco non leggibile: {e}")
+
     universe: dict = {}
     session = requests.Session()
     for page in range(1, CG_PAGES + 1):
@@ -129,6 +142,14 @@ def fetch_coingecko_universe() -> dict:
             break
 
     log.info(f"[CoinGecko] {len(universe)} coin caricate")
+    try:
+        import json as _json
+        _CG_UNIVERSE_CACHE.write_text(
+            _json.dumps({"ts": datetime.now().isoformat(), "data": universe}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as e:
+        log.debug(f"[CoinGecko] salvataggio cache disco fallito: {e}")
     return universe
 
 

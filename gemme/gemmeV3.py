@@ -970,9 +970,9 @@ class DuneDataFetcher:
         return rows
 
     # Oltre questa età i risultati cachati su Dune sono stale → re-execute.
-    # 1h perché i campi inflow_last_2h/buyers_last_2h perdono senso con dati più vecchi.
-    # Costo misurato: ~0.03 crediti/run → 48 run/gg × 2 chain ≈ 43 crediti/mese (piano free: 2500).
-    _MAX_RESULT_AGE_H = 1.0
+    # 0.5h (30min): ridotto da 1h per ridurre il rischio di dati congelati.
+    # Costo: ~0.03 crediti/run → 96 run/gg × 2 chain ≈ 86 crediti/mese (piano free: 2500).
+    _MAX_RESULT_AGE_H = 0.5
 
     def _get_latest_results(self, query_id: str, chain: str) -> tuple[Optional[list], Optional[list]]:
         """Ritorna (rows_fresche, rows_stale).

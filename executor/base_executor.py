@@ -60,11 +60,12 @@ log = logging.getLogger("base_exec")
 _HERE = Path(__file__).parent
 _ROOT = _HERE.parent
 
-LIVE_CSV        = str(_ROOT / "defi"  / "reports" / "live_trades.csv")
-DEFI_SIGNALS    = str(_ROOT / "defi"  / "reports" / "signals_log.csv")
-V3_SIGNALS      = str(_ROOT / "gemme" / "reports" / "gems_log_v3.csv")
-BASE_STATE_FILE = str(_HERE / "base_real_state.json")
-BASE_EXEC_CSV   = str(_HERE / "base_executions.csv")
+LIVE_CSV           = str(_ROOT / "defi"  / "reports" / "live_trades.csv")
+DEFI_SIGNALS       = str(_ROOT / "defi"  / "reports" / "signals_log.csv")
+V3_SIGNALS         = str(_ROOT / "gemme" / "reports" / "gems_log_v3.csv")
+PUMP_GRAD_SIGNALS  = str(_ROOT / "defi"  / "reports" / "pump_grad_signals.csv")
+BASE_STATE_FILE    = str(_HERE / "base_real_state.json")
+BASE_EXEC_CSV      = str(_HERE / "base_executions.csv")
 
 # ---------------------------------------------------------------------------
 # Config da .env
@@ -896,7 +897,7 @@ def build_token_lookup() -> dict:
     Legge da signals_log.csv (defi_optimized) e gems_log_v3.csv (gemmeV3,
     che include i segnali micro-cap Base routati a sistema 'defi')."""
     lookup = {}
-    for path in [DEFI_SIGNALS, V3_SIGNALS]:
+    for path in [DEFI_SIGNALS, V3_SIGNALS, PUMP_GRAD_SIGNALS]:
         if not os.path.exists(path):
             continue
         try:
