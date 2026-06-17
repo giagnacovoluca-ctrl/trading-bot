@@ -69,24 +69,18 @@ def _pool_age_min(created_at_str: str) -> float:
         return 999
 
 
-def _queue_email(attrs: dict, chain: str, addr: str, liq: float, age_min: float):
-    try:
-        import email_digest
-        token_name = attrs.get("name", "?").split(" / ")[0]
-        subj = f"[LIQ ALERT] Nuova pool {token_name} su {chain.upper()} — ${liq:,.0f} in {age_min:.1f}min"
-        body = (
-            f"<b>Nuova pool liquidità rilevata</b><br>"
-            f"Chain: {chain}<br>"
-            f"Token: {token_name}<br>"
-            f"Liquidità: ${liq:,.0f}<br>"
-            f"Età pool: {age_min:.1f} min<br>"
-            f"Pool: <code>{addr}</code><br>"
-            f"<a href='https://dexscreener.com/{chain}/{addr}'>DexScreener</a>"
-        )
-        email_digest.queue_email("liq_monitor", subj, body)
-        log.info(f"[liq] ▶ {token_name} {chain} ${liq:,.0f} età {age_min:.1f}min → email queued")
-    except Exception as e:
-        log.warning(f"[liq] queue_email: {e}")
+def _notify(attrs: dict, chain: str, addr: str, liq: float, age_min: float):
+    import tg_alert
+    token_name = attrs.get("name", "?").split(" / ")[0]
+    chain_emoji = {"solana": "🟣", "base": "🔵"}.get(chain, "🔹")
+    text = (
+        f"💧 <b>Nuova pool liquidità</b> · {chain_emoji} {chain.upper()}\n"
+        f"<b>{token_name}</b>\n"
+        f"Liq: <b>${liq:,.0f}</b> · età {age_min:.1f} min\n"
+        f"<a href='https://dexscreener.com/{chain}/{addr}'>DexScreener</a>"
+    )
+    tg_alert.send(text)
+    log.info(f"[liq] ▶ {token_name} {chain} ${liq:,.0f} età {age_min:.1f}min → Telegram")
 
 
 def _append_csv(attrs: dict, chain: str, addr: str, liq: float, age_min: float):
@@ -126,7 +120,7 @@ def _tick():
             if age_min > MAX_POOL_AGE_MIN:
                 continue
             _append_csv(attrs, chain, addr, liq, age_min)
-            _queue_email(attrs, chain, addr, liq, age_min)
+            _notify(attrs, chain, addr, liq, age_min)
 
 
 def main(stop_event: threading.Event | None = None):

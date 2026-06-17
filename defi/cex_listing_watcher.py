@@ -125,28 +125,23 @@ def _search_dexscreener(ticker: str) -> list[dict]:
         return []
 
 
-def _queue_email(ticker: str, source: str, title: str, pairs: list[dict]):
-    try:
-        import email_digest
-        top   = pairs[0]
-        liq   = float((top.get("liquidity") or {}).get("usd", 0) or 0)
-        chain = top.get("chainId", "?")
-        addr  = top.get("pairAddress", "")
-        price = top.get("priceUsd", "?")
-        subj  = f"[CEX LISTING] {ticker} su {source} — trovato {chain.upper()} ${liq:,.0f} liq"
-        body  = (
-            f"<b>Nuovo listing CEX rilevato!</b><br>"
-            f"Ticker: <b>${ticker}</b><br>"
-            f"Exchange: {source}<br>"
-            f"Annuncio: {title[:120]}<br><br>"
-            f"Trovato on-chain: {chain} — ${liq:,.0f} liq | Prezzo: ${price}<br>"
-            f"<a href='https://dexscreener.com/{chain}/{addr}'>DexScreener</a><br>"
-            f"<br><i>Entry midcap consigliata se liq &gt; $25k e non già pompato (&lt;+20% 1h).</i>"
-        )
-        email_digest.queue_email("cex_watcher", subj, body)
-        log.info(f"[cex] ★ {ticker} ({source}) → {chain} ${liq:,.0f} → email queued")
-    except Exception as e:
-        log.warning(f"[cex] queue_email: {e}")
+def _notify(ticker: str, source: str, title: str, pairs: list[dict]):
+    import tg_alert
+    top   = pairs[0]
+    liq   = float((top.get("liquidity") or {}).get("usd", 0) or 0)
+    chain = top.get("chainId", "?")
+    addr  = top.get("pairAddress", "")
+    price = top.get("priceUsd", "?")
+    chain_emoji = {"solana": "🟣", "base": "🔵"}.get(chain, "🔹")
+    text = (
+        f"🏦 <b>Nuovo listing CEX</b> · {source}\n"
+        f"<b>${ticker}</b> · {chain_emoji} {chain.upper()}\n"
+        f"Liq on-chain: <b>${liq:,.0f}</b> · Prezzo: ${price}\n"
+        f"<i>{title[:100]}</i>\n"
+        f"<a href='https://dexscreener.com/{chain}/{addr}'>DexScreener</a>"
+    )
+    tg_alert.send(text)
+    log.info(f"[cex] ★ {ticker} ({source}) → {chain} ${liq:,.0f} → Telegram")
 
 
 def _append_csv(ticker: str, source: str, pairs: list[dict]):
@@ -192,7 +187,7 @@ def _tick():
             log.debug(f"[cex] {ticker} ({source}) non trovato on-chain")
             continue
         _append_csv(ticker, source, pairs)
-        _queue_email(ticker, source, title, pairs)
+        _notify(ticker, source, title, pairs)
 
 
 def _bootstrap():
