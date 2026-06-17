@@ -74,6 +74,14 @@ SIGNAL_COLUMNS = [
     "volume_1h_usd", "liquidity_usd", "buy_sell_ratio_1h", "change_1h_pct",
     "pump_probability", "buy_tax", "sell_tax", "lp_locked", "is_honeypot",
     "top_features",
+    # NUOVO 14/06 (PRIORITÀ #4): feature pre-pump come colonne reali, prima
+    # disponibili solo dentro la stringa libera top_features (non backtestabili
+    # senza parsing). vol_accel/composite/wallet_confluence sono gli input
+    # principali dello score; bsr_* sono "sperimentali in raccolta dati"
+    # (vedi project_via_gemmeV3_lp_gate_fix_14_06 e report quant 14/06).
+    "vol_accel_5m_vs_1h", "prepump_composite_score", "wallet_confluence_score",
+    "bsr_5m", "bsr_recent_shift", "bsr_trend_per_min", "bsr_trend_samples",
+    "score_top_component",
 ]
 
 FOLLOWUP_COLUMNS = [
@@ -340,6 +348,29 @@ class SignalTracker:
             if not p.exists():
                 with p.open("w", newline="", encoding="utf-8") as f:
                     csv.DictWriter(f, fieldnames=cols).writeheader()
+                continue
+            # Migrazione schema (14/06): se mancano colonne nuove, riscrive il
+            # CSV con l'header aggiornato; le righe esistenti ottengono "" per
+            # le colonne nuove (DictReader le restituisce mancanti).
+            with p.open("r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                existing_cols = reader.fieldnames or []
+                if list(existing_cols) == cols:
+                    continue
+                rows = list(reader)
+            if set(existing_cols) - set(cols):
+                # colonne rimosse rispetto allo schema attuale: non tocca il file,
+                # evita perdita dati su uno schema non previsto
+                log.warning(f"[tracker] {path}: header ha colonne extra non in "
+                             f"SIGNAL_COLUMNS/FOLLOWUP_COLUMNS, migrazione saltata")
+                continue
+            with p.open("w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=cols)
+                writer.writeheader()
+                for row in rows:
+                    writer.writerow({c: row.get(c, "") for c in cols})
+            log.info(f"[tracker] {path}: schema migrato ({len(existing_cols)}→{len(cols)} colonne, "
+                     f"{len(rows)} righe preservate)")
 
     # ── Persistenza stato ──────────────────────────────────────────────────
 
@@ -648,6 +679,14 @@ class SignalTracker:
             "lp_locked":         int(bool(segnale.get("lp_locked", False))),
             "is_honeypot":       int(bool(segnale.get("is_honeypot", False))),
             "top_features":      segnale.get("top_features", ""),
+            "vol_accel_5m_vs_1h":      segnale.get("vol_accel_5m_vs_1h", 0),
+            "prepump_composite_score": segnale.get("prepump_composite_score", 0),
+            "wallet_confluence_score": segnale.get("wallet_confluence_score", 0),
+            "bsr_5m":                  segnale.get("bsr_5m", 0),
+            "bsr_recent_shift":        segnale.get("bsr_recent_shift", 0),
+            "bsr_trend_per_min":       segnale.get("bsr_trend_per_min", 0),
+            "bsr_trend_samples":       segnale.get("bsr_trend_samples", 0),
+            "score_top_component":     segnale.get("score_top_component", ""),
         }
 
         with self._lock:

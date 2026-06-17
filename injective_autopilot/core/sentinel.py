@@ -104,6 +104,7 @@ class Sentinel:
                 ),
                 anomaly_detector=AnomalyDetector(
                     zscore_threshold=self._cfg.zscore_entry_threshold,
+                    vol_breakout_sigma=self._cfg.vol_breakout_sigma,
                 ),
             )
 
@@ -268,6 +269,10 @@ class Sentinel:
 
         if regime_shift.is_shift and regime_shift.confidence > 0.5:
             active_signals.append(f"REGIME_SHIFT({regime_shift.direction},conf={regime_shift.confidence:.2f})")
+            if regime_shift.direction == "BULLISH_SHIFT":
+                votes_long += 1
+            elif regime_shift.direction == "BEARISH_SHIFT":
+                votes_short += 1
 
         if z_signal.is_active and not z_signal.regime_warning:
             active_signals.append(f"ZSCORE({z_signal.value:.2f})")
@@ -284,6 +289,22 @@ class Sentinel:
         tier_s_active = funding.is_extreme
         min_signals_required = 1 if tier_s_active else 2
         if len(active_signals) < min_signals_required:
+            return None
+
+        # Blocco combo negative: FUNDING_EXTREME+REGIME_SHIFT insieme = PF 0.52 su n=35.
+        # Ogni entry in blocked_combos è un insieme; se tutti i segnali sono attivi → skip.
+        active_types = {s.split("(")[0] for s in active_signals}
+        for combo in self._cfg.sentinel_blocked_combos:
+            if all(sig in active_types for sig in combo):
+                log.debug("[%s] Trigger bloccato: combo negativa %s in %s",
+                          ctx.ticker, combo, active_types)
+                return None
+
+        # Filtro segnali obbligatori (vuoto di default: nessun requisito).
+        required = self._cfg.sentinel_required_signals
+        if required and not any(r in active_types for r in required):
+            log.debug("[%s] Trigger bloccato: nessun segnale richiesto (%s) in %s",
+                      ctx.ticker, required, active_types)
             return None
 
         now = time.time()

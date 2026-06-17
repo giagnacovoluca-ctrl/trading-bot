@@ -211,7 +211,7 @@ CFG = {
     "JUPITER_MAX_RETRY": 10,     # 40s massimo
 
     # Filtri segnale (allineati al graduation scanner esistente)
-    "MIN_LIQ_USD":       9_000,  # 11/06: 12k escludeva l'unico TP1 ($SCUP, liq=$9,270)
+    "MIN_LIQ_USD":       35_000,  # 15/06: backtest n=68, liq<35k WR 19%/-29.7% avg vs liq>=35k WR 43%/-13.8% avg
     "MIN_VOL_1H_USD":    1_500,
     "MAX_CHANGE_1H_PCT": 80.0,   # più stretto: già pompato troppo → skip
 }
@@ -1017,7 +1017,15 @@ class PreGradMonitor:
                         # Emetti segnale anche se velocity==0 ma vSol è cresciuto dall'ultimo poll
                         # (token che pompano velocemente hanno un solo punto di storia)
                         vel_use = velocity if velocity > 0 else max(0.05, v_sol - old_vsol)
-                        if not already and rug_ok is True and (velocity > 0 or v_sol > old_vsol):
+                        # Stabilità curva: se vSol è sceso >15% dal picco recente (120s),
+                        # la bonding curve è instabile/manipolata in questo momento →
+                        # il prezzo stimato dalla curve non è attendibile (vedi
+                        # ELON/TRUMPMAXX/VIRAL 14/06: vSol oscillava ±30 SOL in pochi
+                        # secondi, entry_price stimato 2x diverso dal fill reale Jupiter
+                        # → hard_sl fantasma -34/-75% in <1min). Skip, ritenta al prossimo poll.
+                        recent_peak = max((v for _, v in recent), default=v_sol)
+                        curve_stable = v_sol >= recent_peak * 0.85
+                        if not already and rug_ok is True and curve_stable and (velocity > 0 or v_sol > old_vsol):
                             threading.Thread(
                                 target=_emit_pre_grad_signal,
                                 args=(mint, symbol, v_sol, vel_use),

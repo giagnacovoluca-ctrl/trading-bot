@@ -87,6 +87,9 @@ parser.add_argument("--no-base",      action="store_true", help="Salta base_exec
 parser.add_argument("--no-pump",      action="store_true", help="Salta pump graduation scanner")
 parser.add_argument("--no-midcap",    action="store_true", help="Salta midcap scanner")
 parser.add_argument("--no-mirror",    action="store_true", help="Salta wallet mirror bot")
+parser.add_argument("--no-social",    action="store_true", help="Salta social monitor Telegram")
+parser.add_argument("--no-liq",       action="store_true", help="Salta liquidity event monitor")
+parser.add_argument("--no-cex",       action="store_true", help="Salta CEX listing watcher")
 args = parser.parse_args()
 
 # ── Helper: thread con auto-restart ──────────────────────────────────────────
@@ -180,6 +183,22 @@ if args.report_only:
     engine._generate_html()
     log.info("[run] Report generato.")
     raise SystemExit(0)
+
+# ── Backup automatico live_trades.csv ad ogni avvio ──────────────────────────
+try:
+    import shutil as _shutil
+    from datetime import datetime as _dt
+    _lt = _LOG_DIR / "live_trades.csv"
+    if _lt.exists() and _lt.stat().st_size > 10_000:
+        _bak = _LOG_DIR / f"live_trades_backup_{_dt.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        _shutil.copy2(_lt, _bak)
+        # mantieni solo gli ultimi 5 backup
+        _baks = sorted(_LOG_DIR.glob("live_trades_backup_*.csv"))
+        for _old in _baks[:-5]:
+            _old.unlink()
+        log.info(f"[run] backup live_trades → {_bak.name}")
+except Exception as _e:
+    log.warning(f"[run] backup live_trades fallito: {_e}")
 
 # ── 1. LiveEngine ─────────────────────────────────────────────────────────────
 engine = ts.LiveEngine()
@@ -312,6 +331,49 @@ try:
 except Exception as _e:
     log.warning(f"[run] email_digest non avviato: {_e}")
 
+# ── 8-quater. social monitor Telegram (velocity menzioni ticker per midcap) ───
+# Richiede session file (defi/reports/social.session) generato via --auth.
+# Se mancante, esce silenziosamente senza impattare gli altri componenti.
+if not args.no_social:
+    try:
+        import social_monitor as _social_mod
+        _start_component("social_monitor",
+                         lambda: _social_mod.main(stop_event=_stop_event),
+                         restart_delay=120)
+        log.info("[run] ▶ Social monitor avviato (Telegram velocity)")
+    except Exception as e:
+        log.warning(f"[run] social_monitor non avviato: {e}")
+
+# ── 8-ter. token outcome logger (dataset multi-timeframe T0/+15m/+1h/+4h/+24h/+72h)
+try:
+    import token_outcome_logger as _outcome_logger
+    threading.Thread(target=lambda: _outcome_logger.outcome_loop(stop_event=_stop_event),
+                     name="token_outcome_logger", daemon=True).start()
+except Exception as _e:
+    log.warning(f"[run] token_outcome_logger non avviato: {_e}")
+
+# ── 8-quinquies. liquidity event monitor (nuove pool Solana/Base via GeckoTerminal) ─
+if not args.no_liq:
+    try:
+        import liquidity_event_monitor as _liq_mod
+        _start_component("liq_monitor",
+                         lambda: _liq_mod.main(stop_event=_stop_event),
+                         restart_delay=60)
+        log.info("[run] ▶ Liquidity event monitor avviato (GeckoTerminal new pools)")
+    except Exception as e:
+        log.warning(f"[run] liquidity_event_monitor non avviato: {e}")
+
+# ── 8-sexties. CEX listing watcher (nuovi listing Binance/Coinbase → DexScreener) ─
+if not args.no_cex:
+    try:
+        import cex_listing_watcher as _cex_mod
+        _start_component("cex_watcher",
+                         lambda: _cex_mod.main(stop_event=_stop_event),
+                         restart_delay=60)
+        log.info("[run] ▶ CEX listing watcher avviato")
+    except Exception as e:
+        log.warning(f"[run] cex_listing_watcher non avviato: {e}")
+
 # ── 9. watchdog thread critici ────────────────────────────────────────────────
 # I sotto-thread degli scanner (.start() diretto, fuori da _start_component)
 # non hanno auto-restart: se uno muore il sistema continuava zoppo in silenzio.
@@ -398,7 +460,7 @@ while not engine._stop.is_set():
         with engine._lock:
             pos_list = list(engine.positions.items())
         for sid, pos in pos_list:
-            if pos["remaining"] > 0 and pos.get("pair_address"):
+            if pos["remaining"] > 0 and (pos.get("pair_address") or pos.get("system") == "pre_grad"):
                 try:
                     engine._process_position(sid, pos)
                 except Exception as e:

@@ -301,6 +301,12 @@ _EXIT_LABEL = {
     "exit_bsr_collapse": ("📉", "Buy-pressure collapse exit"),
     "exit_time_limit": ("⏰", "Time-limit exit"),
     "exit_low_liq": ("⚠️", "Low liquidity exit"),
+    "exit_adaptive":      ("⚡", "Snap exit (early drawdown)"),
+    "exit_momentum":      ("🔻", "Momentum exit (V3 signal reversed)"),
+    "exit_stagnant":      ("💤", "Stagnant exit (no move)"),
+    "exit_price_timeout": ("⏰", "Price timeout — no fetch"),
+    "exit_max_age":       ("⌛", "Max age exit"),
+    "manual_close":       ("🔧", "Manual close"),
 }
 
 

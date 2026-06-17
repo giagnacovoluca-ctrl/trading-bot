@@ -88,21 +88,35 @@ def _extract_body(html: str) -> str:
 
 
 def _pnl_24h_by_system() -> dict[str, float]:
+    """pnl_eur è CUMULATIVO per segnale: il valore 24h è il delta tra l'ultima
+    riga nella finestra e l'ultima riga pre-finestra (stesso fix di
+    track_record.compute(), mai propagato qui — sommare le righe raw
+    double-conta le uscite parziali)."""
     out: dict[str, float] = {}
     try:
         import csv as _csv
         cutoff = datetime.now() - timedelta(hours=24)
+        last_in_window: dict[str, float] = {}
+        base_before_window: dict[str, float] = {}
+        sys_by_sid: dict[str, str] = {}
         with open(TRADES_CSV, encoding="utf-8") as f:
             for row in _csv.DictReader(f):
                 try:
-                    if datetime.fromisoformat(row["ts"]) < cutoff:
-                        continue
+                    ts = datetime.fromisoformat(row["ts"])
                     pnl = float((row.get("pnl_eur") or "0").replace("+", ""))
                 except (ValueError, KeyError):
                     continue
-                if pnl:
-                    sys_name = row.get("system", "?")
-                    out[sys_name] = out.get(sys_name, 0.0) + pnl
+                sid = row.get("signal_id") or row.get("token_symbol") or "?"
+                sys_by_sid[sid] = row.get("system", "?")
+                if ts < cutoff:
+                    base_before_window[sid] = pnl
+                else:
+                    last_in_window[sid] = pnl
+        for sid, pnl in last_in_window.items():
+            delta = pnl - base_before_window.get(sid, 0.0)
+            if delta:
+                sys_name = sys_by_sid[sid]
+                out[sys_name] = out.get(sys_name, 0.0) + delta
     except OSError:
         pass
     return out

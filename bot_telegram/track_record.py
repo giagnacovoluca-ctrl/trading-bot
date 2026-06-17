@@ -36,8 +36,11 @@ def _parse_ts(s: str) -> float | None:
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S.%f",
                 "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%d"):
         try:
-            return datetime.strptime(s.split("+")[0].strip(), fmt).replace(
-                tzinfo=timezone.utc).timestamp()
+            # naive ts in live_trades.csv = datetime.now() locale (come scritto
+            # da trade_simulator e letto via datetime.fromisoformat(...).timestamp());
+            # interpretarlo come UTC sfasava la finestra 24h di +2h (CEST),
+            # gonfiando pnl_24h con trade extra di 24-26h fa.
+            return datetime.strptime(s.split("+")[0].strip(), fmt).timestamp()
         except ValueError:
             continue
     return None
@@ -58,7 +61,10 @@ def compute() -> dict:
     pnl_by_signal: dict[str, float] = defaultdict(float)
     sys_by_signal: dict[str, str] = {}
     sym_by_signal: dict[str, str] = {}
+    shadow_signals: set[str] = set()
     last_ts_by_signal: dict[str, float] = {}
+    last_24h_by_signal: dict[str, float] = {}   # pnl ultima riga in finestra 24h
+    base_24h_by_signal: dict[str, float] = {}   # pnl ultima riga pre-finestra 24h
     total_pnl = 0.0
     pnl_24h = 0.0
     now = time.time()
@@ -76,16 +82,30 @@ def compute() -> dict:
             sys_by_signal[sid] = row.get("system", "")
             # alcuni scanner salvano il ticker già con "$" → evita "$$SCUP" nei recap
             sym_by_signal[sid] = (row.get("token_symbol") or sid).lstrip("$")
+            # pre_grad shadow (12/06): size reale=0, non deve impattare il
+            # track record pubblico (stessa esclusione del dashboard interno)
+            note = row.get("note", "") or ""
+            if "shadow=true" in note or "shadow_pnl=" in note:
+                shadow_signals.add(sid)
             ts = _parse_ts(row.get("ts", ""))
             if ts:
                 last_ts_by_signal[sid] = max(last_ts_by_signal.get(sid, 0), ts)
+                if now - ts > 86400:
+                    base_24h_by_signal[sid] = pnl
+                else:
+                    last_24h_by_signal[sid] = pnl
 
     # Esclude i segnali mai tradati (pnl=0: purged_stale, skip, duplicati…):
     # contarli come "loss" deprimeva il win-rate (30.4% vs 49.9% reale al 10/06)
-    closed = [(s, p) for s, p in pnl_by_signal.items() if p != 0.0]
+    closed = [(s, p) for s, p in pnl_by_signal.items()
+              if p != 0.0 and s not in shadow_signals]
     total_pnl = sum(p for _, p in closed)
-    pnl_24h = sum(p for s, p in closed
-                  if now - last_ts_by_signal.get(s, 0) <= 86400)
+    # pnl_eur è CUMULATIVO per segnale: il 24h corretto è il delta tra l'ultima
+    # riga in finestra e l'ultima riga PRE-finestra (stesso fix di
+    # trade_simulator._compute_daily_pnl del 12/06, non sommare i cumulativi).
+    pnl_24h = sum(p - base_24h_by_signal.get(s, 0.0)
+                  for s, p in last_24h_by_signal.items()
+                  if s not in shadow_signals)
     wins = [s for s, p in closed if p > 0]
     losses = [s for s, p in closed if p <= 0]
     n = len(closed)

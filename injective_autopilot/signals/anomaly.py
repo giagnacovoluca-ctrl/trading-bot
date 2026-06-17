@@ -71,12 +71,14 @@ class AnomalyDetector:
         regime_shift_window_short: int = 20,
         regime_shift_window_long: int = 100,
         kl_threshold: float = 0.3,
+        vol_breakout_sigma: float = 2.0,
     ) -> None:
         self.zscore_window = zscore_window
         self.zscore_threshold = zscore_threshold
         self.regime_shift_window_short = regime_shift_window_short
         self.regime_shift_window_long = regime_shift_window_long
         self.kl_threshold = kl_threshold
+        self.vol_breakout_sigma = vol_breakout_sigma
 
         self._prices: Deque[float] = deque(maxlen=regime_shift_window_long + 10)
         self._returns: Deque[float] = deque(maxlen=regime_shift_window_long + 10)
@@ -174,8 +176,8 @@ class AnomalyDetector:
         window = arr[-20:]
         mu, sigma = window.mean(), window.std()
 
-        upper = mu + 2 * sigma
-        lower = mu - 2 * sigma
+        upper = mu + self.vol_breakout_sigma * sigma
+        lower = mu - self.vol_breakout_sigma * sigma
 
         if price > upper:
             strength = (price - upper) / (sigma + 1e-10)

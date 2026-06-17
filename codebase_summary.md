@@ -1,5 +1,24 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-17 sera-3 (NUOVI SCRIPT AUTONOMI: defi/liquidity_event_monitor.py
+(GeckoTerminal new pools Solana/Base ogni 30s, liq>$10k, età<5min → email+CSV), 
+defi/cex_listing_watcher.py (Binance announcements + Coinbase products ogni 2min → DexScreener
+on-chain match → email+CSV; bootstrap silenzioso al 1° avvio), injective_autopilot/funding_farmer.py
+(ogni 4h: funding_rate>0.03%/8h → segnala SHORT/LONG + email + CSV, avviato da run_loop.sh in
+background con restart 30s). trade_simulator: exit_vol_crash predittivo — buffer _vol_hist 4
+campioni, se slope negativa accelerata ≥15% per 2 cicli → exit anticipato prima della soglia
+assoluta. run.py: flag --no-liq e --no-cex aggiunti. run_loop.sh: avvia funding_farmer in
+background. bot_telegram/formatter.py: fix _EXIT_LABEL — aggiunte 6 action prodotte dal
+simulator ma non mappate (exit_adaptive, exit_momentum, exit_stagnant, exit_price_timeout,
+exit_max_age, manual_close). ⚠️ cex_watcher: bootstrap fix attivo da prossimo restart
+run.py — primo avvio aveva generato ~190 email per token Coinbase pre-esistenti.)
+
+Aggiornato: 2026-06-17 sera-2 (trade_simulator: LIVE_COLUMNS estese a 17 colonne (+pump_prob,
++prepump_score dopo bsr); BSR entry ora reale da buy_sell_ratio_1h segnale (era hardcoded 1.000);
+nuova funzione _log_to_signals_csv() scrive riga in signals_log.csv per segnali v3→defi via
+via_gemmeV3 (chiude gap copertura 23% vs 74%); live_trades.csv migrato a 17 colonne con swap
+atomico; backup in live_trades.csv.bak_colmig. Serve restart run.py)
+
 Aggiornato: 2026-06-17 sera (social_monitor.py: fix Telethon non riceveva update da
 canali — causa: while+asyncio.sleep non sufficiente come driver; fix: run_until_disconnected()
 + asyncio.ensure_future per loop periodico; rimosso filtro chat_id manuale buggy per
@@ -69,6 +88,15 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
                                base_pump/gemme), anche quelli scartati (skip_stale ecc.).
                                Bootstrap su 1° run marca i segnali storici come "seen" senza
                                trackarli. Thread in run.py, poll 5min, no nuove dipendenze.
+        liquidity_event_monitor.py ← NUOVO 17/06: polling GeckoTerminal /networks/{chain}/new_pools
+                               ogni 30s su Solana e Base. Pool nuovi (<5 min, liq>$10k) →
+                               email queue + reports/liq_event_signals.csv. Avviato da run.py
+                               (--no-liq per skippare). _seen TTL 1h anti-dedup.
+        cex_listing_watcher.py ← NUOVO 17/06: polling Binance announcements + Coinbase products
+                               ogni 2 min. Ticker nuovi (non in _seen) cercati su DexScreener
+                               (solana/base, liq>$5k). Hit → email + reports/cex_listing_signals.csv.
+                               Avviato da run.py (--no-cex). _bootstrap() silenzioso al 1° avvio
+                               per evitare flood email token già listati su Coinbase.
         social_monitor.py   ← NUOVO 16/06: daemon Telethon su 12 canali Telegram crypto
                                (whale_alert, lookonchain, cryptoquant_official, Unfolded,
                                CoinTelegraph, rektHQ, EveningTrader, solanadailynews,
@@ -85,7 +113,14 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
         binance_futures_scanner.py ← scansiona Binance Futures per segnali large-cap
         setup_dune.py       ← DEPRECATO (raise SystemExit, non eseguire)
         reports/
-            signals_log.csv         ← segnali defi_optimized
+            signals_log.csv         ← segnali defi_optimized + (da 17/06) segnali v3→defi
+                                  via_gemmeV3 scritti da _log_to_signals_csv() in trade_simulator.
+                                  Colonne: signal_id, timestamp_entry, token_symbol, token_name,
+                                  token_address, chain, pair_address, price_entry_usd, volume_1h_usd,
+                                  liquidity_usd, buy_sell_ratio_1h, change_1h_pct, pump_probability,
+                                  buy_tax, sell_tax, lp_locked, is_honeypot, top_features.
+                                  ⚠️ pump_probability vuota per righe via_gemmeV3; top_features
+                                  contiene tier/score/gem_class per le righe v3
             midcap_signals.csv      ← segnali midcap_scanner (NUOVO)
             pump_grad_signals.csv   ← segnali pump_graduation_scanner
             pre_grad_signals.csv    ← segnali pre_grad_monitor
@@ -93,6 +128,11 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
             live_state.json         ← stato posizioni LiveEngine (persistente)
             live_trades.csv         ← log completo azioni LiveEngine (append-only;
                                   ⚠️ aprire sempre in modalità 'a' o con tmp+os.rename)
+                                  COLONNE (17): ts, signal_id, system, token_symbol, chain,
+                                  pair_address, action, price, change_pct, vol_h1, bsr,
+                                  pump_prob, prepump_score, remaining, pnl_eur, exit_reason, note.
+                                  pump_prob e prepump_score valorizzati solo per entry post-17/06/2026;
+                                  bsr ora reale (da buy_sell_ratio_1h segnale, non più 1.000 fisso)
             live_trades_backup_*.csv ← backup datati creati da run.py ad ogni avvio
             data_fault_trades.csv   ← NUOVO 15/06: trade chiusi NON validi (is_valid_trade_event
                                   ko, es. missing_entry_event) — esclusi da PF/WR/EV, audit-only
@@ -218,6 +258,12 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
         reports bot strutturale/   ← stato e log bot live (state.json, trades_log.json, structural_bot.log)
         reports_demo/              ← stato e log bot demo (separato)
     injective_autopilot/           ← bot multi-market su Injective Protocol perps
+        funding_farmer.py          ← NUOVO 17/06: monitora funding rates ogni 4h su tutti i
+                                      market Injective. Se |funding_rate| > 0.03%/8h → segnala
+                                      SHORT (fr>0) o LONG (fr<0), APY stimato, rating ★★/★★★.
+                                      Output: reports/funding_opportunities.csv + email SMTP.
+                                      Avviato da run_loop.sh in background con loop restart 30s.
+                                      NO trading autonomo — solo segnali.
         main.py                    ← entry point (PAPER/LIVE/BACKTEST mode)
                                       AGGIORNATO 09/06: Ctrl+C doppio con timeout 5s (1°=stop&salva, 2°=chiudi posizioni)
                                       set_risk_engine(engine._risk) wired al dashboard

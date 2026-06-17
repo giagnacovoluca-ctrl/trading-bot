@@ -90,6 +90,15 @@ class Executor:
         un restart sovrascrivono i trade storici (save è INSERT OR REPLACE)."""
         self._trade_counter = max(self._trade_counter, value)
 
+    def restore_open_trades(self, trades: list[TradeRecord]) -> None:
+        """Ripopola le posizioni OPEN in memoria dopo un restart: senza questo
+        i trade OPEN su DB restano orfani (mai monitorati per SL/TP/recheck)."""
+        for trade in trades:
+            self._open_trades[trade.id] = trade
+        if trades:
+            log.info("Restored %d open position(s) from DB: %s",
+                     len(trades), [t.id for t in trades])
+
     async def execute(self, decision: TradeDecision) -> TradeRecord | None:
         """
         Execute a validated TradeDecision.
@@ -328,6 +337,10 @@ class Executor:
             except Exception:
                 current_price = trade.entry_price
             await self._close_trade(trade, current_price, "MANUAL", 0.0)
+
+    @property
+    def mode(self) -> str:
+        return self._mode
 
     @property
     def open_trades(self) -> list[TradeRecord]:

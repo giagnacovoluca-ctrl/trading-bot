@@ -207,6 +207,16 @@ class Repository:
 
     # ── Analytics / learning ─────────────────────────────────────────────
 
+    async def get_open_trades(self, mode: str | None = None) -> list[dict]:
+        """Trade ancora OPEN su DB (es. dopo un restart) — usati per ripopolare
+        l'executor in memoria, altrimenti restano orfani e non monitorati."""
+        async with self._session_factory() as session:
+            q = select(Trade).where(Trade.status == "OPEN").order_by(Trade.entry_ts)
+            if mode:
+                q = q.where(Trade.mode == mode)
+            result = await session.execute(q)
+            return [self._trade_to_dict(r) for r in result.scalars().all()]
+
     async def get_closed_trades(self, mode: str | None = None) -> list[dict]:
         """All closed trades, oldest first (analytics need chronological order)."""
         async with self._session_factory() as session:

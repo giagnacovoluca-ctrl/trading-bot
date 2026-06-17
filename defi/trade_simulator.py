@@ -32,6 +32,7 @@ import csv
 import html
 import json
 import logging
+import re
 import os
 import threading
 import time
@@ -45,6 +46,8 @@ warnings.filterwarnings("ignore")
 
 import pandas as pd
 import requests
+
+from data_quality import MIN_VOLUME_1H_USD_DEFI, is_valid_trade_event
 
 try:
     import websocket   # websocket-client — usato da _RugWatcher (monitor real-time pump_grad)
@@ -79,12 +82,14 @@ V3_FOLLOWUP   = os.path.join(_GEMME_DIR, "gems_followup_v3.csv")
 BF_SIGNALS    = os.path.join(BASE, "reports", "binance_futures_signals.csv")
 MIRROR_SIGNALS    = os.path.join(BASE, "reports", "mirror_signals.csv")
 PRE_GRAD_SIGNALS  = os.path.join(BASE, "reports", "pre_grad_signals.csv")
+REAL_EXEC_CSV     = os.path.join(BASE, "..", "executor", "real_executions.csv")
 BASE_PUMP_SIGNALS = os.path.join(BASE, "reports", "base_pump_signals.csv")
 MIDCAP_SIGNALS    = os.path.join(BASE, "reports", "midcap_signals.csv")
 V3_EXIT_SIGNALS   = os.path.join(BASE, "reports", "v3_exit_signals.csv")
 WALLET_EVENTS_CSV = os.path.join(BASE, "reports", "wallet_events.csv")
 
 LIVE_LOG_CSV  = os.path.join(BASE, "reports", "live_trades.csv")
+DATA_FAULT_CSV = os.path.join(BASE, "reports", "data_fault_trades.csv")
 LIVE_HTML     = os.path.join(BASE, "reports", "sim_report.html")
 STATE_FILE    = os.path.join(BASE, "reports", "live_state.json")
 
@@ -100,6 +105,18 @@ CAPITAL_BY_TIER = {
 
 # Blacklist hard post-SL: token_address → expiry datetime (48h)
 _hard_sl_blacklist: dict = {}
+
+# Cooldown ore per tipo di exit — usato sia in _load_new_signals che in _process_position
+_COOLDOWN_MAP: dict = {
+    "entry":             8,
+    "liq_collapse":      24,
+    "hard_sl":           24,
+    "sl_adaptive":       24,
+    "exit_bsr_collapse": 4,
+    "exit_vol_crash":    4,
+    "exit_adaptive":     4,
+    "exit_momentum":     4,
+}
 
 # Circuit breaker: blocca nuovi segnali se perdita 24h supera soglia.
 # Default 0 = DISATTIVATO (11/06): in paper trading il blocco toglie solo dati
@@ -251,8 +268,12 @@ CONFIGS = {
         tp2_pct              = 30.0,
         tp1_fraction         = 0.50,
         adaptive_snap1_exit  = -15.0,
-        trail_activate_pct   = 8.0,
-        trail_drop_pct       = 5.0,
+        # 15/06: era 8.0/5.0 — analisi book aperto (34 pos) mostrava round-trip
+        # sistematico: picchi +4/+8% mai armavano il trailing e ritornavano
+        # a -3/-7% (Q, UB, GEOD, 币安人生, M...). Abbassato per proteggere
+        # i picchi minori più comuni. Live-monitoring: validare dopo 2-3 settimane.
+        trail_activate_pct   = 5.0,
+        trail_drop_pct       = 3.0,
         sl_consecutive_neg   = 5,
         sl_threshold_pct     = -12.0,
         hard_sl_pct          = None,   # no hard SL: CEX spot mid/large-cap non rugga
@@ -565,6 +586,7 @@ MAX_CLOSED_SHOW  = 100   # trade chiusi mostrati nel report
 LIVE_COLUMNS = [
     "ts", "signal_id", "system", "token_symbol", "chain", "pair_address",
     "action", "price", "change_pct", "vol_h1", "bsr",
+    "pump_prob", "prepump_score",
     "remaining", "pnl_eur", "exit_reason", "note",
 ]
 
@@ -959,6 +981,27 @@ def _get_solana_token_decimals(token_address: str) -> int | None:
     return None
 
 
+def _real_buy_price(sid: str) -> float | None:
+    """
+    Prezzo di esecuzione reale (price_actual) registrato dall'executor in
+    real_executions.csv per il BUY di `sid`, se presente.
+
+    pre_grad: il prezzo del segnale è stimato dalla bonding curve e può
+    differire enormemente (anche 2x) dal prezzo Jupiter al momento
+    dell'esecuzione, pochi secondi dopo la graduation. Usare price_actual
+    come entry_price evita drop fantasma misurati da un prezzo mai pagato.
+    """
+    try:
+        with open(REAL_EXEC_CSV, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r.get("signal_id") == sid and r.get("action") == "buy":
+                    p = float(r.get("price_actual", 0) or 0)
+                    return p if p > 0 else None
+    except Exception:
+        pass
+    return None
+
+
 def _fetch_price_jupiter(token_address: str, entry_price_usd: float,
                           timeout: int = 8) -> float | None:
     """
@@ -1176,10 +1219,144 @@ def _log_trade(row: dict):
     """Appende una riga a live_trades.csv."""
     exists = os.path.exists(LIVE_LOG_CSV)
     with open(LIVE_LOG_CSV, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=LIVE_COLUMNS)
+        w = csv.DictWriter(f, fieldnames=LIVE_COLUMNS, extrasaction="ignore")
+        if not exists:
+            w.writeheader()
+        # Riempie le colonne nuove con stringa vuota se assenti (retrocompatibilità)
+        for col in ("pump_prob", "prepump_score"):
+            row.setdefault(col, "")
+        w.writerow(row)
+
+
+_SIGNALS_LOG_COLUMNS = [
+    "signal_id", "timestamp_entry", "token_symbol", "token_name", "token_address",
+    "chain", "pair_address", "price_entry_usd", "volume_1h_usd", "liquidity_usd",
+    "buy_sell_ratio_1h", "change_1h_pct", "pump_probability",
+    "buy_tax", "sell_tax", "lp_locked", "is_honeypot", "top_features",
+]
+# signal_id già scritti in questa sessione: evita duplicati su restart ravvicinati
+_signals_log_written: set = set()
+
+
+def _log_to_signals_csv(row: dict, sid: str, chain: str, now: datetime):
+    """Scrive in signals_log.csv i segnali v3 routati a defi (via_gemmeV3).
+    Normalmente signals_log è scritto da defi_optimized; questa funzione colma
+    il gap che rendeva i 26 vol_crash defi privi di dati signal per le analisi."""
+    if sid in _signals_log_written:
+        return
+    _signals_log_written.add(sid)
+    exists = os.path.exists(DEFI_SIGNALS)
+    top_feats = (
+        f"tier={row.get('tier','')} | score={row.get('score','')} | "
+        f"gem_class={row.get('gem_class','')} | via_gemmeV3=true"
+    )
+    sig_row = {
+        "signal_id":        sid,
+        "timestamp_entry":  str(row.get("timestamp", now.isoformat())),
+        "token_symbol":     str(row.get("token_symbol", "")),
+        "token_name":       str(row.get("token_name", row.get("token_symbol", ""))),
+        "token_address":    str(row.get("token_address", "")),
+        "chain":            chain,
+        "pair_address":     str(row.get("pair_address", "")),
+        "price_entry_usd":  str(row.get("price_usd", "")),
+        "volume_1h_usd":    str(row.get("volume_1h_usd", "")),
+        "liquidity_usd":    str(row.get("liquidity_usd", "")),
+        "buy_sell_ratio_1h": str(row.get("buy_sell_ratio_1h", "")),
+        "change_1h_pct":    str(row.get("change_1h_pct", "")),
+        "pump_probability": "",   # non prodotto da gemmeV3
+        "buy_tax":          str(row.get("buy_tax", "")),
+        "sell_tax":         str(row.get("sell_tax", "")),
+        "lp_locked":        str(row.get("lp_locked", "")),
+        "is_honeypot":      str(row.get("is_honeypot", "")),
+        "top_features":     top_feats,
+    }
+    with open(DEFI_SIGNALS, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=_SIGNALS_LOG_COLUMNS)
+        if not exists:
+            w.writeheader()
+        w.writerow(sig_row)
+
+
+FOLLOWUP_COLUMNS = [
+    "signal_id", "token_symbol", "chain", "pair_address",
+    "price_entry_usd", "snapshot_num", "timestamp_snapshot",
+    "minutes_since_entry", "price_snapshot_usd", "change_pct", "status",
+]
+
+
+def _log_followup_snapshot(pos: dict, sid: str, cur_price: float, chg: float, now: datetime):
+    """Appende uno snapshot a price_followup.csv (15/06: copre anche midcap MC_*
+    per costruire un dataset storico utilizzabile da /validate-filter)."""
+    pos["_followup_snap_num"] = pos.get("_followup_snap_num", 0) + 1
+    try:
+        entry_ts = datetime.fromisoformat(pos["entry_ts"])
+        minutes  = (now - entry_ts.replace(tzinfo=None)).total_seconds() / 60.0
+    except Exception:
+        minutes = ""
+    row = {
+        "signal_id":           sid,
+        "token_symbol":        pos.get("token_symbol", ""),
+        "chain":               pos.get("chain", ""),
+        "pair_address":        pos.get("pair_address", ""),
+        "price_entry_usd":     pos.get("entry_price", ""),
+        "snapshot_num":        pos["_followup_snap_num"],
+        "timestamp_snapshot":  now.isoformat(),
+        "minutes_since_entry": round(minutes, 1) if minutes != "" else "",
+        "price_snapshot_usd":  cur_price,
+        "change_pct":          round(chg, 4),
+        "status":              "ok",
+    }
+    exists = os.path.exists(DEFI_FOLLOWUP)
+    with open(DEFI_FOLLOWUP, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=FOLLOWUP_COLUMNS)
         if not exists:
             w.writeheader()
         w.writerow(row)
+
+
+_DATA_FAULT_COLUMNS = ["signal_id", "system", "token_symbol", "ts", "action",
+                       "change_pct", "pnl_eur", "fault_reason", "note"]
+
+
+def _log_data_fault_trades(all_states: dict, has_entry: set):
+    """
+    Scrive (dedup per signal_id) i trade chiusi classificati come data_fault
+    in data_fault_trades.csv — esclusi da PF/WR/EV ma tracciati per audit.
+    """
+    already = set()
+    if os.path.exists(DATA_FAULT_CSV):
+        try:
+            for r in csv.DictReader(open(DATA_FAULT_CSV, encoding="utf-8")):
+                already.add(r.get("signal_id", ""))
+        except Exception:
+            pass
+
+    new_rows = []
+    for sid, s in all_states.items():
+        if float(s.get("remaining", 0) or 0) > 0:
+            continue
+        if sid in already:
+            continue
+        ok, reason = is_valid_trade_event(s, sid in has_entry)
+        if ok:
+            continue
+        new_rows.append({
+            "signal_id": sid, "system": s.get("system", "?"),
+            "token_symbol": s.get("token_symbol", "?"), "ts": s.get("ts", ""),
+            "action": s.get("action", ""), "change_pct": s.get("change_pct", ""),
+            "pnl_eur": s.get("pnl_eur", ""), "fault_reason": reason,
+            "note": s.get("note", ""),
+        })
+
+    if not new_rows:
+        return
+    exists = os.path.exists(DATA_FAULT_CSV)
+    with open(DATA_FAULT_CSV, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=_DATA_FAULT_COLUMNS)
+        if not exists:
+            w.writeheader()
+        for row in new_rows:
+            w.writerow(row)
 
 
 class LiveEngine:
@@ -1196,6 +1373,8 @@ class LiveEngine:
         # signal_id mai loggati su live_trades.csv ma scartati (es. cooldown):
         # senza questa cache _load_new_signals li rivaluta e ri-logga ad ogni ciclo per sempre
         self._signal_skip_cache: set = set()
+        self.recent_tokens: dict  = {}   # sym_upper → (ts, action) — cooldown cross-sistema
+        self.recent_taddrs: dict  = {}   # token_address_lower → (ts, action)
         # ── Rug watcher (fast-check WS pump_grad, vedi _RugWatcher) ────────
         self._fast_lock          = threading.Lock()
         self._fast_check_pending: set  = set()   # pair_address con attività rilevata
@@ -1444,28 +1623,8 @@ class LiveEngine:
                 if ta:
                     active_taddrs.add(ta)
 
-        # Cooldown per token_symbol (cross-sistema).
-        # Traccia entry, loss exits e liq_collapse con cooldown differenziati.
-        TOKEN_COOLDOWN_H        = 8    # dopo entry normale
-        LIQ_COLLAPSE_COOLDOWN_H = 24   # dopo liq_collapse (token ruggato/DLMM)
-        HARD_SL_COOLDOWN_H      = 24   # dopo hard_sl: 24h evita ri-entrata lo stesso giorno (era 12h)
-        LOSS_EXIT_COOLDOWN_H    = 4    # dopo bsr_collapse/vol_crash/exit_adaptive
-
-        # Azioni che avviano cooldown con relativo numero di ore
-        _COOLDOWN_MAP = {
-            "entry":               TOKEN_COOLDOWN_H,
-            "liq_collapse":        LIQ_COLLAPSE_COOLDOWN_H,
-            "hard_sl":             HARD_SL_COOLDOWN_H,
-            "sl_adaptive":         HARD_SL_COOLDOWN_H,   # 08/06: 币安人生 ri-entrato 3x in ~30h con
-                                                          # setup invariato (ADX~59, expand_bars 8-9) → -39€
-            "exit_bsr_collapse":   LOSS_EXIT_COOLDOWN_H,
-            "exit_vol_crash":      LOSS_EXIT_COOLDOWN_H,
-            "exit_adaptive":       LOSS_EXIT_COOLDOWN_H,
-            "exit_momentum":       LOSS_EXIT_COOLDOWN_H,
-        }
-
-        recent_tokens: dict = {}        # sym_upper → (ts, action)
-        recent_taddrs: dict = {}        # token_address_lower → (ts, action)
+        self.recent_tokens = {}
+        self.recent_taddrs = {}
         recent_entry_prices: dict = {}  # token_address_lower → last entry price_usd
         if os.path.exists(LIVE_LOG_CSV):
             try:
@@ -1478,10 +1637,10 @@ class LiveEngine:
                         ta  = str(r.get("token_address","") or "").strip().lower()
                         try:
                             ts = datetime.fromisoformat(r["ts"])
-                            if sym and (sym not in recent_tokens or ts > recent_tokens[sym]):
-                                recent_tokens[sym] = (ts, action)
-                            if ta and (ta not in recent_taddrs or ts > recent_taddrs[ta]):
-                                recent_taddrs[ta] = (ts, action)
+                            if sym and (sym not in self.recent_tokens or ts > self.recent_tokens[sym][0]):
+                                self.recent_tokens[sym] = (ts, action)
+                            if ta and (ta not in self.recent_taddrs or ts > self.recent_taddrs[ta][0]):
+                                self.recent_taddrs[ta] = (ts, action)
                             # Traccia ultimo prezzo di entry per filtro re-entry
                             if action == "entry" and ta:
                                 try:
@@ -1664,9 +1823,26 @@ class LiveEngine:
                                 known.add(sid)
                                 continue
                         elif sig_dex in ("pumpswap", "pump.fun") or sig_mcap < 1_000_000:
-                            # Token pumpswap o micro-cap: comportamento da memecoin → usa config defi
+                            # Token pumpswap o micro-cap: comportamento da memecoin → usa config defi.
+                            # Gate qualità: questa via ("via_gemmeV3") bypassava i filtri hard/pre-pump
+                            # di defi_optimized (c2-c11, comp>=0.55) → 49.5% hard_sl vs 22.6% nativo
+                            # (-68€/107 trade). Filtro minimo: scarta BRONZE/score<50.
+                            # Backtest 17/06 n=195: soglia 50 taglia 26 trade WR=22.7% PnL=-84€;
+                            # hs_rate invariato (51%→49%) — score non predice hard_sl, solo win rate.
+                            _tier_vg  = str(row.get("tier","") or "").upper()
+                            _score_vg = float(row.get("score", 0) or 0)
+                            if _tier_vg == "BRONZE" or _score_vg < 50:
+                                _skip_routing(
+                                    f"gate via_gemmeV3: tier={_tier_vg} score={_score_vg:.0f} "
+                                    "(serve score>=50, no BRONZE) — bypassa filtri defi"
+                                )
+                                known.add(sid)
+                                continue
                             effective_system = "defi"
                             log.debug(f"[routing] {sid}: pumpswap/microcap → defi (mcap=${sig_mcap:,.0f}, dex={sig_dex})")
+                            # Registra il segnale v3 in signals_log.csv così i trade via_gemmeV3
+                            # avranno dati signal disponibili per le analisi future
+                            _log_to_signals_csv(row, sid, chain, now)
 
                     # Filtro dato Dune stale per segnali v3:
                     # se inflow_last_2h e buyers_last_2h sono identici a un segnale già processato
@@ -1703,23 +1879,44 @@ class LiveEngine:
                     # Cooldown cross-sistema per symbol e token_address.
                     # Differenziato per tipo di uscita: hard_sl=12h, loss=4h, entry=8h, liq=24h
                     sym_check = str(row.get("token_symbol", "") or "").upper()
-                    _cd_sym = recent_tokens.get(sym_check)
+                    _cd_sym = self.recent_tokens.get(sym_check)
                     if _cd_sym:
                         _cd_ts, _cd_action = _cd_sym
-                        _cd_limit = _COOLDOWN_MAP.get(_cd_action, TOKEN_COOLDOWN_H)
+                        _cd_limit = _COOLDOWN_MAP.get(_cd_action, 8)
                         if (now - _cd_ts).total_seconds() / 3600 < _cd_limit:
                             self._signal_skip_cache.add(sid)
                             log.debug(f"[live/{effective_system}] {sym_check} cooldown {_cd_action} "
                                      f"({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
                             continue
-                    _cd_ta = recent_taddrs.get(tok_addr_check) if tok_addr_check else None
+                    _cd_ta = self.recent_taddrs.get(tok_addr_check) if tok_addr_check else None
                     if _cd_ta:
                         _cd_ts, _cd_action = _cd_ta
-                        _cd_limit = _COOLDOWN_MAP.get(_cd_action, TOKEN_COOLDOWN_H)
+                        _cd_limit = _COOLDOWN_MAP.get(_cd_action, 8)
                         if (now - _cd_ts).total_seconds() / 3600 < _cd_limit:
                             self._signal_skip_cache.add(sid)
                             log.debug(f"[live/{effective_system}] {tok_addr_check[:12]}… taddr cooldown "
                                      f"{_cd_action} ({_cd_ts.strftime('%H:%M')}, <{_cd_limit}h) → skip")
+                            continue
+
+                    # Filtri qualità per pump_grad/mirror: liq minima, chg1h cap, vol_h1 minimo
+                    # Backtest 16/06: liq<25k → -197€ su 45 trade (WR invariato);
+                    # chg1h>20% → token già pompato pre-graduation (es. SOLANA -53€)
+                    # Backtest 17/06: vol_h1 1-5k → n=26 WR=19% PnL=-206€ (−7.9€/trade)
+                    if effective_system == "pump_grad":
+                        _sig_liq = float(row.get("liquidity_usd", 0) or 0)
+                        if 0 < _sig_liq < 25000:
+                            self._signal_skip_cache.add(sid)
+                            log.info(f"[live/pump_grad] {sym_check} liq=${_sig_liq:,.0f} < $25k → skip")
+                            continue
+                        _sig_chg = float(row.get("change_1h_pct", 0) or 0)
+                        if _sig_chg > 20:
+                            self._signal_skip_cache.add(sid)
+                            log.info(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 20% → già pompato, skip")
+                            continue
+                        _sig_vol_pg = float(row.get("volume_1h_usd", 0) or 0)
+                        if 0 < _sig_vol_pg < 5000:
+                            self._signal_skip_cache.add(sid)
+                            log.info(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $5k → skip")
                             continue
 
                     # Filtro re-entry su token in downtrend:
@@ -1801,8 +1998,8 @@ class LiveEngine:
                     if effective_system == "defi":
                         # Guardia volume: token senza liquidità attiva
                         _sig_vol = float(row.get("volume_1h_usd", 0) or 0)
-                        if _sig_vol < 10_000:
-                            log.info(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}<10K → skip")
+                        if _sig_vol < MIN_VOLUME_1H_USD_DEFI:
+                            log.info(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}<{MIN_VOLUME_1H_USD_DEFI:.0f} → skip")
                             known.add(sid)
                             continue
 
@@ -1919,13 +2116,26 @@ class LiveEngine:
                             log.info(f"[live] 🐋 {row.get('token_symbol','?')}: {sm_n} wallet alpha "
                                      f"hanno comprato questo token nelle ultime {_SM_WINDOW_H:.0f}h")
 
+                    # Estrai feature signal per l'entry log (analisi future)
+                    _entry_bsr = float(row.get("buy_sell_ratio_1h") or 0) or ""
+                    _entry_pp  = str(row.get("pump_probability") or "")
+                    _entry_pre = ""
+                    _tf_entry  = str(row.get("top_features", "") or "")
+                    _m_pre     = re.search(r'prepump_composite_score=([0-9.]+)', _tf_entry)
+                    if _m_pre:
+                        _entry_pre = _m_pre.group(1)
+                    elif row.get("score"):   # v3: usa score come proxy
+                        _entry_pre = f"v3score={float(row.get('score', 0) or 0):.1f}"
+
                     _log_trade({
                         "ts": now.isoformat(), "signal_id": sid, "system": effective_system,
                         "token_symbol": str(row.get("token_symbol", "")), "chain": chain,
                         "pair_address": pair_addr,
                         "action": "entry", "price": f"{entry_price:.8g}",
                         "change_pct": "+0.00", "vol_h1": f"{entry_vol:.0f}",
-                        "bsr": "1.000", "remaining": "1.00",
+                        "bsr": f"{_entry_bsr:.3f}" if _entry_bsr else "1.000",
+                        "pump_prob": _entry_pp, "prepump_score": _entry_pre,
+                        "remaining": "1.00",
                         "pnl_eur": "+0.00", "exit_reason": "open", "note": entry_note,
                     })
                     known.add(sid)
@@ -1938,9 +2148,9 @@ class LiveEngine:
                         # "" in recent_tokens — ogni segnale successivo con token_symbol
                         # vuoto, di QUALSIASI sistema, collassa sullo stesso cooldown
                         # 8h "entry" e viene scartato in silenzio (log.debug invisibile)
-                        recent_tokens[sym_check] = (now, "entry")
+                        self.recent_tokens[sym_check] = (now, "entry")
                     if tok_addr_check:
-                        recent_taddrs[tok_addr_check] = (now, "entry")
+                        self.recent_taddrs[tok_addr_check] = (now, "entry")
                     with self._lock:
                         self.positions[sid] = {
                             "signal_id": sid, "system": effective_system,
@@ -2002,15 +2212,17 @@ class LiveEngine:
             self._fast_check_pending.add(pair_address)
 
     def _sync_rug_watcher(self):
-        """Allinea l'insieme dei pool monitorati via WS: solo pump_grad aperti
+        """Allinea l'insieme dei pool monitorati via WS: pump_grad/pre_grad aperti
         e ancora entro FAST_CHECK_WINDOW_MIN dall'apertura — è lì che si sono
         consumati tutti i rug osservati (brainfry 18min, SHIBURAI 17min).
+        15/06: estesa a pre_grad — overshoot hard_sl medio -48% (target -12%) con
+        poll 30s, indipendente dalla liquidità di entry (backtest n=44).
         Fuori da quella finestra si torna al solo poll a 30s, zero overhead extra."""
         now = datetime.now()
         pools = set()
         with self._lock:
             for pos in self.positions.values():
-                if (pos.get("system") == "pump_grad" and pos.get("remaining", 0) > 0
+                if (pos.get("system") in ("pump_grad", "pre_grad") and pos.get("remaining", 0) > 0
                         and pos.get("pair_address")):
                     try:
                         ts = datetime.fromisoformat(pos.get("position_open_ts") or pos["entry_ts"])
@@ -2041,7 +2253,7 @@ class LiveEngine:
                 self._fast_check_last[pa] = now_t
             with self._lock:
                 targets = [(sid, pos) for sid, pos in self.positions.items()
-                           if pos.get("system") == "pump_grad" and pos.get("remaining", 0) > 0
+                           if pos.get("system") in ("pump_grad", "pre_grad") and pos.get("remaining", 0) > 0
                            and pos.get("pair_address") in due]
             for sid, pos in targets:
                 try:
@@ -2054,6 +2266,40 @@ class LiveEngine:
     def _process_position(self, sid: str, pos: dict):
         if pos["remaining"] <= 0:
             return
+        # pre_grad: l'entry_price del segnale è stimato dalla bonding curve e
+        # può differire enormemente (anche 2x) dal prezzo Jupiter pagato
+        # dall'executor pochi secondi dopo, alla graduation. Appena
+        # real_executions.csv riporta il fill reale, ri-ancora entry_price
+        # per evitare drop fantasma misurati da un prezzo mai pagato.
+        # GUARD: se old_ep viene da Jupiter (token già graduato su DEX) e real_price
+        # viene dalla bonding curve, le due scale possono differire di 10-100x.
+        # In quel caso il ri-ancoraggio produrrebbe gain fantasmi (caso CUTIEPATOOTIE
+        # 16/06: bonding 1.75e-6 vs DEX 4.50e-4 → +4374% fake). Si salta e si
+        # mantiene l'entry_price Jupiter che è sulla stessa scala di DexScreener.
+        if pos.get("system") == "pre_grad" and not pos.get("_entry_price_checked"):
+            real_price = _real_buy_price(sid)
+            if real_price:
+                old_ep = pos.get("entry_price", 0)
+                if old_ep > 0:
+                    ratio = real_price / old_ep
+                    if ratio < 0.1 or ratio > 10.0:
+                        log.warning(
+                            f"[live/pre_grad] {sid}: _real_buy_price {real_price:.3e} vs "
+                            f"entry {old_ep:.3e} (ratio={ratio:.1f}x) — scale bonding/DEX "
+                            f"incompatibili, ri-ancoraggio saltato"
+                        )
+                        pos["_entry_price_checked"] = True
+                    else:
+                        if abs(ratio - 1.0) > 0.05:
+                            log.info(
+                                f"[live/pre_grad] {sid}: entry_price ri-ancorato "
+                                f"{old_ep:.8g} → {real_price:.8g} (fill reale executor)"
+                            )
+                        pos["entry_price"] = real_price
+                        pos["_entry_price_checked"] = True
+                else:
+                    pos["entry_price"] = real_price
+                    pos["_entry_price_checked"] = True
         # pre_grad: pair_address vuoto = ancora sulla bonding curve (normale,
         # non un errore) → gestito al ramo dedicato sotto via _fetch_price_pumpfun
         if not pos.get("pair_address") and pos.get("system") != "pre_grad":
@@ -2319,6 +2565,13 @@ class LiveEngine:
         if pos.get("entry_vol", 0) == 0 and cur_vol > 0:
             pos["entry_vol"] = cur_vol
         if chg > pos["peak_pct"]: pos["peak_pct"] = chg
+        # 15/06: snapshot storico per midcap (MC_*) su price_followup.csv,
+        # finora coperto solo da defi/v2/v3 — serve per backtest dopo ~2 settimane
+        if pos.get("system") == "midcap":
+            try:
+                _log_followup_snapshot(pos, sid, cur_price, chg, datetime.now())
+            except Exception as _e_fu:
+                log.debug(f"[live] {sid}: errore log followup snapshot ({_e_fu})")
         # neg_streak: conta fetch consecutivi sotto soglia SL (NON semplicemente < 0)
         # Così una posizione a -26% non si "salva" con un micro-rimbalzo a +0.1%
         sl_thresh_live = cfg.get("sl_threshold_pct", -15.0)
@@ -2353,6 +2606,16 @@ class LiveEngine:
                 "remaining": "0.00", "pnl_eur": f"{pnl:+.2f}",
                 "exit_reason": exit_r, "note": note,
             })
+            # Aggiorna cooldown runtime per loss exit: senza questo, il cooldown resta
+            # sull'ultima "entry" (8h) anziché sull'hard_sl (24h), permettendo re-entry
+            # entro poche ore dallo stesso token (visto su SAOS: 3 entry in 24h).
+            if action in _COOLDOWN_MAP:
+                _sym_exit = str(pos.get("token_symbol", "") or "").upper()
+                _ta_exit  = str(pos.get("token_address", "") or "").strip().lower()
+                if _sym_exit:
+                    self.recent_tokens[_sym_exit] = (now, action)
+                if _ta_exit:
+                    self.recent_taddrs[_ta_exit] = (now, action)
 
         snap1_exit = cfg["adaptive_snap1_exit"]
         # 0a. (rimosso) Il check exit_max_age "mai avuto prezzo" stava qui, ma a
@@ -2449,6 +2712,20 @@ class LiveEngine:
         VOL_CRASH_BSR_MAX = 0.65
         _vol_crash_grace = cfg.get("vol_crash_grace_min", ENTRY_GRACE_MIN)
         _in_vol_crash_grace = _entry_age_min < _vol_crash_grace
+        # Predittivo: slope vol accelerata negativamente per 2 cicli consecutivi (≥15%/ciclo).
+        # Esce PRIMA della soglia assoluta → cattura prezzo più alto pre-dump.
+        # Buffer _vol_hist: ultimi 4 campioni vol (ogni ciclo = 30s).
+        if not _in_vol_crash_grace and ev > 0 and cur_vol > 0 and cur_bsr <= VOL_CRASH_BSR_MAX:
+            _vh = pos.setdefault("_vol_hist", [])
+            _vh.append(cur_vol)
+            if len(_vh) > 4: _vh.pop(0)
+            if len(_vh) >= 3:
+                _d1 = (_vh[-2] - _vh[-3]) / max(_vh[-3], 1)
+                _d2 = (_vh[-1] - _vh[-2]) / max(_vh[-2], 1)
+                if _d1 < -0.15 and _d2 < -0.15 and _d2 < _d1:
+                    _exit("exit_vol_crash", f"vol_slope {_vh[-3]:.0f}→{_vh[-2]:.0f}→{_vh[-1]:.0f} bsr={cur_bsr:.2f}", exit_r="exit_vol_crash")
+                    pos["last_update"] = now
+                    return
         if not _in_vol_crash_grace and ev > 0 and cur_vol > 0 and cur_vol < ev * cfg.get("vol_drop_exit_ratio", 0.30):
             if cur_bsr <= VOL_CRASH_BSR_MAX:
                 _exit("exit_vol_crash", f"vol={cur_vol:.0f}/{ev:.0f} bsr={cur_bsr:.2f}", exit_r="exit_vol_crash"); pos["last_update"] = now; return
@@ -2489,6 +2766,21 @@ class LiveEngine:
                     _exit("exit_time_limit",
                           f"no tp1 dopo {_pump_age_min:.0f}min>{_PUMP_MAX_NO_TP1_MIN:.0f}min",
                           exit_r="exit_time_limit")
+                    pos["last_update"] = now; return
+            except Exception:
+                pass
+
+        # 4.6 Time-based exit per midcap stagnant: dopo 144h (6gg, design horizon)
+        # senza mai aver toccato TP1 e senza che il picco sia mai arrivato a
+        # trail_activate_pct (mai avuto una vera occasione) → chiusura forzata.
+        if pos.get("system") == "midcap" and not pos["tp1_hit"]:
+            _MIDCAP_MAX_STAGNANT_H = 144.0
+            try:
+                _mc_age_h = (now - datetime.fromisoformat(pos["entry_ts"]).replace(tzinfo=None)).total_seconds() / 3600
+                if _mc_age_h > _MIDCAP_MAX_STAGNANT_H and pos.get("peak_pct", float("-inf")) < cfg["trail_activate_pct"]:
+                    _exit("exit_stagnant",
+                          f"peak={pos['peak_pct']:+.1f}%<{cfg['trail_activate_pct']:.0f}% dopo {_mc_age_h:.0f}h>{_MIDCAP_MAX_STAGNANT_H:.0f}h",
+                          exit_r="exit_stagnant")
                     pos["last_update"] = now; return
             except Exception:
                 pass
@@ -3364,6 +3656,155 @@ def _build_inj_section() -> str:
     )
 
 
+def _build_kpi_section(hours: float = 24) -> str:
+    """Sezione KPI per sim_report.html: ultime N ore da live_trades.csv."""
+    try:
+        rows = list(csv.DictReader(open(LIVE_LOG_CSV, newline="")))
+    except Exception:
+        return ""
+
+    cutoff = datetime.now() - timedelta(hours=hours)
+    SKIP = {"", "open", "skip_stale", "skip", "skip_routing",
+            "purged_stale", "duplicate_pair", "no_pair_address",
+            "expired_max_age", "-98.28"}
+
+    last_by_sid  = {}
+    entry_by_sid = {}
+    for r in rows:
+        last_by_sid[r["signal_id"]] = r
+        if r["action"] == "entry" and r["signal_id"] not in entry_by_sid:
+            entry_by_sid[r["signal_id"]] = r
+
+    closed = []
+    for r in last_by_sid.values():
+        if r["exit_reason"] in SKIP or r["action"] in ("entry", "open"):
+            continue
+        try:
+            if datetime.fromisoformat(r["ts"]) >= cutoff:
+                closed.append(r)
+        except ValueError:
+            pass
+
+    if not closed:
+        return ""
+
+    def _pnl(r):   return float(r.get("pnl_eur") or 0)
+    def _ev(sid, f):
+        try: return float(entry_by_sid.get(sid, {}).get(f) or 0)
+        except ValueError: return 0.0
+    def _pf(lst):
+        w = sum(_pnl(r) for r in lst if _pnl(r) > 0)
+        l = sum(abs(_pnl(r)) for r in lst if _pnl(r) < 0)
+        return w / l if l > 0 else 0.0
+    def _wr(lst):
+        return sum(1 for r in lst if _pnl(r) > 0) / len(lst) * 100 if lst else 0.0
+    def _c(v):   # colore HTML
+        return "#3fb950" if v > 0 else ("#f85149" if v < 0 else "#8b949e")
+
+    n   = len(closed)
+    tot = sum(_pnl(r) for r in closed)
+    wr  = _wr(closed)
+    pf  = _pf(closed)
+    hs  = sum(1 for r in closed if r["exit_reason"] == "hard_sl")
+
+    # ── righe per sistema ──────────────────────────────────────────────────
+    from collections import defaultdict
+    by_sys   = defaultdict(list)
+    by_exit  = defaultdict(list)
+    for r in closed:
+        by_sys[r["system"]].append(r)
+        by_exit[r["exit_reason"]].append(r)
+
+    def sys_rows():
+        lines = []
+        for s, lst in sorted(by_sys.items(), key=lambda x: sum(_pnl(r) for r in x[1])):
+            t = sum(_pnl(r) for r in lst)
+            lines.append(
+                f'<tr><td>{s}</td><td>{len(lst)}</td>'
+                f'<td>{_wr(lst):.0f}%</td><td>{_pf(lst):.2f}</td>'
+                f'<td style="color:{_c(t)}">{t:+.1f}€</td>'
+                f'<td>{sum(1 for r in lst if r["exit_reason"]=="hard_sl")/len(lst)*100:.0f}%</td></tr>'
+            )
+        return "\n".join(lines)
+
+    def exit_rows():
+        lines = []
+        for er, lst in sorted(by_exit.items(), key=lambda x: sum(_pnl(r) for r in x[1])):
+            t = sum(_pnl(r) for r in lst)
+            lines.append(
+                f'<tr><td>{er}</td><td>{len(lst)}</td>'
+                f'<td style="color:{_c(t)}">{t:+.1f}€</td>'
+                f'<td>{t/len(lst):+.1f}€</td></tr>'
+            )
+        return "\n".join(lines)
+
+    def bucket_rows(buckets, field):
+        lines = []
+        for lo, hi, label in buckets:
+            sub = [r for r in closed if lo <= _ev(r["signal_id"], field) < hi]
+            if not sub: continue
+            t = sum(_pnl(r) for r in sub)
+            lines.append(
+                f'<tr><td>{label}</td><td>{len(sub)}</td>'
+                f'<td>{_wr(sub):.0f}%</td>'
+                f'<td style="color:{_c(t)}">{t:+.1f}€</td>'
+                f'<td>{t/len(sub):+.1f}€</td></tr>'
+            )
+        return "\n".join(lines)
+
+    VOL_B = [(0,1,"= 0"),(1,5000,"1-5k"),(5000,15000,"5-15k"),
+             (15000,30000,"15-30k"),(30000,50000,"30-50k"),(50000,9e9,"50k+")]
+    BSR_B = [(0,.45,"0.0-0.45"),(.45,.55,"0.45-0.55"),(.55,.65,"0.55-0.65"),
+             (.65,.75,"0.65-0.75"),(.75,1.01,"0.75+")]
+
+    th = "style='background:#161b22;color:#8b949e;font-size:.72rem;padding:4px 8px;text-align:left'"
+    td_css = "style='padding:3px 8px;font-size:.78rem;border-bottom:1px solid #21262d'"
+    tbl_css = "style='border-collapse:collapse;width:100%'"
+
+    def mini_table(headers, body_rows):
+        ths = "".join(f"<th {th}>{h}</th>" for h in headers)
+        return (f'<table {tbl_css}><thead><tr>{ths}</tr></thead>'
+                f'<tbody>{body_rows}</tbody></table>')
+
+    section_css = ("background:#0d1117;border:1px solid #21262d;border-radius:8px;"
+                   "padding:14px 18px;margin-bottom:18px")
+    h3_css = "style='margin:0 0 10px;font-size:.85rem;color:#8b949e;letter-spacing:.5px'"
+    grid = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px"
+
+    tot_color = _c(tot)
+    return (
+        f'<div style="{section_css}">'
+        f'<div style="display:flex;align-items:baseline;gap:16px;margin-bottom:12px">'
+        f'<span style="font-size:.9rem;font-weight:600;color:#c9d1d9">&#128202; KPI Ultime {hours:.0f}h</span>'
+        f'<span style="font-size:.75rem;color:#8b949e">n={n} &middot; '
+        f'WR={wr:.0f}% &middot; PF={pf:.2f} &middot; '
+        f'<span style="color:{tot_color}">{tot:+.1f}€</span> &middot; '
+        f'hs%={hs/n*100:.0f}%</span>'
+        f'</div>'
+        f'<div style="{grid}">'
+
+        f'<div>'
+        f'<p {h3_css}>PER SISTEMA</p>'
+        + mini_table(["Sistema","n","WR","PF","PnL","hs%"], sys_rows()) +
+        f'</div>'
+
+        f'<div>'
+        f'<p {h3_css}>PER EXIT REASON</p>'
+        + mini_table(["Exit","n","PnL","avg"], exit_rows()) +
+        f'</div>'
+
+        f'<div>'
+        f'<p {h3_css}>vol_h1 ALL\'ENTRY</p>'
+        + mini_table(["Fascia","n","WR","PnL","avg"], bucket_rows(VOL_B, "vol_h1")) +
+        f'<p {h3_css} style="margin-top:12px">BSR ALL\'ENTRY</p>'
+        + mini_table(["BSR","n","WR","PnL","avg"], bucket_rows(BSR_B, "bsr")) +
+        f'</div>'
+
+        f'</div>'  # grid
+        f'</div>'  # section
+    )
+
+
 def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = None,
                      v3_routed: set = None):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -3386,13 +3827,25 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
     def _is_shadow(s):
         return "shadow=true" in s.get("note", "")
 
+    # data_fault (15/06): trade la cui riga finale non rappresenta un esito
+    # di strategia valido (es. nessuna entry registrata + drawdown immediato
+    # estremo, vedi WINNING/GOBLIEN/SERENA/PXC 23-24/05). Esclusi da
+    # PF/WR/EV e loggati separatamente in data_fault_trades.csv.
+    _has_entry = set(entry_prices.keys())
+
+    def _is_data_fault(sid, s):
+        ok, _ = is_valid_trade_event(s, sid in _has_entry)
+        return not ok
+
+    _log_data_fault_trades(all_states, _has_entry)
+
     # ── Stats per sistema ───────────────────────────────────────────────────
     sys_stats = {}
     for sys_name in ("defi", "defi_v3", "v3", "v3_large", "midcap", "pump_grad", "pre_grad", "mirror"):
         open_n   = sum(1 for sid, s in open_list if _disp_sys(sid, s) == sys_name)
         closed_s = [(sid, s) for sid, s in all_states.items()
                     if _disp_sys(sid, s) == sys_name and float(s.get("remaining", 0) or 0) <= 0
-                    and not _is_shadow(s)]
+                    and not _is_shadow(s) and not _is_data_fault(sid, s)]
         wins     = sum(1 for _, s in closed_s if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
         wr       = wins / len(closed_s) * 100 if closed_s else 0
         pnl_tot  = sum(float(s.get("pnl_eur","0").replace("+","") or 0) for _, s in closed_s)
@@ -3409,12 +3862,13 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
     total_open   = len(open_list)
     total_closed = sum(s["closed"] for s in sys_stats.values())
     total_pnl    = sum(float(s.get("pnl_eur","0").replace("+","") or 0)
-                       for _, s in all_states.items()
-                       if float(s.get("remaining", 0) or 0) <= 0 and not _is_shadow(s))
-    # WR reale (esclude vol_na e shadow)
+                       for sid, s in all_states.items()
+                       if float(s.get("remaining", 0) or 0) <= 0 and not _is_shadow(s)
+                       and not _is_data_fault(sid, s))
+    # WR reale (esclude vol_na, shadow e data_fault)
     real_closed_all = [(sid, s) for sid, s in all_states.items()
                        if float(s.get("remaining", 0) or 0) <= 0 and s.get("note","") != "vol_na"
-                       and not _is_shadow(s)]
+                       and not _is_shadow(s) and not _is_data_fault(sid, s)]
     real_wins_all   = sum(1 for _, s in real_closed_all
                           if float(s.get("pnl_eur","0").replace("+","") or 0) > 0)
     real_wr_all     = real_wins_all / len(real_closed_all) * 100 if real_closed_all else 0
@@ -3741,6 +4195,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'{sys_card("mirror","#bc8cff")}'
         f'</div>\n'
         f'{_build_inj_section()}'
+        f'{_build_kpi_section(hours=24)}'
         f'<div class="filters">\n'
         f'  <span class="lbl2">Dal:</span>\n'
         f'  <div class="btn-grp">\n'

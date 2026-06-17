@@ -294,6 +294,13 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     rsi_val  = float(last["rsi"])
     adx_val  = _adx(df, 14)
 
+    # ── ADX>55 = hard reject (era solo -5 score) ──────────────────────────────
+    # Backtest 15/06 (n=68 chiusi): bb_wpct>=50 & adx>=55 → 0% WR, PF=0, -5.22%
+    # medio; bb_wpct<20 & adx>=55 → -5.16% medio. Dannoso a qualunque bb_wpct,
+    # trend esausto/maturo: scartato a monte, non più solo penalizzato.
+    if adx_val > 55:
+        return None
+
     hh_hl = False
     if len(df) >= 31:
         c10   = float(df["close"].iloc[-11])
@@ -343,9 +350,9 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     # 3. Espansione bande     (max 15)  sta iniziando a esplodere?
     # 4. Lean prezzo          (max  8)  dove è il prezzo DENTRO la compressione
     # 5. RSI divergenza       (max 10)  forza nascosta mentre il prezzo è fermo
-    # 6. Volume accumulation  (max  7)  smart money pattern
-    # 7. Struttura EMA + HH/HL(max 15) contesto trend
-    # 8. Breakout (bonus)     (max  5)  conferma tardiva, peso ridotto
+    # 6. Volume spike         (max  3)  spike finale di volume
+    # 7. Struttura EMA + HH/HL(max 19) contesto trend
+    # 8. Breakout (bonus)     (max  5)  conferma SOLO se da squeeze stretto
     # ─────────────────────────────────────────────────────────────────────────
     score = 0
 
@@ -375,18 +382,36 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     elif rsi_slope_val > 1.0 and rsi_val < 60:
         score += 4   # RSI sale senza divergenza classica ma in zona neutrale
 
-    # 6. Volume accumulation (7 pt) — smart money entra in silenzio
-    if vol_accum and vol_spike:  score += 7   # pattern completo
-    elif vol_accum:              score += 4   # solo calo volume in squeeze
-    elif vol_spike:              score += 3   # solo spike finale
+    # 6. Volume spike (3 pt) — spike finale di volume
+    #    NOTA: la variante "vol_accum" (volume calante durante lo squeeze, fino
+    #    a 7pt nella formula precedente) risultava SEMPRE False su 192/192
+    #    segnali storici (is_monotonic_decreasing su 6 barre troppo rigido) —
+    #    componente morta, 4pt mai assegnabili. Rimossa dalla scoring; i 4pt
+    #    sono stati spostati su hh_hl (punto 7), il feature booleano con
+    #    l'edge maggiore nel backtest (WR 82.9% vs 57.6%, n=68).
+    if vol_spike: score += 3
 
-    # 7. Struttura EMA + HH/HL (15 pt) — contesto macro
+    # 6b. Vol_ratio (volume verde/rosso 30d): backtest 16/06 n=104 chiusi.
+    #   vol_ratio < 1.0 (più volume su giorni rossi) → WR 77.8% vs 62.5% (≥1.5).
+    #   Pattern inverso all'intuitivo: il BB squeeze migliore nasce da
+    #   accumulo silenzioso (volume bearish/neutro 30d), non da pressione
+    #   bullish già visibile. vol_ratio ≥ 1.5 = buying già confermato → setup
+    #   esausto; combo vol_spike+vol_ratio≥1.5 → WR 50%, -20€ (bucket peggiore).
+    if   vol_ratio < 1.0:  score += 5   # accumulo silenzioso
+    elif vol_ratio >= 1.5: score -= 5   # pressione bullish già consumata
+
+    # 7. Struttura EMA + HH/HL (19 pt) — contesto macro
     if ema_bull:  score += 10
-    if hh_hl:     score += 5
+    if hh_hl:     score += 9
 
-    # 8. Breakout (5 pt) — bonus tardivo, segnale già visto dal mercato
-    if breakout_up and ema_bull:  score += 5
-    elif breakout_up:             score += 2
+    # 8. Breakout (5 pt) — bonus SOLO se da squeeze stretto (bb_wpct<20).
+    #    Backtest 15/06 (n=68): bb_breakout=True correla con WR peggiore
+    #    (58.6% vs 79.5%) quando la banda è già ampia — ha senso solo come
+    #    conferma di uno squeeze genuino, non come "inseguimento" di una
+    #    mossa già avvenuta su banda larga.
+    if breakout_up and bb_wpct_val < 0.20:
+        if ema_bull: score += 5
+        else:        score += 2
 
     # 9. Aggiustamento "freschezza" trend (±8 pt) — backtest 08/06 (n=15 chiusi):
     # i vincenti (GWEI, VELVET: 100% WR) avevano ret_30d/ADX bassi (breakout fresco
@@ -405,8 +430,16 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     # di trend maturo/esausto (币安人生 adx=59 non catturato dai threshold sopra).
     if chg7d_val > 150:
         score -= 12   # pump settimanale estremo: mean-reversion molto probabile
-    if adx_val > 55:
-        score -= 5    # trend esausto (soglia 55 non 50: evita falsi positivi su adx 51-53)
+    # adx_val > 55 → hard reject, gestito a inizio funzione (non più penalità)
+
+    # 10. Social velocity (±5 pt) — lettura social_velocity.json dal social_monitor.
+    #     Backtest non ancora disponibile (dati da raccogliere). Peso conservativo
+    #     finché non validato su N≥30 trade. Zero se il file non esiste (graceful).
+    try:
+        from social_monitor import get_social_score
+        score += get_social_score(symbol.split("/")[0])
+    except Exception:
+        pass
 
     # Direzione
     if (ema_bull or price_lean > 0.6) and not breakout_dn:
@@ -661,23 +694,14 @@ def enrich_fundamentals(candidates: list[dict], universe: dict) -> list[dict]:
             sig["age_days"]    = age_days
             sig["cg_rank"]     = cg_rank
 
-            # Bonus/malus fondamentali (max ±15 pt).
-            # CoinGecko non restituisce più developer_score/community_score a livello
-            # aggregato (sempre None, verificato 07/06 anche su 'bitcoin' e 'kaito) —
-            # senza dato reale NON applichiamo bonus/malus dev/comm (era un Δ-8 cieco
-            # su ~96% dei candidati, trattando "dato assente" come "progetto zombie").
+            # Bonus/malus fondamentali (max ±8 pt, solo età progetto).
+            # RIMOSSO 15/06: bonus/malus dev_score/comm_score — CoinGecko non
+            # restituisce più developer_score/community_score a livello aggregato
+            # (sempre None, verificato 07/06 e confermato su backtest 15/06:
+            # 0/68 trade con valore non-null). Codice morto da ~8gg, mai eseguito.
             fund_delta = 0
             dev_score  = dev_score_raw
             comm_score = comm_score_raw
-
-            if dev_score is not None:
-                if dev_score  >= 70:  fund_delta += 8
-                elif dev_score >= 50: fund_delta += 4
-                elif dev_score <  20: fund_delta -= 8   # progetto zombie
-
-            if comm_score is not None:
-                if comm_score >= 60:  fund_delta += 4
-                elif comm_score >= 40: fund_delta += 2
 
             if age_days is not None:
                 if age_days >= 730:   fund_delta += 3   # >2 anni: progetto maturo

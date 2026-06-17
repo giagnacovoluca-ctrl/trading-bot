@@ -6,7 +6,9 @@ Scoring per ogni trigger:
   - Bonus:   |zscore|≥2.5  +0.05, |zscore|≥3.0  +0.05
              |funding_z|≥3  +0.05
              obi≥0.90       +0.05
+             votes_margin≥3 +0.05, ≥4 +0.10
   - Reject:  MIXED, spread>max_spread_bps, ATR≈0
+  - Nota votes: REGIME_SHIFT(BULLISH/BEARISH_SHIFT) contribuisce +1 vote (NEUTRAL=0)
 
 Batch: ordina per score desc, prende i migliori fino a max_new_trades.
 """

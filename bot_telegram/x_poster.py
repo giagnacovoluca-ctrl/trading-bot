@@ -22,6 +22,8 @@ import telegram_api as tg
 log = logging.getLogger("x_poster")
 
 _STATE_FILE = "x_promo.json"
+_PENDING_FILE = "x_promo_pending.json"
+_PENDING_MAX_AGE_SEC = 6 * 3600   # scarta proposte troppo vecchie (post non più "live")
 
 _SYS_LABEL = {
     "defi": "DeFi Gem", "pump_grad": "Pump Graduation", "pre_grad": "Pre-Graduation",
@@ -128,9 +130,61 @@ def _tweet_text(closure: dict) -> str:
 
 # ── invio bozza all'admin ───────────────────────────────────────────────────
 
+def _send_now(closure: dict) -> bool:
+    """Genera card+testo e li manda all'admin. True se la sendPhoto è andata a buon fine."""
+    try:
+        image = _build_card(closure)
+    except Exception as e:
+        log.warning("[x_poster] card non generata: %s", e)
+        return False
+
+    caption = _tweet_text(closure)
+    return bool(tg.send_photo(config.ADMIN_CHAT_ID, image, caption=caption))
+
+
+def _retry_pending(times: list[float], now: float) -> list[float]:
+    """Riprova le proposte accodate (rate-limit o sendPhoto falliti).
+    Aggiorna `times` in-place per le proposte inviate con successo."""
+    pending = store.load(_PENDING_FILE, [])
+    if not pending:
+        return times
+
+    remaining = []
+    for closure in pending:
+        ts = closure.get("_queued_ts", now)
+        if now - ts > _PENDING_MAX_AGE_SEC:
+            log.info("[x_poster] proposta %s scartata (>%dh in coda)",
+                     closure.get("symbol", "?"), _PENDING_MAX_AGE_SEC // 3600)
+            continue
+        if len(times) >= config.X_PROMO_MAX_PER_DAY:
+            remaining.append(closure)
+            continue
+        if times and now - times[-1] < config.X_PROMO_MIN_INTERVAL_MIN * 60:
+            remaining.append(closure)
+            continue
+        if _send_now(closure):
+            times.append(now)
+        else:
+            remaining.append(closure)
+
+    if remaining != pending:
+        store.save(_PENDING_FILE, remaining)
+    return times
+
+
+def _queue_pending(closure: dict, now: float) -> None:
+    pending = store.load(_PENDING_FILE, [])
+    closure = dict(closure)
+    closure["_queued_ts"] = now
+    pending.append(closure)
+    store.save(_PENDING_FILE, pending)
+
+
 def maybe_send_x_draft(closure: dict) -> bool:
     """Valuta se proporre all'admin un post X per questa chiusura vincente.
-    Rate limit + soglie minime per non spammare l'admin con micro-win."""
+    Rate limit + soglie minime per non spammare l'admin con micro-win.
+    Le proposte rate-limitate o con sendPhoto fallito vengono accodate e
+    riprovate ai cicli successivi (entro _PENDING_MAX_AGE_SEC)."""
     if not config.X_PROMO_ENABLED:
         return False
     if not config.ADMIN_CHAT_ID:
@@ -146,21 +200,19 @@ def maybe_send_x_draft(closure: dict) -> bool:
     state = store.load(_STATE_FILE, {"last_ts": 0.0, "times": []})
     now = time.time()
     times = [t for t in state.get("times", []) if now - t < 86400]
-    if len(times) >= config.X_PROMO_MAX_PER_DAY:
-        return False
-    if times and now - times[-1] < config.X_PROMO_MIN_INTERVAL_MIN * 60:
-        return False
 
-    try:
-        image = _build_card(closure)
-    except Exception as e:
-        log.warning("[x_poster] card non generata: %s", e)
-        return False
+    times = _retry_pending(times, now)
 
-    caption = "📋 Pronto per X — copia e posta:\n\n" + _tweet_text(closure)
-    if not tg.send_photo(config.ADMIN_CHAT_ID, image, caption=caption):
-        return False
+    sent = False
+    if len(times) < config.X_PROMO_MAX_PER_DAY and (
+            not times or now - times[-1] >= config.X_PROMO_MIN_INTERVAL_MIN * 60):
+        if _send_now(closure):
+            times.append(now)
+            sent = True
+        else:
+            _queue_pending(closure, now)
+    else:
+        _queue_pending(closure, now)
 
-    times.append(now)
     store.save(_STATE_FILE, {"last_ts": now, "times": times})
-    return True
+    return sent

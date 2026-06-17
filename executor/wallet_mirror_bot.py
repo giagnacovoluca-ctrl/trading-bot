@@ -78,7 +78,7 @@ HELIUS_API_KEY  = os.getenv("HELIUS_API_KEY", "")
 DRY_RUN         = os.getenv("MIRROR_DRY_RUN", "true").lower() != "false"
 MAX_WALLETS     = int(os.getenv("MIRROR_MAX_WALLETS", "12"))
 MIN_USD_BUY     = float(os.getenv("MIRROR_MIN_USD", "5"))
-MIN_LIQ_USD     = float(os.getenv("MIRROR_MIN_LIQ", "15000"))
+MIN_LIQ_USD     = float(os.getenv("MIRROR_MIN_LIQ", "25000"))
 MAX_ENHANCED_CALLS_DAY = int(os.getenv("MIRROR_MAX_ENHANCED_CALLS_DAY", "100"))
 
 ROOT            = Path(__file__).parent.parent
@@ -95,6 +95,11 @@ INACTIVITY_WAKE_D   = 30
 HELIUS_WS_URL    = f"wss://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
 HELIUS_PARSE_URL = f"https://api.helius.xyz/v0/transactions/?api-key={HELIUS_API_KEY}"
 SOLANA_RPC_URL   = os.getenv("SOLANA_RPC_URL") or f"https://mainnet.helius-rpc.com/?api-key={HELIUS_API_KEY}"
+
+# Hold-time minimo: se il wallet rivende il token prima di MIN_HOLD_SECONDS
+# dall'acquisto, il segnale viene cancellato (pattern bot-spray).
+# Default 90s: LION/REBOUND/XP venduti in 12s → tutti loss.
+MIN_HOLD_SECONDS = int(os.getenv("MIRROR_MIN_HOLD_S", "90"))
 
 USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 WSOL_MINT = "So11111111111111111111111111111111111111112"
@@ -142,6 +147,17 @@ _recent_lock       = threading.Lock()
 # Stato persistente: wallet → last_seen_ts (per rilevare risvegli post-inattività)
 _wallet_last_seen: dict = {}
 _state_lock             = threading.Lock()
+
+# Pending signals: mint → {fee_payer, dex, confluence, woke_days, ts, timer}
+# Il segnale viene scritto solo dopo MIN_HOLD_SECONDS se il wallet non ha
+# già rivenduto il token (bot-spray detection).
+_pending_signals: dict = {}
+_pending_lock           = threading.Lock()
+
+# Buy recenti per hold-time check: (wallet, mint) → buy_ts
+_wallet_buy_ts: dict = {}
+_buy_ts_lock           = threading.Lock()
+_BUY_TS_TTL            = 300  # pulizia entry più vecchie di 5 min
 
 # ---------------------------------------------------------------------------
 # Carica wallet alpha
@@ -566,23 +582,73 @@ def _on_buy_detected(fee_payer: str, mint: str, usd_approx: float):
                  f"confluence={confluence} | pair={dex['pair_address'][:12]}…")
         return
 
-    sig_id = _write_signal(mint, dex, fee_payer, confluence=confluence, woke_days=wake_days if woke else 0.0)
-    log.info(f"[MIRROR] ✅ Segnale scritto: {sig_id} | {sym} | liq=${liq:.0f} | "
-             f"bsr={dex['bsr']:.2f} | confluence={confluence}")
+    # Registra buy_ts per hold-time check e schedula segnale differito
+    now_ts = time.time()
+    with _buy_ts_lock:
+        _wallet_buy_ts[(fee_payer, mint)] = now_ts
+        # purge entry scadute
+        stale = [k for k, t in _wallet_buy_ts.items() if now_ts - t > _BUY_TS_TTL]
+        for k in stale:
+            _wallet_buy_ts.pop(k, None)
+
+    def _emit():
+        with _pending_lock:
+            if mint not in _pending_signals:
+                return  # già cancellato da sell rapido
+            _pending_signals.pop(mint, None)
+        sig_id = _write_signal(mint, dex, fee_payer, confluence=confluence,
+                               woke_days=wake_days if woke else 0.0)
+        log.info(f"[MIRROR] ✅ Segnale scritto: {sig_id} | {sym} | liq=${liq:.0f} | "
+                 f"bsr={dex['bsr']:.2f} | confluence={confluence} "
+                 f"(hold≥{MIN_HOLD_SECONDS}s confermato)")
+
+    timer = threading.Timer(MIN_HOLD_SECONDS, _emit)
+    with _pending_lock:
+        _pending_signals[mint] = {
+            "fee_payer": fee_payer, "sym": sym, "ts": now_ts, "timer": timer,
+        }
+    timer.start()
+    log.info(f"[MIRROR] ⏳ {sym}: segnale in attesa {MIN_HOLD_SECONDS}s hold-time check")
 
 
 def _on_sell_detected(fee_payer: str, mint: str, usd_approx: float):
     """Alpha wallet in uscita da un token: log + warning se il token era stato
-    segnalato di recente (smart money distribuisce mentre noi siamo dentro)."""
+    segnalato di recente (smart money distribuisce mentre noi siamo dentro).
+    Se il sell arriva entro MIN_HOLD_SECONDS dal buy, cancella il segnale pendente."""
     wake_days = _touch_wallet(fee_payer)
-    with _signaled_lock:
-        recently_signaled = (time.time() - _signaled_mints.get(mint, 0)) < SIGNAL_DEDUP_TTL
+    now_ts = time.time()
 
-    note = "sell_after_signal" if recently_signaled else ""
+    with _signaled_lock:
+        recently_signaled = (now_ts - _signaled_mints.get(mint, 0)) < SIGNAL_DEDUP_TTL
+
+    # Hold-time check: cancella segnale se questo wallet ha venduto troppo presto
+    with _buy_ts_lock:
+        buy_ts = _wallet_buy_ts.get((fee_payer, mint), 0)
+    hold_s = now_ts - buy_ts if buy_ts else None
+
+    cancelled = False
+    if hold_s is not None and hold_s < MIN_HOLD_SECONDS:
+        with _pending_lock:
+            pending = _pending_signals.pop(mint, None)
+        if pending and pending.get("fee_payer") == fee_payer:
+            pending["timer"].cancel()
+            cancelled = True
+            sym = pending.get("sym", mint[:8])
+            log.warning(
+                f"[MIRROR] 🚫 {sym}: segnale CANCELLATO — wallet {fee_payer[:12]}… "
+                f"ha venduto in {hold_s:.0f}s < {MIN_HOLD_SECONDS}s (bot-spray)"
+            )
+            # Rimuovi anche dalla dedup per non bloccare un segnale legittimo
+            with _signaled_lock:
+                _signaled_mints.pop(mint, None)
+
+    note = "sell_after_signal" if recently_signaled else ("quick_flip_cancelled" if cancelled else "")
     _log_event(fee_payer, "sell", mint, usd_approx,
                wake_days=wake_days if wake_days >= INACTIVITY_WAKE_D else 0.0, note=note)
 
-    if recently_signaled:
+    if cancelled:
+        pass  # già loggato sopra
+    elif recently_signaled:
         log.warning(f"[MIRROR] ⚠️ SMART MONEY IN USCITA: wallet {fee_payer[:12]}… vende "
                     f"{mint[:12]}… (~${usd_approx:.0f}) su token segnalato di recente")
     else:

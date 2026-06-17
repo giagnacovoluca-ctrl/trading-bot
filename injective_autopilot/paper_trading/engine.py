@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import defaultdict
 
 from analytics.adaptive_scorer import AdaptiveScorer
 from analytics.postmortem import build_postmortem
@@ -62,11 +63,15 @@ class PaperTradingEngine:
         self._running = False
         self._scorer = AdaptiveScorer()
         self._last_snapshot_count = 0
+        self._blocked_setups: set[tuple[str, str]] = set()
 
     async def start(self) -> None:
         self._running = True
         self._executor.seed_counter(await self._repo.get_max_trade_counter())
+        open_trades = await self._repo.get_open_trades(mode=self._executor.mode)
+        self._executor.restore_open_trades([TradeRecord(**t) for t in open_trades])
         await self._refresh_adaptive_weights(startup=True)
+        await self._refresh_blocked_setups()
         log.info("Paper Trading Engine started")
         await asyncio.gather(
             self._sentinel.run(on_batch=self._on_batch),
@@ -104,6 +109,36 @@ class PaperTradingEngine:
         except Exception as exc:
             log.warning("Adaptive weight refresh failed: %s", exc)
 
+    async def _refresh_blocked_setups(self) -> None:
+        """Loss-streak circuit breaker: se le ultime `streak_block_losses`
+        chiusure di un (ticker, direzione) sono tutte in perdita e la più
+        recente è entro `streak_block_cooldown_hours`, blocca nuovi trigger
+        per quel setup — la tesi del segnale per quel market+direzione si è
+        dimostrata ripetutamente sbagliata nel regime corrente (es. INJ LONG
+        su FUNDING_EXTREME persistente durante un downtrend)."""
+        try:
+            closed = await self._repo.get_closed_trades(mode=self._executor.mode)
+            by_setup: dict[tuple[str, str], list[dict]] = defaultdict(list)
+            for t in closed:
+                by_setup[(t["ticker"], t["direction"])].append(t)
+
+            n = self._cfg.streak_block_losses
+            cooldown = self._cfg.streak_block_cooldown_hours * 3600
+            now = time.time()
+            blocked: set[tuple[str, str]] = set()
+            for setup, trades in by_setup.items():
+                last_n = trades[-n:]
+                if len(last_n) < n:
+                    continue
+                if all(t["pnl_usdt"] <= 0 for t in last_n) and now - last_n[-1]["exit_ts"] < cooldown:
+                    blocked.add(setup)
+
+            if blocked != self._blocked_setups:
+                log.info("Loss-streak circuit breaker: blocked setups = %s", sorted(blocked))
+            self._blocked_setups = blocked
+        except Exception as exc:
+            log.warning("Blocked-setups refresh failed: %s", exc)
+
     async def stop(self, close_positions: bool = False) -> None:
         self._running = False
         if close_positions:
@@ -121,6 +156,17 @@ class PaperTradingEngine:
     async def _on_batch(self, triggers: list[SentinelTrigger]) -> None:
         """Full pipeline: batch of signals → one Gemini call → risk → execute per approved trade."""
         try:
+            if self._blocked_setups:
+                kept = []
+                for trigger in triggers:
+                    setup = (trigger.ticker, trigger.direction_bias)
+                    if setup in self._blocked_setups:
+                        log.info("[%s] skipped: %s blocked by loss-streak circuit breaker", trigger.ticker, setup)
+                    else:
+                        kept.append(trigger)
+                triggers = kept
+                if not triggers:
+                    return
             # Paper mode: use in-memory executor trades as positions so
             # max_open_positions is enforced correctly (fetch_positions() returns
             # on-chain positions which are empty in paper mode).
@@ -196,6 +242,7 @@ class PaperTradingEngine:
                 if closed:
                     # Learning loop: aggiorna i pesi adattivi dopo ogni chiusura
                     await self._refresh_adaptive_weights()
+                    await self._refresh_blocked_setups()
 
                 # Kill switch check
                 self._risk.check_kill_switch()

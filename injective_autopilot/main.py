@@ -18,8 +18,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import signal
 import sys
+import threading
+import time
 from pathlib import Path
 
 import uvicorn
@@ -89,6 +92,30 @@ async def run_backtest(csv_path: str) -> None:
         log.info("SIGNAL CONTRIBUTIONS:")
         for name, stats in sorted(result.signal_stats.items(), key=lambda x: -x[1]["pnl"]):
             log.info("  %-25s count=%3d  wr=%.0f%%  pnl=$%.2f", name, stats["count"], stats["win_rate"], stats["pnl"])
+
+
+def _start_watchdog(engine, timeout_sec: float) -> threading.Thread:
+    """Thread separato: se il sentinel non completa un tick da `timeout_sec`,
+    forza l'uscita del processo. Copre hang gRPC non cancellabili (asyncio.wait_for
+    non basta se il blocco è in codice C non interrompibile) — os._exit() da un
+    thread OS diverso funziona anche se il loop principale è bloccato."""
+    def _watch():
+        while True:
+            time.sleep(15)
+            last_tick = engine._sentinel.stats.last_tick_ts
+            if last_tick == 0.0:
+                continue
+            stale = time.time() - last_tick
+            if stale > timeout_sec:
+                log.critical(
+                    "WATCHDOG: nessun tick del sentinel da %.0fs (limite %.0fs) — kill hard del processo",
+                    stale, timeout_sec,
+                )
+                os._exit(1)
+
+    t = threading.Thread(target=_watch, name="watchdog", daemon=True)
+    t.start()
+    return t
 
 
 async def run_paper_or_live(mode: str) -> None:
@@ -184,8 +211,16 @@ async def run_paper_or_live(mode: str) -> None:
 
     loop.add_signal_handler(signal.SIGINT, _handle_sigint)
 
+    async def _serve_dashboard() -> None:
+        try:
+            await dashboard_server.serve()
+        except (SystemExit, OSError) as exc:
+            log.warning("Dashboard non avviato (porta %d occupata?): %s — sistema in esecuzione senza UI",
+                        cfg.dashboard_port, exc)
+
     engine_task = asyncio.create_task(engine.start())
-    dashboard_task = asyncio.create_task(dashboard_server.serve())
+    dashboard_task = asyncio.create_task(_serve_dashboard())
+    _start_watchdog(engine, cfg.watchdog_timeout_sec)
 
     await first_sigint.wait()
 

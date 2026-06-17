@@ -35,6 +35,7 @@ from pathlib import Path
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from data_quality import MIN_VOLUME_1H_USD_DEFI
 # ── Librerie di terze parti ────────────────────────────────────────────────
 import numpy as np
 import pandas as pd
@@ -103,6 +104,15 @@ except ImportError:
         "gem_watchlist.py non trovato — il bridge con gemmeV2 è disabilitato. "
         "Il bot funziona normalmente senza prioritizzazione watchlist."
     )
+
+# wallet_intel: wallet_confluence_score (boost informativo da wallet_mirror_bot,
+# vedi PRIORITÀ #1 report 14/06)
+try:
+    from wallet_intel import wallet_confluence_score
+    WALLET_INTEL_AVAILABLE = True
+except ImportError:
+    WALLET_INTEL_AVAILABLE = False
+    def wallet_confluence_score(token_address, now_ts=None): return 0.0  # noqa
 
 # XGBoost (opzionale – commentato se non installato)
 try:
@@ -183,7 +193,7 @@ CONFIG = {
     "MAX_SELL_TAX_PCT":    10.0,    # era 15
     "MIN_LIQUIDITY_USD":   20_000.0, # era 10k — liq <20k → 61% dump
     "MAX_LIQUIDITY_USD":  150_000.0, # NUOVO — liq >150k = token maturo (ARK $72M, CARDS $2.5M mai pumpano)
-    "MIN_VOLUME_1H_USD":   15_000.0, # era 10k
+    "MIN_VOLUME_1H_USD":   MIN_VOLUME_1H_USD_DEFI, # single source of truth: data_quality.py
     "MAX_VOLUME_1H_USD":   80_000.0, # NUOVO — vol >100k → 68% dump (pump già avvenuto)
     "MAX_CHANGE_1H_PCT":   12.0,    # era 25 — +12 a +25% = già post-pump → 49% dump
     "MIN_CHANGE_1H_PCT":   -8.0,    # ok — zona -10/0% è la migliore (61% pump)
@@ -395,6 +405,51 @@ def _bsr_trend(pair_address: str) -> tuple:
     if minutes <= 0:
         return 0.0, len(buf)
     return (b1 - b0) / minutes, len(buf)
+
+# ── COMPOSITE MONITOR (14/06) — monitoraggio temporaneo richiesto dall'utente ──
+# Logga, per OGNI candidato post anti-rug filter (df_scored, prima dei gate
+# c2-c11), prepump_composite_score/score_top_component/wallet_confluence_score/
+# bsr_recent_shift/momentum_score_continuous. Serve a raccogliere qualche giorno
+# di dati reali per il report di distribuzione (vedi composite_monitor_report.py)
+# e capire se la soglia c9_comp>=0.55 è troppo restrittiva col nuovo composite.
+# Solo cicli lenti (collect_nearmiss) per contenere le dimensioni del file.
+_COMPOSITE_MONITOR_CSV = _REPORTS_DIR / "composite_monitor.csv"
+_COMPOSITE_MONITOR_COLUMNS = [
+    "timestamp", "chain", "token_symbol", "token_address", "pair_address",
+    "prepump_composite_score", "score_top_component", "wallet_confluence_score",
+    "bsr_recent_shift", "momentum_score_continuous", "vol_accel_5m_vs_1h",
+    "passes_c9_comp",
+]
+
+def _log_composite_monitor(df: pd.DataFrame) -> None:
+    if "prepump_composite_score" not in df.columns:
+        return
+    now_iso = datetime.now().isoformat()
+    header_needed = not _COMPOSITE_MONITOR_CSV.exists()
+    try:
+        with _COMPOSITE_MONITOR_CSV.open("a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=_COMPOSITE_MONITOR_COLUMNS)
+            if header_needed:
+                w.writeheader()
+            for _, riga in df.iterrows():
+                comp = float(riga.get("prepump_composite_score", 0) or 0)
+                w.writerow({
+                    "timestamp":                now_iso,
+                    "chain":                    riga.get("chain", ""),
+                    "token_symbol":             riga.get("token_symbol", ""),
+                    "token_address":            riga.get("token_address", ""),
+                    "pair_address":             riga.get("pair_address", ""),
+                    "prepump_composite_score":  round(comp, 4),
+                    "score_top_component":      riga.get("score_top_component", ""),
+                    "wallet_confluence_score":  round(float(riga.get("wallet_confluence_score", 0) or 0), 4),
+                    "bsr_recent_shift":          round(float(riga.get("bsr_recent_shift", 0) or 0), 4),
+                    "momentum_score_continuous": round(float(riga.get("momentum_score_continuous", 0) or 0), 4),
+                    "vol_accel_5m_vs_1h":        round(float(riga.get("vol_accel_5m_vs_1h", 0) or 0), 3),
+                    "passes_c9_comp":            comp >= 0.55,
+                })
+    except Exception as e:
+        log.debug(f"[composite_monitor] errore scrittura: {e}")
+
 
 def _check_followup_blacklist() -> None:
     """
@@ -2089,11 +2144,25 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Consistenza momentum: tutti i timeframe positivi e concordi
     # 1 = tutti e 3 positivi (trend solido), 0 = segnali contrastanti
+    # Mantenuta per backtest/confronto, NON più usata nel composite (vedi sotto).
     df["momentum_consistency"] = (
         (ch5m > 0).astype(float) *
         (ch15m > 0).astype(float) *
         (ch1h > 0).astype(float)
     )
+
+    # Momentum score continuo (14/06, PRIORITÀ MASSIMA) — sostituisce
+    # momentum_consistency nel composite per eliminare il salto secco 0→0.15
+    # che si verificava quando un solo timeframe passava da <=0 a >0 (gradino
+    # artificiale individuato nell'analisi c9_comp). Ogni timeframe contribuisce
+    # gradualmente [0,1] (0 se <=0, fino a 1 al cap); la media dei tre dà uno
+    # score continuo 0-1. Cap scelti su escursioni tipiche pre-pump (5m piccolo,
+    # 1h ampio): 0.25≈leggero, 0.50≈moderato, 0.75≈forte, 1.00≈molto forte.
+    _MOM_CAP_5M, _MOM_CAP_15M, _MOM_CAP_1H = 8.0, 15.0, 25.0
+    _mom_5m  = (ch5m  / _MOM_CAP_5M ).clip(0, 1)
+    _mom_15m = (ch15m / _MOM_CAP_15M).clip(0, 1)
+    _mom_1h  = (ch1h  / _MOM_CAP_1H ).clip(0, 1)
+    df["momentum_score_continuous"] = (_mom_5m + _mom_15m + _mom_1h) / 3.0
 
     # ═══════════════════════════════════════════════════════════════
     # GRUPPO 2 — VOLUME EXPLOSION
@@ -2311,25 +2380,64 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         _norm01(df["vol_accel_5m_vs_1h"], cap=10.0)
     )
 
-    # PREPUMP COMPOSITE SCORE — score aggregato pesato
-    # Pesi calibrati empiricamente sulla correlazione con il target pre-pump:
-    #   vol_accel_5m_vs_1h    → peso 0.25 (segnale più forte)
-    #   buy_pressure_score    → peso 0.20
-    #   momentum_consistency  → peso 0.15
-    #   holder_quality_score  → peso 0.15
-    #   pair_age_score        → peso 0.10
-    #   liq_depth_score       → peso 0.10
-    #   price_vol_divergence  → peso 0.05 (utile ma secondario)
+    # WALLET CONFLUENCE SCORE (PRIORITÀ #1, 14/06) — boost informativo da
+    # wallet_mirror_bot (wallet_events.csv + alpha_wallets.json). 0.0 per la
+    # stragrande maggioranza dei token (nessuna attività alpha nota): nessun
+    # rischio di alterare lo score di segnali "normali", ma quando alpha wallet
+    # confluiscono su un token aggiunge informazione che prima era completamente
+    # ignorata dallo scoring (vedi defi/wallet_intel.py).
+    if "token_address" in df.columns:
+        df["wallet_confluence_score"] = df["token_address"].apply(
+            lambda a: wallet_confluence_score(str(a or ""))
+        )
+    else:
+        df["wallet_confluence_score"] = 0.0
+
+    # BSR RECENT SHIFT normalizzato — variazione pressione buy/sell ISTANTANEA
+    # (bsr_5m vs bsr_1h, disponibile subito, vedi GRUPPO 2). Range tipico
+    # [-0.5, +0.5] → [0, 1], 0.5 = nessuna variazione, >0.5 = compratori in
+    # aumento ora, <0.5 = venditori in aumento ora.
+    df["bsr_recent_shift_norm"] = (df["bsr_recent_shift"].clip(-0.5, 0.5) + 0.5)
+
+    # PREPUMP COMPOSITE SCORE — score aggregato pesato.
+    # RIPESATO 14/06 (PRIORITÀ #3): vol_accel_5m_vs_1h entrava direttamente
+    # (term1) E indirettamente in buy_pressure_score (term2, BSR×vol_accel),
+    # price_vol_divergence (term7, vol_accel×price_stillness) e squeeze_momentum
+    # (term8, bb_squeeze×vol_accel) → peso EFFETTIVO stimato ~0.40 contro un
+    # peso "nominale" di 0.20 (vedi analisi nel report). Pesi diretti di
+    # term1/2/7/8 ridotti (-0.20 totale) e redistribuiti su 2 fonti di
+    # informazione NUOVE e ortogonali:
+    #   bsr_recent_shift_norm     → 0.08 (istantaneo, 5m vs 1h)
+    #   wallet_confluence_score   → 0.10 (wallet_mirror_bot, PRIORITÀ #1)
+    # con un piccolo prelievo aggiuntivo da pair_age/liq_depth (-0.02 ciascuno).
+    # Effetto: vol_accel resta il segnale più pesante in assoluto (peso
+    # effettivo ~0.28 invece di ~0.40) ma non viene più "triplicato" allo
+    # stesso modo, senza ridurne l'importanza relativa rispetto alle altre
+    # feature originali.
     # Ogni componente è normalizzata in [0, 1] prima della somma pesata (vedi _norm01 in cima)
-    df["prepump_composite_score"] = (
-        _norm01(df["vol_accel_5m_vs_1h"],   cap=15.0) * 0.20 +  # -0.05 (ceduto a squeeze)
-        _norm01(df["buy_pressure_score"],    cap=25.0) * 0.20 +
-        df["momentum_consistency"]                     * 0.15 +
-        _norm01(df["holder_quality_score"],  cap=1.0)  * 0.10 +  # -0.05 (ceduto a squeeze)
-        _norm01(df["pair_age_score"],        cap=1.0)  * 0.10 +
-        _norm01(df["liq_depth_score"],       cap=1.0)  * 0.10 +
-        _norm01(df["price_vol_divergence"],  cap=5.0)  * 0.05 +
-        _norm01(df["squeeze_momentum"],      cap=1.0)  * 0.10   # NUOVO: BB squeeze × vol_accel
+    _comp_terms = {
+        "vol_accel":          _norm01(df["vol_accel_5m_vs_1h"],   cap=15.0) * 0.15,
+        "buy_pressure":       _norm01(df["buy_pressure_score"],    cap=25.0) * 0.15,
+        # 14/06 (PRIORITÀ MASSIMA): momentum_consistency (binario 0/1, salto
+        # secco di 0.15) sostituito da momentum_score_continuous (già in [0,1],
+        # nessun _norm01 necessario) — elimina la discontinuità artificiale
+        # individuata nell'analisi c9_comp senza toccare gate/soglia.
+        "momentum":           df["momentum_score_continuous"]                * 0.15,
+        "holder_quality":     _norm01(df["holder_quality_score"],  cap=1.0)  * 0.10,
+        "pair_age":           _norm01(df["pair_age_score"],        cap=1.0)  * 0.08,
+        "liq_depth":          _norm01(df["liq_depth_score"],       cap=1.0)  * 0.08,
+        "price_vol_div":      _norm01(df["price_vol_divergence"],  cap=5.0)  * 0.04,
+        "squeeze":            _norm01(df["squeeze_momentum"],      cap=1.0)  * 0.07,
+        "bsr_shift":          _norm01(df["bsr_recent_shift_norm"], cap=1.0)  * 0.08,
+        "wallet_confluence":  _norm01(df["wallet_confluence_score"], cap=1.0) * 0.10,
+    }
+    df["prepump_composite_score"] = sum(_comp_terms.values())
+
+    # Componente che ha contribuito di più al composite (PRIORITÀ #4: per ogni
+    # segnale, sapere QUALE feature ha pesato di più nella decisione).
+    _comp_df = pd.DataFrame(_comp_terms)
+    df["score_top_component"] = (
+        _comp_df.idxmax(axis=1) + "=" + _comp_df.max(axis=1).round(3).astype(str)
     )
 
     # ═══════════════════════════════════════════════════════════════
@@ -2923,6 +3031,11 @@ def apply_hard_filters(df: pd.DataFrame, quiet: bool = False) -> pd.DataFrame:
 
     max_liq = CONFIG.get("MAX_LIQUIDITY_USD", 0)  # 0 = nessun cap
 
+    # LP locked: era calcolato (GoPlus/Moralis) ma non controllato. NaN/None (dato non
+    # disponibile, es. molti pair Solana) → non penalizza; lp_locked==False → blocca (rug risk).
+    lp_num  = pd.to_numeric(_col("lp_locked", np.nan), errors="coerce")
+    lp_mask = lp_num.isna() | (lp_num != 0)
+
     mask = (
         (_col("is_honeypot")  == 0)
         & (_col("buy_tax")       <= CONFIG["MAX_BUY_TAX_PCT"])
@@ -2936,6 +3049,7 @@ def apply_hard_filters(df: pd.DataFrame, quiet: bool = False) -> pd.DataFrame:
         & (_col("change_1h_pct") >= CONFIG["MIN_CHANGE_1H_PCT"])
         & wallet_mask                                  # Phase 1: wallet unici GeckoTerminal
         & mcap_mask                                    # Phase 1: market cap range
+        & lp_mask                                      # LP non locked (dato noto) → rug risk
     )
     # Soglia change_1h differenziata per età:
     # - Token freschi (<48h): MAX_CHANGE_1H_PCT=12% (memecoins pump-and-dump veloci)
@@ -3003,6 +3117,9 @@ def apply_hard_filters(df: pd.DataFrame, quiet: bool = False) -> pd.DataFrame:
                 motivi.append(f"mcap=${mcap_v:,.0f}<min")
             if mcap_v > 0 and max_mcap > 0 and mcap_v > max_mcap:
                 motivi.append(f"mcap=${mcap_v:,.0f}>max (maturo)")
+            lp_v = r.get("lp_locked", None)
+            if lp_v is not None and not pd.isna(lp_v) and not bool(lp_v):
+                motivi.append("lp_locked=False (rug risk)")
             sym  = r.get("token_symbol", "?") or "?"
             addr = str(r.get("token_address", "") or "")[:8]
             log.debug(f"[filtri] ❌ SCARTATO {sym:>10s} ({addr}…) — {', '.join(motivi)}")
@@ -3031,8 +3148,9 @@ def apply_hard_filters(df: pd.DataFrame, quiet: bool = False) -> pd.DataFrame:
 #   prima dava la latenza dei 6 minuti (anti rumore attorno alla soglia).
 # Note:
 #   - vol_accel/PVD ecc. sono ratio di finestre API (m5 vs h1) → timebase-safe;
-#     _update_bsr_history NON viene chiamato dal fast-poll (bsr_trend resta
-#     calcolato sui soli cicli lenti).
+#     AGGIORNATO 14/06 (PRIORITÀ #2): _update_bsr_history ORA viene chiamato
+#     anche dal fast-poll (30s) sui token in watchlist near-miss, per ridurre
+#     il cold-start di bsr_trend_per_min (prima samples=0 quasi sempre).
 #   - Nessuna persistenza su disco: lo stage 1 ripopola la watchlist a ogni
 #     ciclo lento, dopo un restart si perde al più ~6 min di candidati.
 _FASTPOLL_INTERVAL_SEC  = 30
@@ -3142,6 +3260,17 @@ def fastpoll_loop(stop_event=None) -> None:
             rows = _fastpoll_refresh_rows(snapshot)
             if not rows:
                 continue
+            # PRIORITÀ #2 (14/06): aggiorna lo storico BSR anche sui tick fast-poll
+            # (30s) per i token in watchlist near-miss — prima SOLO il ciclo lento
+            # (180s) alimentava _token_bsr_history, quindi bsr_trend_per_min era
+            # quasi sempre samples=0 per i segnali che scattano rapidamente (il
+            # token non aveva ancora accumulato 2+ letture dal ciclo lento).
+            # I token in watchlist sono proprio quelli vicini a generare un
+            # segnale: qui la storia si accumula 6x più in fretta.
+            try:
+                _update_bsr_history(engineer_features(pd.DataFrame(rows)))
+            except Exception as e:
+                log.debug(f"[fastpoll] bsr_history update error: {e}")
             # Pipeline identica al ciclo lento (engineering, hard filters, condizioni).
             # collect_nearmiss=False: il fast-poll non ri-alimenta sé stesso.
             segnali = generate_signals(pd.DataFrame(rows), None, None,
@@ -3226,6 +3355,11 @@ def generate_signals(
 
     # ── Step 3: predizione del modello ──
     df_scored = predict_and_score(df_filtrato, modello, scaler)
+
+    # COMPOSITE MONITOR (14/06, temporaneo) — vedi _log_composite_monitor
+    if collect_nearmiss:
+        _log_composite_monitor(df_scored)
+
     # ── Step 4: filtri multi-condizione pre-pump ───────────────────────────
     # FIX: soglie abbassate e diagnostico per-condizione aggiunto.
     # Le soglie originali erano troppo stringenti: 9 AND simultanei → probabilità
@@ -3335,11 +3469,16 @@ def generate_signals(
         bsr_trend_n   = int(riga.get("bsr_trend_samples", 0) or 0)
         bsr_5m        = float(riga.get("bsr_5m", 0) or 0)
         bsr_shift     = float(riga.get("bsr_recent_shift", 0) or 0)
+        mom_accel     = float(riga.get("price_momentum_accel", 0) or 0)
+        mom_early     = float(riga.get("price_momentum_early", 0) or 0)
         # Persistito in top_features (stringa libera già presente nello schema signals_log.csv)
         # per poter fare backtest futuri senza migrare lo schema CSV.
+        # mom_accel/mom_early (15/06): testano l'ipotesi "entry dopo pump già consumato"
+        # (hard_sl defi con change_1h_pct entry +1.90% vs +0.69% nei non-hard_sl).
         top_features_str = (
             f"bsr_trend_per_min={bsr_trend:+.4f} | bsr_trend_samples={bsr_trend_n} | "
-            f"bsr_5m={bsr_5m:.3f} | bsr_recent_shift={bsr_shift:+.4f}"
+            f"bsr_5m={bsr_5m:.3f} | bsr_recent_shift={bsr_shift:+.4f} | "
+            f"price_momentum_accel={mom_accel:+.3f} | price_momentum_early={mom_early:+.3f}"
         )
 
         segnale = {
@@ -3374,6 +3513,8 @@ def generate_signals(
             "bsr_trend_samples":       bsr_trend_n,
             "bsr_5m":                  round(bsr_5m, 3),
             "bsr_recent_shift":        round(bsr_shift, 4),
+            "wallet_confluence_score": round(float(riga.get("wallet_confluence_score", 0) or 0), 4),
+            "score_top_component":     str(riga.get("score_top_component", "")),
             # Output modello
             "pump_probability":        round(float(riga.get("pump_probability", 0) or 0), 4),
             "top_features":            top_features_str,
@@ -3670,6 +3811,10 @@ def stampa_segnale(segnale: dict) -> None:
     bsr_shift = segnale.get('bsr_recent_shift', 0)
     shift_icon = "📉 venditori in aumento ORA" if bsr_shift < -0.15 else ("📈 compratori in aumento ORA" if bsr_shift > 0.15 else "➡️  coerente con la media oraria")
     log.info(f"  BSR shift  : 5m={segnale.get('bsr_5m', 0):.2f} vs 1h={segnale.get('buy_sell_ratio_1h', 0):.2f} ({bsr_shift:+.3f}) — {shift_icon} (sperimentale)")
+    wcs = segnale.get('wallet_confluence_score', 0)
+    if wcs > 0:
+        log.info(f"  WalletConfl: {wcs:.2f} — attività wallet alpha rilevata su questo token 🐋")
+    log.info(f"  Top driver : {segnale.get('score_top_component', '?')}")
     log.info(f"  ── Sicurezza ────────────────────────────────────────")
     log.info(f"  Tax (B/S)  : {segnale['buy_tax']:.1f}% / {segnale['sell_tax']:.1f}%")
     log.info(f"  LP locked  : {'🔒 Sì' if segnale['lp_locked'] else '❌ No'}")
@@ -3698,6 +3843,14 @@ def stampa_segnale(segnale: dict) -> None:
                 "lp_locked":          1 if segnale.get("lp_locked") else 0,
                 "is_honeypot":        1 if segnale.get("is_honeypot") else 0,
                 "top_features":       segnale.get("top_features", ""),
+                "vol_accel_5m_vs_1h":      segnale.get("vol_accel_5m_vs_1h", 0),
+                "prepump_composite_score": segnale.get("prepump_composite_score", 0),
+                "wallet_confluence_score": segnale.get("wallet_confluence_score", 0),
+                "bsr_5m":                  segnale.get("bsr_5m", 0),
+                "bsr_recent_shift":        segnale.get("bsr_recent_shift", 0),
+                "bsr_trend_per_min":       segnale.get("bsr_trend_per_min", 0),
+                "bsr_trend_samples":       segnale.get("bsr_trend_samples", 0),
+                "score_top_component":     segnale.get("score_top_component", ""),
             }
             tracker.registra_segnale(riga_tracker)
             log.info(f"[tracker] ✅ Segnale {segnale.get('token_symbol')} registrato nel tracker.")

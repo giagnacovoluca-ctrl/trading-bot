@@ -63,6 +63,13 @@ try:
 except ImportError:
     def rugcheck_safe(mint, scanner, chain="solana"): return True
 
+# wallet_intel: wallet_confluence_score (PRIORITÀ #1, report 14/06) — boost
+# informativo da wallet_mirror_bot (wallet_events.csv + alpha_wallets.json)
+try:
+    from wallet_intel import wallet_confluence_score
+except ImportError:
+    def wallet_confluence_score(token_address, now_ts=None): return 0.0  # noqa
+
 # GemTracker (opzionale) — usa config V3 dedicata per evitare conflitti con gemmeV2
 try:
     from gem_tracker import get_gem_tracker as _get_gt_base, GEM_TRACKER_AVAILABLE, GEM_TRACKER_CONFIG_V3
@@ -279,6 +286,13 @@ SCORE_CONFIG = {
     "WB_REPEAT_HIGH":      10,  # wallet_repeat_buy_score >= 4.0 (accumulatori persistenti)
     "WB_REPEAT_MED":        6,  # wallet_repeat_buy_score >= 2.0
     "PENALTY_RSI_SMALL":   -3,  # RSI/BB su microcap (<5M) → rumore
+
+    # Wallet Confluence Score (PRIORITÀ #1, 14/06): boost da wallet_mirror_bot
+    # (confluenza alpha wallet, wake/whale, qualità storica). Pesi contenuti
+    # (max +12, ~1/7 di DIAMOND_THRESHOLD): è un boost informativo, non deve
+    # da solo far scattare un tier.
+    "WALLET_CONFLUENCE_HIGH": 12,  # wallet_confluence_score >= 0.6
+    "WALLET_CONFLUENCE_MED":   6,  # wallet_confluence_score >= 0.3
 
     # Soglia minima per inviare mail/report (BRONZE e superiori)
     "MIN_SCORE_TO_REPORT": 18,
@@ -835,6 +849,14 @@ def engineer_features(profile: dict) -> dict:
     # Score 0..10: segnale in momentum attivo vs. token già distribuito
     recency = profile.get("inflow_recency_ratio", 0.0)
     profile["inflow_recency_score"] = round(min(recency * 10.0, 10.0), 2)
+
+    # Wallet Confluence Score (PRIORITÀ #1, 14/06) — boost informativo da
+    # wallet_mirror_bot, vedi defi/wallet_intel.py. 0.0 se nessuna attività
+    # alpha nota sul token (caso comune): non altera il profilo per i token
+    # "normali".
+    profile["wallet_confluence_score"] = wallet_confluence_score(
+        str(profile.get("token_address", "") or "")
+    )
 
     # Wash trading: volume altissimo, transazioni bassissime
     # Legit: almeno 1 txn ogni $5k di volume
@@ -3549,6 +3571,15 @@ def score_gem(profile: dict) -> dict:
         pts += sc["TXNS_ACCEL"]
         sigs.append(f"⚡ Txns Acceleration +{txns_ac:.0%}")
 
+    # Wallet Confluence Score (PRIORITÀ #1, 14/06) — boost da wallet_mirror_bot
+    wcs = profile.get("wallet_confluence_score", 0.0)
+    if wcs >= 0.6:
+        pts += sc["WALLET_CONFLUENCE_HIGH"]
+        sigs.append(f"🐋 Wallet Confluence ({wcs:.2f}) — alpha wallet confluiscono")
+    elif wcs >= 0.3:
+        pts += sc["WALLET_CONFLUENCE_MED"]
+        sigs.append(f"🐋 Wallet Confluence ({wcs:.2f})")
+
     # Wallet Repeat Buy Score
     wrbs = profile.get("wallet_repeat_buy_score", 0.0)
     if wrbs >= 4.0:
@@ -3606,6 +3637,7 @@ _GEM_CSV_COLUMNS  = [
     "gem_id", "timestamp", "token_symbol", "chain", "tier", "score",
     "gem_class", "price_usd", "market_cap_usd", "liquidity_usd",
     "volume_1h_usd", "buy_sell_ratio_1h", "change_1h_pct", "pair_age_hours",
+    "price_momentum_5m",
     "inflow_usd", "inflow_wallet_count", "avg_wallet_pnl_pct",
     "volume_ramp_ratio", "momentum_score", "volume_z_score",
     "social_score", "cex_score", "cex_is_tier1", "cex_exchanges",
@@ -3623,6 +3655,8 @@ _GEM_CSV_COLUMNS  = [
     "liq_stability_cv", "vol_persistence_cv", "txns_acceleration",
     # v4: momentum freshness
     "inflow_last_2h", "inflow_recency_ratio", "buyers_last_2h", "inflow_recency_score",
+    # PRIORITÀ #1 (14/06): boost wallet_mirror_bot
+    "wallet_confluence_score",
     "token_address", "pair_address", "dex_id", "source",
     "signals",
 ]
@@ -3734,6 +3768,9 @@ def stampa_gemma(gem: dict) -> None:
     # crollato, il segnale viene soppresso qui — niente CSV, email né
     # watchlist, la chiamata non arriva al simulator. (11/06: 17 trade
     # via_gemmeV3 su Base entrati in retrace post-pump, WR 24%, -64€ in 14h.)
+    # AGGIORNATO 13/06: soglia -8%→-3% (= c10_notfall di defi_optimized, backtest
+    # n=46 precisione 77%). Con -8% il drift via_gemmeV3 restava al 49.5% hard_sl
+    # rate (vs 22.6% nativo defi), -68€/107 trade nei giorni 10-13/06.
     _sig_price = float(gem.get("price_usd", 0) or 0)
     if _sig_price > 0 and gem.get("token_address"):
         _live_pair = fetch_dexscreener_token(gem["token_address"],
@@ -3744,7 +3781,7 @@ def stampa_gemma(gem: dict) -> None:
             _live_px = 0.0
         if _live_px > 0:
             _drift = (_live_px - _sig_price) / _sig_price
-            if _drift < -0.08:
+            if _drift < -0.03:
                 log.info(f"[gem] {gem.get('token_symbol','?')} "
                          f"[{gem.get('chain','?')}]: prezzo live {_drift*100:.1f}% "
                          f"sotto il dato del ciclo → segnale SOPPRESSO (stantio)")

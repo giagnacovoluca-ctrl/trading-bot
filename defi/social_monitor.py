@@ -411,7 +411,7 @@ async def _run_async(stop_event: threading.Event):
     pending_events = []
     last_velocity_update = 0.0
 
-    @client.on(events.NewMessage())
+    @client.on(events.NewMessage(chats=valid_entities))
     async def _on_message(event):
         text = event.message.message or ""
         if not text:

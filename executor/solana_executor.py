@@ -1067,6 +1067,7 @@ def execute_sell(signal_id: str, sell_fraction: float, action_label: str,
             if not swap_tx:
                 pos["sell_fail_count"] = pos.get("sell_fail_count", 0) + 1
                 pos["sell_fail_last"]  = datetime.now().isoformat()
+                pos["sell_retry_after"] = (datetime.now() + timedelta(seconds=60)).isoformat()
                 _stuck_tx_threshold = 5
                 if pos["sell_fail_count"] >= _stuck_tx_threshold and pos.get("status") != "stuck":
                     pos["status"] = "stuck"
@@ -1078,13 +1079,14 @@ def execute_sell(signal_id: str, sell_fraction: float, action_label: str,
                                    "note": f"tx_none x{pos['sell_fail_count']}"})
                 else:
                     log.error(f"[SELL] Transazione {provider} non ottenuta per {signal_id} "
-                              f"(fail #{pos['sell_fail_count']}/{_stuck_tx_threshold})")
+                              f"(fail #{pos['sell_fail_count']}/{_stuck_tx_threshold}) — retry in 60s")
                 save_real_state(real_state)
                 return False
         tx_hash = send_transaction(swap_tx)
         if not tx_hash:
             pos["sell_fail_count"] = pos.get("sell_fail_count", 0) + 1
             pos["sell_fail_last"]  = datetime.now().isoformat()
+            pos["sell_retry_after"] = (datetime.now() + timedelta(seconds=60)).isoformat()
             _stuck_tx_threshold = 5
             if pos["sell_fail_count"] >= _stuck_tx_threshold and pos.get("status") != "stuck":
                 pos["status"] = "stuck"
@@ -1097,7 +1099,7 @@ def execute_sell(signal_id: str, sell_fraction: float, action_label: str,
                                "note": f"tx_failed x{pos['sell_fail_count']}"})
             else:
                 log.error(f"[SELL] Invio tx fallito per {signal_id} "
-                          f"(fail #{pos['sell_fail_count']}/{_stuck_tx_threshold})")
+                          f"(fail #{pos['sell_fail_count']}/{_stuck_tx_threshold}) — retry in 60s")
             save_real_state(real_state)
             return False
         status = "sent"

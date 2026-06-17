@@ -121,10 +121,20 @@ class Settings(BaseSettings):
     orderbook_depth: int = 20                # levels to fetch
     lookback_candles: int = 200              # candles kept in memory
     rpc_timeout_sec: float = 10.0            # max wait per Injective RPC call before treating it as failed
+    watchdog_timeout_sec: int = 180          # se il sentinel non completa un tick da N sec, kill hard del processo
+                                              # (copre hang gRPC non cancellabili da asyncio.wait_for)
 
     # ── Re-check tesi di trade (no max-hold fisso) ────────────────────
     recheck_after_min: float = 90.0          # dopo N min, verifica se i segnali di apertura sono ancora attivi
     recheck_min_overlap: int = 1             # se < N segnali originali sono ancora attivi → tesi invalidata, chiudi a mercato
+
+    # ── Combo di segnali bloccate ─────────────────────────────────────
+    # Audit su 57 trade PAPER (16/06): FUNDING_EXTREME da solo PF=1.12 (+3.95$),
+    # FUNDING+REGIME_SHIFT insieme PF=0.52 (-122.45$, n=35) → la combo è il killer.
+    # Ogni sotto-lista è un insieme di segnali: se TUTTI sono attivi → trigger bloccato.
+    sentinel_blocked_combos: list[list[str]] = [["FUNDING_EXTREME", "REGIME_SHIFT"]]
+    # Nessun segnale obbligatorio (OBI primo=PF 1.95 ma non imponibile via whitelist)
+    sentinel_required_signals: list[str] = []
 
     # ── Signal thresholds ─────────────────────────────────────────────
     obi_threshold: float = 0.60              # |OBI| > threshold → signal
@@ -135,8 +145,9 @@ class Settings(BaseSettings):
     vol_regime_ratio_high: float = 1.5      # short/long vol ratio → expansion
     vol_regime_ratio_low: float = 0.70      # short/long vol ratio → contraction
     oi_price_div_threshold: float = 0.015   # 1.5% divergence threshold
-    zscore_entry_threshold: float = 2.0     # z-score for mean-reversion entry
+    zscore_entry_threshold: float = 1.7     # z-score for mean-reversion entry (was 2.0 — lowered 16/06 to expand no-FUNDING n≥3 cluster)
     liquidity_void_pct: float = 0.003       # gap ≥ 0.3% = liquidity void
+    vol_breakout_sigma: float = 1.7         # Bollinger sigma per VOL_BREAKOUT (was 2.0 — lowered 16/06 per espandere no-FUNDING n≥3 cluster)
 
     # ── Risk ──────────────────────────────────────────────────────────
     capital_usdt: float = 1000.0             # total capital to trade with
@@ -157,6 +168,10 @@ class Settings(BaseSettings):
     # ── Decision engine ───────────────────────────────────────────────
     decision_min_confidence: float = 0.45    # score minimo per approvare un trade
     decision_max_spread_bps: float = 80.0    # spread massimo accettabile (inj perp: 20-100 bps)
+
+    # ── Loss-streak circuit breaker (per ticker+direzione) ─────────────
+    streak_block_losses: int = 3             # N chiusure consecutive in perdita → blocca nuovi trigger
+    streak_block_cooldown_hours: float = 12.0  # durata del blocco dall'ultima chiusura in perdita
 
     # ── Database ──────────────────────────────────────────────────────
     db_url: str = f"sqlite+aiosqlite:///{_HERE}/injective_autopilot.db"

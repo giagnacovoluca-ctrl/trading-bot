@@ -239,7 +239,11 @@ def load_seed_tokens(winners_only: bool = True) -> list[dict]:
     if LIVE_TRADES_CSV.exists():
         with open(LIVE_TRADES_CSV) as f:
             for row in csv.DictReader(f):
-                if (row.get("system") or "") not in ("pump_grad", "mirror"):
+                # tutti i sistemi solana con pair_address (pump_grad/mirror erano
+                # gli unici seed: pre_grad/defi/v3* hanno wallet early altrettanto
+                # validi e venivano ignorati)
+                if (row.get("system") or "") not in (
+                        "pump_grad", "mirror", "pre_grad", "defi", "v3", "v3_large"):
                     continue
                 if (row.get("action") or "") != "entry":
                     continue
@@ -487,10 +491,13 @@ def enrich_with_history(wallet: str, stats: dict) -> dict:
     for tx in history:
         if not tx or tx.get("transactionError"):
             continue
+        # tokenTransfers.toUserAccount/fromUserAccount sono token account (ATA),
+        # non l'owner wallet: il match va fatto su feePayer (chi ha firmato lo swap)
+        if tx.get("feePayer") != wallet:
+            continue
         for transfer in tx.get("tokenTransfers", []):
             mint = transfer.get("mint", "")
-            to   = transfer.get("toUserAccount", "")
-            if to == wallet and mint not in STABLECOIN_MINTS and mint:
+            if mint and mint not in STABLECOIN_MINTS:
                 unique_tokens_bought.add(mint)
         swaps_analyzed += 1
 

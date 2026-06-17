@@ -88,10 +88,10 @@ FREE_TEASER_MAX_PER_DAY      = int(_envf("FREE_TEASER_MAX_PER_DAY", 6))
 # Per ogni trade vincente sopra soglia, il bot manda all'admin (Telegram) una
 # card immagine + testo pronto (con hashtag/$TICKER) da copiare e postare a mano.
 X_PROMO_ENABLED        = _env("X_PROMO_ENABLED", "false").lower() == "true"
-X_PROMO_MIN_PNL_EUR    = _envf("X_PROMO_MIN_PNL_EUR", 15.0)   # ignora micro-win
+X_PROMO_MIN_PNL_EUR    = _envf("X_PROMO_MIN_PNL_EUR", 10.0)   # ignora micro-win
 X_PROMO_MIN_PNL_PCT    = _envf("X_PROMO_MIN_PNL_PCT", 8.0)    # ignora % marginali
-X_PROMO_MIN_INTERVAL_MIN = _envf("X_PROMO_MIN_INTERVAL_MIN", 120.0)
-X_PROMO_MAX_PER_DAY    = int(_envf("X_PROMO_MAX_PER_DAY", 4))
+X_PROMO_MIN_INTERVAL_MIN = _envf("X_PROMO_MIN_INTERVAL_MIN", 30.0)
+X_PROMO_MAX_PER_DAY    = int(_envf("X_PROMO_MAX_PER_DAY", 10))
 
 # ── Monetizzazione ──────────────────────────────────────────────────────────────
 PRICE_PREMIUM_USD = _envf("PRICE_PREMIUM_USD", 49.0)

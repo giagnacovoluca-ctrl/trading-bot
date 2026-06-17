@@ -9,3 +9,4 @@ web3>=7.0.0
 python-binance>=1.0.0
 pybit>=5.0.0
 ccxt>=4.0.0
+telethon>=1.36.0
