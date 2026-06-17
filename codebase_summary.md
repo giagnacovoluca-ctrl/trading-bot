@@ -1,17 +1,27 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-17 sera-4 (INTEGRAZIONE scanner con engine:
+liq_monitor: pool <5min liq>$25k → scrive DIRETTAMENTE in pump_grad_signals.csv
+(bypass Dune lag ore; LiveEngine processa con config pump_grad TP1+25%/SL-12%/hold1h);
+liq>$10k → solo Telegram alert. top_features: liq_monitor=true|pair_age_min|vol_h1|chg_1h.
+cex_listing_watcher: get_cex_boost(ticker) pubblica + _inject_cex_boost() → data/cex_listings.json
+(TTL 24h). midcap_scanner: step 11 CEX listing boost +15pt se ticker in cex_listings.json.
+RIMOSSA integrazione fastpoll inutile (pool <5min non passano vol_h1>=15k né prepump>=0.55).
+Notifiche: liq_monitor+cex_watcher → Telegram admin diretto via tg_alert.py (nuovo helper,
+legge bot_telegram/.env; bypass email digest batch 8/14/20). Serve restart run.py.)
+
 Aggiornato: 2026-06-17 sera-3 (NUOVI SCRIPT AUTONOMI: defi/liquidity_event_monitor.py
-(GeckoTerminal new pools Solana/Base ogni 30s, liq>$10k, età<5min → email+CSV), 
+(GeckoTerminal new pools Solana/Base ogni 30s, liq>$10k, età<5min → Telegram+CSV),
 defi/cex_listing_watcher.py (Binance announcements + Coinbase products ogni 2min → DexScreener
-on-chain match → email+CSV; bootstrap silenzioso al 1° avvio), injective_autopilot/funding_farmer.py
+on-chain match → Telegram+CSV; _bootstrap() silenzioso al 1° avvio), injective_autopilot/funding_farmer.py
 (ogni 4h: funding_rate>0.03%/8h → segnala SHORT/LONG + email + CSV, avviato da run_loop.sh in
 background con restart 30s). trade_simulator: exit_vol_crash predittivo — buffer _vol_hist 4
 campioni, se slope negativa accelerata ≥15% per 2 cicli → exit anticipato prima della soglia
 assoluta. run.py: flag --no-liq e --no-cex aggiunti. run_loop.sh: avvia funding_farmer in
 background. bot_telegram/formatter.py: fix _EXIT_LABEL — aggiunte 6 action prodotte dal
 simulator ma non mappate (exit_adaptive, exit_momentum, exit_stagnant, exit_price_timeout,
-exit_max_age, manual_close). ⚠️ cex_watcher: bootstrap fix attivo da prossimo restart
-run.py — primo avvio aveva generato ~190 email per token Coinbase pre-esistenti.)
+exit_max_age, manual_close). defi/tg_alert.py: helper invio Telegram diretto (legge
+bot_telegram/.env, bypass digest).)
 
 Aggiornato: 2026-06-17 sera-2 (trade_simulator: LIVE_COLUMNS estese a 17 colonne (+pump_prob,
 +prepump_score dopo bsr); BSR entry ora reale da buy_sell_ratio_1h segnale (era hardcoded 1.000);
@@ -89,14 +99,17 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
                                Bootstrap su 1° run marca i segnali storici come "seen" senza
                                trackarli. Thread in run.py, poll 5min, no nuove dipendenze.
         liquidity_event_monitor.py ← NUOVO 17/06: polling GeckoTerminal /networks/{chain}/new_pools
-                               ogni 30s su Solana e Base. Pool nuovi (<5 min, liq>$10k) →
-                               email queue + reports/liq_event_signals.csv. Avviato da run.py
-                               (--no-liq per skippare). _seen TTL 1h anti-dedup.
+                               ogni 30s su Solana e Base. Pool nuovi <5min:
+                               liq>$10k → Telegram alert immediato (tg_alert.py)
+                               liq>$25k → scrive in pump_grad_signals.csv → LiveEngine apre trade
+                               con config pump_grad (TP1+25%, SL-12%, hold 1h). Bypass Dune lag.
+                               Log: reports/liq_event_signals.csv. Flag --no-liq. _seen TTL 1h.
         cex_listing_watcher.py ← NUOVO 17/06: polling Binance announcements + Coinbase products
-                               ogni 2 min. Ticker nuovi (non in _seen) cercati su DexScreener
-                               (solana/base, liq>$5k). Hit → email + reports/cex_listing_signals.csv.
-                               Avviato da run.py (--no-cex). _bootstrap() silenzioso al 1° avvio
-                               per evitare flood email token già listati su Coinbase.
+                               ogni 2 min. Ticker nuovi cercati su DexScreener (solana/base,
+                               liq>$5k) → Telegram alert immediato + reports/cex_listing_signals.csv
+                               + data/cex_listings.json (TTL 24h). _bootstrap() silenzioso al 1°
+                               avvio (evita flood 190 token pre-esistenti Coinbase). Flag --no-cex.
+                               get_cex_boost(ticker): pubblica → +15pt score midcap_scanner.
         social_monitor.py   ← NUOVO 16/06: daemon Telethon su 12 canali Telegram crypto
                                (whale_alert, lookonchain, cryptoquant_official, Unfolded,
                                CoinTelegraph, rektHQ, EveningTrader, solanadailynews,
@@ -420,7 +433,9 @@ def analyze_coin(symbol, ohlcv, cg) → dict # score 0-100 pre-breakout
 def enrich_fundamentals(candidates, universe) → list  # /coins/{id} per top candidati
 def main(stop_event)  # loop ogni 4h, avviato da run.py (--no-midcap per skippare)
 # CoinGecko key: env COINGECKO_API_KEY (Demo, ~4200/10k call/mese)
-# Score: squeeze intensity(25) + duration(15) + expansion(15) + lean(8) + RSI div(10) + vol_spike(3) + EMA+HH/HL(19) + breakout bonus(5)
+# Score: squeeze(25)+duration(15)+expansion(15)+lean(8)+RSI div(10)+vol_spike(3)+EMA+HH/HL(19)+breakout(5)
+#        +social(±5, step10) +CEX listing boost(+15, step11 via cex_listing_watcher.get_cex_boost())
+# AGGIORNATO 17/06: step 11 CEX listing boost: se ticker in data/cex_listings.json (TTL 24h) → +15pt
 # AGGIORNATO 16/06 (backtest n=104 chiusi, WR 67.3%, +288€):
 #   adx > 55 → HARD REJECT (non più -5pt, return None): backtest bb_wpct≥50+adx≥55 → WR 0%
 #   vol_ratio < 1.0 → +5pt (accumulo silenzioso: WR 77.8% n=27 vs ≥1.5 WR 62.5% n=24)
