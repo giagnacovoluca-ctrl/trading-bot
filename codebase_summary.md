@@ -1,7 +1,38 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
-Aggiornato: 2026-06-12 (bot_telegram UI a pulsanti + funnel FREE→PREMIUM + X promo draft,
-fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, whale alert RPC fix)
+Aggiornato: 2026-06-17 sera (social_monitor.py: fix Telethon non riceveva update da
+canali — causa: while+asyncio.sleep non sufficiente come driver; fix: run_until_disconnected()
++ asyncio.ensure_future per loop periodico; rimosso filtro chat_id manuale buggy per
+ID >10 cifre; get_dialogs() post-start per sync pts sessione; ora social_events.jsonl
+si popola correttamente)
+
+Aggiornato: 2026-06-17 (trade_simulator: gate via_gemmeV3 score 35→50, backtest n=195
+taglia 26 trade WR=22.7% PnL=-84€; pump_grad filtro vol_h1 1-5k, backtest n=26
+WR=19% PnL=-206€; _build_kpi_section(hours=24) aggiunta a sim_report.html: griglia
+3 colonne con per-sistema/exit-reason/vol_h1-bucket/BSR-bucket ultime 24h;
+standalone defi/kpi_daily.py con --hours N / --all; serve restart run.py)
+
+Aggiornato: 2026-06-16 sera-2 (injective_autopilot: zscore_entry_threshold 2.0→1.7,
+vol_breakout_sigma 1.7 (nuovo param, era hardcoded 2.0 in anomaly.py), REGIME_SHIFT
+contribuisce votes±1 (BULLISH→long, BEARISH→short, NEUTRAL=0 invariato);
+cluster no-FUNDING n≥3 PF=2.573, conversion rate 2.5% (360 trigger/7gg → 9 trade);
+serve restart injective_autopilot/main.py)
+
+Aggiornato: 2026-06-16 sera (filtri pump_grad/mirror in trade_simulator: skip entry
+se liq<$25k o chg1h>20% (riga ~1843); run.py: backup automatico live_trades.csv ad
+ogni avvio → live_trades_backup_YYYYMMDD_HHMMSS.csv, ultimi 5 mantenuti; ⚠️ NOTA
+SICUREZZA: non aprire mai CSV append-only in open('w') senza tmp+os.rename atomico)
+
+Aggiornato: 2026-06-16 (nuovo defi/social_monitor.py: daemon Telethon 12 canali,
+social_velocity.json rolling 1h/4h/24h, spike alert → Saved Messages; backtest RVol
+midcap n=104: vol_ratio<1.0=WR 77.8% implementato ±5pt, adx>55 ora hard reject;
+requirements.txt: aggiunto telethon>=1.36.0)
+
+Aggiornato: 2026-06-14 (nuovo defi/token_outcome_logger.py: dataset multi-timeframe
+T0/+15m/+1h/+4h/+24h/+72h per ogni segnale anche scartato, thread in run.py;
+wallet_alpha_finder.py: seed esteso a pre_grad/defi/v3/v3_large, fix
+unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
+[matchava toUserAccount==wallet su ATA invece di feePayer])
 
 ---
 
@@ -20,7 +51,11 @@ fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, w
         gem_watchlist.json
         gem_model.joblib / gem_scaler.joblib
     defi/
-        run.py              ← orchestratore: avvia tutti i componenti in thread daemon
+        run.py              ← orchestratore: avvia tutti i componenti in thread daemon;
+                               ad ogni avvio crea live_trades_backup_YYYYMMDD_HHMMSS.csv
+                               (ultimi 5 mantenuti) prima di istanziare LiveEngine
+        data_quality.py     ← NUOVO 15/06: single source of truth MIN_VOLUME_1H_USD_DEFI
+                               (15_000) + is_valid_trade_event() per classificazione data_fault
         defi_optimized.py   ← gem hunter defi (Solana + Base, memecoins on-chain)
         trade_simulator.py  ← LiveEngine: gestione posizioni, exit, HTML reports
         midcap_scanner.py   ← scanner mid/large cap con BB Squeeze (NUOVO)
@@ -29,6 +64,21 @@ fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, w
                                FIX 10/06: RPC giù all'avvio uccideva il poll thread per sempre
                                (return) → retry con backoff 15s→5min; start() non fa più bail su RPC
         pre_grad_monitor.py ← intercetta token PRE-graduation sulla bonding curve
+        token_outcome_logger.py ← NUOVO 14/06: dataset multi-timeframe (T0/+15m/+1h/+4h/+24h/+72h
+                               ret%) per OGNI segnale (signals_log/pre_grad/mirror/pump_grad/
+                               base_pump/gemme), anche quelli scartati (skip_stale ecc.).
+                               Bootstrap su 1° run marca i segnali storici come "seen" senza
+                               trackarli. Thread in run.py, poll 5min, no nuove dipendenze.
+        social_monitor.py   ← NUOVO 16/06: daemon Telethon su 12 canali Telegram crypto
+                               (whale_alert, lookonchain, cryptoquant_official, Unfolded,
+                               CoinTelegraph, rektHQ, EveningTrader, solanadailynews,
+                               wublockgroup, wublockchainenglish, DeFimillionfreesignals,
+                               cryptoninjaclub). Ogni 2min: rolling velocity 1h/4h/24h per
+                               ticker → reports/social_velocity.json; spike alert (m1h≥5,
+                               ratio≥2.5×) → Saved Messages Telegram (max 8/h, cooldown 4h).
+                               get_social_score() usato da midcap_scanner (+5/+3/-3pt).
+                               Setup: TELEGRAM_API_ID+HASH in executor/.env, session via --auth.
+                               Avviato da run.py (--no-social per skippare).
         signal_tracker.py   ← snapshot prezzi per segnali defi (followup)
         gem_watchlist.py    ← watchlist condivisa tra scanner
         rugcheck.py         ← wrapper RugCheck.xyz (LP lock, top holder check)
@@ -41,10 +91,35 @@ fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, w
             pre_grad_signals.csv    ← segnali pre_grad_monitor
             mirror_signals.csv      ← segnali wallet_mirror_bot
             live_state.json         ← stato posizioni LiveEngine (persistente)
-            live_trades.csv         ← log completo azioni LiveEngine
+            live_trades.csv         ← log completo azioni LiveEngine (append-only;
+                                  ⚠️ aprire sempre in modalità 'a' o con tmp+os.rename)
+            live_trades_backup_*.csv ← backup datati creati da run.py ad ogni avvio
+            data_fault_trades.csv   ← NUOVO 15/06: trade chiusi NON validi (is_valid_trade_event
+                                  ko, es. missing_entry_event) — esclusi da PF/WR/EV, audit-only
             sim_report.html         ← dashboard trade live (auto-refresh 60s)
-            exit_quality.html       ← analisi qualità exit BSR/vol (auto-refresh 10min)
-            price_followup.csv      ← followup prezzi defi
+            exit_quality.html       ← analisi qualità exit BSR/vol (auto-refresh 10min);
+                                  mostra change_pct REALE all'uscita hard_sl (include overshoot
+                                  da polling 30s: threshold -8% → exit effettiva media -15/-18%)
+            price_followup.csv      ← followup prezzi defi: snapshot ogni 30min dal momento del
+                                  SEGNALE (non dall'entry del simulator). Colonne: signal_id,
+                                  token_symbol, chain, pair_address, price_entry_usd, snapshot_num,
+                                  timestamp_snapshot, minutes_since_entry, price_snapshot_usd,
+                                  change_pct, status. Coverage: solo native defi via signals_log.csv
+                                  (NON via_gemmeV3). ~714 signal_id, mediana 12 snap/signal.
+                                  ⚠️ change_pct misurato dal prezzo SEGNALE, non dall'entry price
+                                  del simulator → non mappabile direttamente su hard_sl threshold.
+            token_outcomes.csv      ← NUOVO 14/06: output token_outcome_logger (ret%
+                                  +15m/+1h/+4h/+24h/+72h per signal_id, status complete/partial)
+            token_outcome_state.json ← stato pending/seen di token_outcome_logger
+            cycle_stats.csv         ← diagnostico per ciclo: ts, chain, n_raw, n_hard_pass,
+                                  n_signals, bsr_med, vol_med, chg_med (distinguere calo API vs filtri)
+            # === Script di analisi (eseguire da defi/reports/, usano CWD relativo) ===
+            analisi_trades.py           ← PF/WR/EV per tutti i sistemi su live_trades.csv
+            analisi_entry_exit_defi.py  ← analisi entry/exit defi: hold time, BSR, vol distribuzioni
+            analisi_edge_multivariati_defi.py ← combinazioni multivariata di feature (vol×BSR×chain)
+            rootcause_vol_h1_defi_15k.py ← rootcause analysis filtro vol_h1 15k (15/06)
+            simula_filtri_defi.py       ← simulazione impatto filtri alternativi su PF/WR
+            validation_post_fix_15_06.py ← validazione PF/WR post data_fault layer (15/06)
     executor/
         solana_executor.py  ← esegue swap reali su Solana via Jupiter + RPC
         base_executor.py    ← executor Base chain (oracle on-chain Uniswap V3+Aerodrome+Chainlink)
@@ -151,10 +226,15 @@ fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, w
                                       AGGIORNATO 09/06: paper_max_daily_drawdown_pct=0.15 (live rimane 0.05)
                                       NUOVO 12/06: recheck_after_min=90, recheck_min_overlap=1 (recheck tesi
                                       di trade, NO max-hold fisso — vedi paper_trading/engine.py)
+                                      AGGIORNATO 16/06: zscore_entry_threshold 2.0→1.7; vol_breakout_sigma=1.7
+                                      (nuovo campo — era 2.0 hardcoded in anomaly.py)
         core/sentinel.py           ← scansiona 29 market ogni 60s, trigger composito (≥2 segnali Tier A/B o 1 Tier S)
                                       NUOVO 12/06: MarketContext.last_signal_types (set dei "tipi" di segnale
                                       attivi nel tick, es. CVD_DIV/ZSCORE) + Sentinel.get_signal_overlap(
                                       market_id, original_signals) → quanti segnali originali sono ancora attivi
+                                      AGGIORNATO 16/06: REGIME_SHIFT(BULLISH_SHIFT)→votes_long+1,
+                                      REGIME_SHIFT(BEARISH_SHIFT)→votes_short+1, NEUTRAL=0 (prima sempre 0);
+                                      AnomalyDetector riceve vol_breakout_sigma=cfg.vol_breakout_sigma
         core/decision_engine.py    ← chiama claude CLI (--bare --print --max-turns 1) per decisione finale JSON
                                       AGGIORNATO 09/06: --bare + stdin=DEVNULL + timeout 45→90s
         core/risk_engine.py        ← risk management (max DD, margin, position sizing)
@@ -256,6 +336,14 @@ fix pre_grad shadow stuck-open, fix dashboard 24h, INJ autopilot recheck tesi, w
 
 ### `gemme/gemmeV3.py`
 ```python
+# AGGIORNATO 13/06: stampa_gemma drift gate -8%→-3% (= c10_notfall di defi_optimized,
+#   backtest n=46 precisione 77%). Analisi live_trades.csv (730 trade chiusi, dato
+#   01/06-13/06 quasi flat +186→+244€): segnali "via_gemmeV3" instradati al sistema
+#   defi avevano hard_sl rate 49.5% (n=107, -68€) vs 22.6% (n=274, +10€) dei nativi
+#   defi_optimized — il drift check -8% non bastava a sopprimere i retrace post-pump.
+#   Sistemi migliori: pump_grad +546€ WR54%, midcap +161€ WR69%, v3_large +203€ WR50%.
+#   Da validare dopo qualche giorno: hard_sl rate via_gemmeV3 dovrebbe scendere verso
+#   il 22% nativo. Serve restart run.py.
 # AGGIORNATO 10/06 — FIX DUNE CONGELATO (root cause dei 0 trade v3 dal 02/06):
 #   _get_latest_results ora controlla execution_ended_at: se >1h ritorna (None, stale)
 #   per forzare _execute_and_wait (con fallback alle righe stale se fallisce).
@@ -284,14 +372,17 @@ def fetch_coingecko_universe() → dict   # top 800 coin, 8 pagine
 async def fetch_all_ohlcv(symbols) → dict  # parallelo con semaforo 20
 def analyze_coin(symbol, ohlcv, cg) → dict # score 0-100 pre-breakout
 def enrich_fundamentals(candidates, universe) → list  # /coins/{id} per top candidati
-def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippare)
+def main(stop_event)  # loop ogni 4h, avviato da run.py (--no-midcap per skippare)
 # CoinGecko key: env COINGECKO_API_KEY (Demo, ~4200/10k call/mese)
-# Score: squeeze intensity(25) + duration(15) + expansion(15) + lean(8) + RSI div(10) + vol(7) + EMA(15) + breakout bonus(5)
-# AGGIORNATO 09/06 (backtest n=28): penalità extra dopo gli elif esistenti:
-#   change_7d > 150% → score -= 12  (BTW/VELVET/BEAT: pump estremo → mean-reversion sistematica)
-#   adx > 55         → score -= 5   (币安人生/DEGEN: trend maturo, adx>50+ret_30d>100% insieme non bastava)
-# Soglia ADX 55 (non 50): evita falsi positivi su MAGMA (51.5) e OMI (53.2) che erano vincenti.
-# entry_score_min=35 (invariato); con le nuove penalità 9/9 loss bloccate, 4/19 win bloccate (tutte su token estremi)
+# Score: squeeze intensity(25) + duration(15) + expansion(15) + lean(8) + RSI div(10) + vol_spike(3) + EMA+HH/HL(19) + breakout bonus(5)
+# AGGIORNATO 16/06 (backtest n=104 chiusi, WR 67.3%, +288€):
+#   adx > 55 → HARD REJECT (non più -5pt, return None): backtest bb_wpct≥50+adx≥55 → WR 0%
+#   vol_ratio < 1.0 → +5pt (accumulo silenzioso: WR 77.8% n=27 vs ≥1.5 WR 62.5% n=24)
+#   vol_ratio ≥ 1.5 → -5pt (buying già consumato, combo vol_spike+vol_ratio≥1.5 → WR 50% -20€)
+#   social score da social_monitor.get_social_score() → ±5pt (dati da raccogliere, graceful se file mancante)
+#   RVol puro NON implementato: vol_spike=True correla con token già pompati (ret_30d=126%, bb_wpct=78)
+# AGGIORNATO 09/06 (backtest n=28): change_7d > 150% → score -= 12; adx>55 ora hard reject
+# entry_score_min=35; hh_hl=True → WR 82.9% vs False 57.6% (n=68)
 ```
 
 ### `defi/defi_optimized.py`
@@ -355,6 +446,22 @@ def main(stop_event)  # loop ogni 8h, avviato da run.py (--no-midcap per skippar
 
 ### `defi/trade_simulator.py`
 ```python
+# FIX 15/06: gate disalignment vol_h1 risolto — guard entry defi (era hardcoded
+#   10_000) ora usa MIN_VOLUME_1H_USD_DEFI=15_000 da data_quality.py (stessa
+#   costante anche in defi_optimized.CONFIG["MIN_VOLUME_1H_USD"], single source
+#   of truth).
+# NUOVO 15/06: data_fault layer — _is_data_fault(sid,s) usa
+#   data_quality.is_valid_trade_event() per escludere da sys_stats/total_pnl/
+#   real_closed_all i trade senza riga action="entry" e drawdown immediato
+#   <=-80% (missing_entry_event, es. WINNING/GOBLIEN/SERENA/PXC 23-24/05,
+#   rehydration da live_state.json obsoleto; esclude skip/skip_stale, by-design)
+#   + hard_sl con pnl_eur=0 ma chg<=-1% (zeroed_low_liquidity: simulator non ha
+#   potuto stimare un'uscita realistica — 24 defi "azzerato"/duplicato/Jupiter-bug,
+#   7 pump_grad liquidità bassa, 43 pre_grad "ANNULLATO 11/06 pre-rugcheck").
+#   _log_data_fault_trades() li scrive (dedup) in reports/data_fault_trades.csv
+#   con fault_reason. Validazione: defi n 458→422, PF 0.960→1.197, pnl -78.41→
+#   +308.82€; pump_grad/pre_grad PF invariato (pnl_eur=0 non sposta PF) ma WR
+#   reale migliora (denominatore corretto). Nessun tuning soglie.
 # FIX 11/06: pair_address="nan" poison in active_pairs — pre_grad scrive
 #   pair_address vuoto (NaN, bonding curve senza DEX pair); str(nan or "")="nan"
 #   finiva in active_pairs alla 1a entry pre_grad e bloccava IN SILENZIO (nessun
@@ -435,7 +542,7 @@ RPC_URL = HELIUS_RPC if HELIUS_API_KEY else "https://api.mainnet-beta.solana.com
 ### `defi/run.py`
 ```python
 # Carica executor/.env per EXECUTOR_CHAINS
-# Flag: --no-solana, --no-base, --no-midcap, --no-mirror (separati)
+# Flag: --no-solana, --no-base, --no-midcap, --no-mirror, --no-social (separati)
 # EXECUTOR_CHAINS env var: "base" | "solana" | "base,solana"
 # Componenti: LiveEngine, PumpGrad, PreGrad, BasePump, defi_optimized,
 #             gemmeV3, solana_executor, base_executor, midcap_scanner,
@@ -483,18 +590,34 @@ class Sentinel:
 # Segnali Tier S: FUNDING_EXTREME (z>2.5) → trigger con 1 solo segnale
 # Rate limit globale: sentinel_max_triggers_per_hour=20 (era 10)
 # Trigger = ≥2 segnali attivi oppure 1 Tier S
+# AGGIORNATO 16/06: REGIME_SHIFT contribuisce voti direzionali:
+#   BULLISH_SHIFT → votes_long+1, BEARISH_SHIFT → votes_short+1, NEUTRAL → 0
+#   (prima: nessun voto, aggiungeva segnale senza influenzare direction → conflict)
+#   AnomalyDetector istanziato con vol_breakout_sigma=cfg.vol_breakout_sigma
+```
+
+### `injective_autopilot/signals/anomaly.py`
+```python
+class AnomalyDetector:
+    # AGGIORNATO 16/06: __init__ accetta vol_breakout_sigma (default=2.0); usato in
+    #   _detect_vol_breakout: upper/lower = mu ± vol_breakout_sigma*sigma (era hardcoded 2*)
+    def update(price, vol_regime) → (ZScoreSignal, RegimeShift, VolBreakout)
+    def _compute_zscore(price, vol_regime) → ZScoreSignal   # bloccato in HIGH regime
+    def _detect_regime_shift() → RegimeShift                # KL divergence recent vs historical
+    def _detect_vol_breakout(price) → VolBreakout           # BB (mu ± vol_breakout_sigma*sigma)
 ```
 
 ### `injective_autopilot/core/decision_engine.py`
 ```python
+# Sistema rule-based deterministico (NON chiama Claude subprocess — rimossa confusione)
+# AGGIORNATO 16/06: docstring aggiornata: REGIME_SHIFT contribuisce +1 vote (BULLISH/BEARISH_SHIFT)
 class DecisionEngine:
-    async def decide(trigger, positions, margin_available) → TradeDecision
-    async def _call_subprocess(prompt) → str  # claude --bare --print --max-turns 1 --system-prompt ...
-    async def _call_sdk(prompt) → str         # Anthropic SDK (richiede API key, non usato)
-# use_subprocess=True (default): chiama CLI claude, NON SDK (utente non ha API key)
-# AGGIORNATO 09/06: aggiunto --bare (no CLAUDE.md/hooks overhead), stdin=DEVNULL
-# timeout: 45→90s (config settings.py)
-# Risposta attesa: JSON con action/confidence/entry/sl/tp/position_size/risk_score/reason
+    async def decide_batch(triggers, positions, margin_available) → dict[ticker, TradeDecision]
+    def _score(trigger) → (float, str)   # 0.40+(n-2)*0.10, bonus z/fz/obi/margin, conflict→0.30
+    def _build_decision(trigger, score) → TradeDecision | None  # ATR cold guard, RR≥2.0
+# Score base: n=2→0.40, 3→0.50, 4→0.60; conflict (margin≤1) → 0.30 penalità
+# Bonus: |z|≥2.5 +0.05, ≥3.0 +0.05; |fz|≥3 +0.05; obi≥0.90 +0.05; margin≥3 +0.05, ≥4 +0.10
+# ATR cold: TP dist < max(2×spread_bps/100, 0.30%) → rejected
 @dataclass TradeDecision: action, confidence, entry, stop_loss, take_profit, position_size, risk_score, reason
 ```
 
