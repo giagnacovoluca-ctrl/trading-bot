@@ -1,5 +1,11 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-17 sera-9 (FILTRO chg1h>20% → chg1h>80% su shadow backtest:
+1084 shadow trade analizzati — chg1h>20% bloccava trade con PF=4.54 (WR 64%, avg +52%).
+Bucket 20-50%: PF=7.22 ottimale. Soglia alzata a 80% in trade_simulator, publisher,
+liq_event_monitor. Token 20-80% ora aprono trade reali (dry mode). Da rivalutare dopo
+~1 settimana di dati. liq<25k e vol_h1<5k confermati corretti (WR 19% e spike thin pool).
+
 Aggiornato: 2026-06-17 sera-8 (FIX WS 429 BACKOFF + DASHBOARD MIGLIORAMENTI:
 trade_simulator _RugWatcher: rimosso reconnect= da run_forever (era fisso 10s anche su 429);
 backoff manuale: _got_429 flag rilevato in _on_error/_on_close → wait 300s su 429 (5min)

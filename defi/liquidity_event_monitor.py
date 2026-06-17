@@ -121,8 +121,8 @@ def _extract_pool_data(pool: dict, chain: str) -> dict:
 def _notify(d: dict, chain: str):
     # Stessi filtri del simulator (publisher.py linee 163-169):
     # evita alert per pool che verranno comunque scartate → era 87% spam
-    if d["chg_1h"] > 20:
-        log.debug(f"[liq] notify skip {d['token_symbol']}: chg1h={d['chg_1h']:+.0f}% > 20%")
+    if d["chg_1h"] > 80:
+        log.debug(f"[liq] notify skip {d['token_symbol']}: chg1h={d['chg_1h']:+.0f}% > 80%")
         return
     if 0 < d["vol_h1"] < 5_000:
         log.debug(f"[liq] notify skip {d['token_symbol']}: vol_h1=${d['vol_h1']:,.0f} < $5k")

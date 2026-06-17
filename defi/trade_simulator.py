@@ -2119,10 +2119,10 @@ class LiveEngine:
                             self._shadow_register(sid, row, "liq<25k", _sig_liq, tok_addr_check, now)
                             continue
                         _sig_chg = float(row.get("change_1h_pct", 0) or 0)
-                        if _sig_chg > 20:
+                        if _sig_chg > 80:
                             self._signal_skip_cache.add(sid)
-                            log.info(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 20% → già pompato, skip")
-                            self._shadow_register(sid, row, "chg1h>20%", _sig_chg, tok_addr_check, now)
+                            log.info(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 80% → parossismo, skip")
+                            self._shadow_register(sid, row, "chg1h>80%", _sig_chg, tok_addr_check, now)
                             continue
                         _sig_vol_pg = float(row.get("volume_1h_usd", 0) or 0)
                         if 0 < _sig_vol_pg < 5000:

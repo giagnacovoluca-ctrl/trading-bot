@@ -170,7 +170,7 @@ class Publisher:
             chg = _to_float(row.get("change_1h_pct")) or 0.0
             vol = _to_float(row.get("volume_1h_usd")) or 0.0
             if 0 < liq < 25_000:   return
-            if chg > 20:           return
+            if chg > 80:           return
             if 0 < vol < 5_000:    return
             # Dedup pool multiple per stesso token: max 1 entry notify ogni 30 min
             sym = str(row.get("token_symbol", "") or "").upper()
