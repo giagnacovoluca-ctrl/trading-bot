@@ -4,7 +4,9 @@ Ogni 2min: se nuova coppia trovata e tradabile on-chain → email queue + CSV se
 Avviato da run.py (--no-cex per skippare).
 """
 import csv
+import json
 import logging
+import os
 import re
 import sys
 import threading
@@ -41,9 +43,42 @@ _COINBASE_BASELINE = {
     "PEPE","WIF","BONK","SUI","SEI","INJ","TIA","FTM","AAVE","CRV","COMP","MKR","SNX"
 }
 
-_REPORTS = _HERE / "reports"
-_CSV_OUT  = _REPORTS / "cex_listing_signals.csv"
+_REPORTS    = _HERE / "reports"
+_CSV_OUT    = _REPORTS / "cex_listing_signals.csv"
+_CEX_BOOST  = _ROOT / "data" / "cex_listings.json"
 _seen: dict[str, float] = {}
+
+
+def get_cex_boost(ticker: str) -> int:
+    """Ritorna +15 se il ticker ha avuto un listing CEX nelle ultime 24h, 0 altrimenti.
+    Usato da midcap_scanner.analyze_coin per boost score."""
+    try:
+        if not _CEX_BOOST.exists():
+            return 0
+        data = json.loads(_CEX_BOOST.read_text())
+        entry = data.get(ticker.upper())
+        if entry and time.time() - entry.get("ts", 0) < 86400:
+            return 15
+    except Exception:
+        pass
+    return 0
+
+
+def _inject_cex_boost(ticker: str, chain: str, liq: float):
+    """Scrive il ticker in data/cex_listings.json — midcap_scanner aggiunge +15 score."""
+    _CEX_BOOST.parent.mkdir(exist_ok=True)
+    try:
+        data = json.loads(_CEX_BOOST.read_text()) if _CEX_BOOST.exists() else {}
+    except Exception:
+        data = {}
+    data[ticker.upper()] = {"ts": time.time(), "chain": chain, "liq": liq}
+    # pulizia vecchi (>24h)
+    cutoff = time.time() - 86400
+    data = {k: v for k, v in data.items() if v.get("ts", 0) > cutoff}
+    tmp = str(_CEX_BOOST) + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(data, f)
+    os.replace(tmp, str(_CEX_BOOST))
 
 
 def _purge_seen():
@@ -188,6 +223,11 @@ def _tick():
             continue
         _append_csv(ticker, source, pairs)
         _notify(ticker, source, title, pairs)
+        try:
+            top = pairs[0]
+            _inject_cex_boost(ticker, top.get("chainId", ""), float((top.get("liquidity") or {}).get("usd", 0) or 0))
+        except Exception as _e:
+            log.debug(f"[cex] inject_cex_boost: {_e}")
 
 
 def _bootstrap():

@@ -4,7 +4,9 @@ Polling GeckoTerminal ogni 30s: pool nuovi (<5min, liq>$10k) → email queue + C
 Avviato da run.py (--no-liq per skippare).
 """
 import csv
+import json
 import logging
+import os
 import sys
 import threading
 import time
@@ -83,6 +85,27 @@ def _notify(attrs: dict, chain: str, addr: str, liq: float, age_min: float):
     log.info(f"[liq] ▶ {token_name} {chain} ${liq:,.0f} età {age_min:.1f}min → Telegram")
 
 
+_LIQ_INJECT = _ROOT / "data" / "liq_inject.json"
+
+def _inject_fastpoll(attrs: dict, chain: str, addr: str, liq: float):
+    """Scrive il pool in data/liq_inject.json — defi_optimized fastpoll_loop lo raccoglie
+    ogni 30s e inizia a monitorarlo prima che Dune Analytics lo indicizzi (lag ore)."""
+    _LIQ_INJECT.parent.mkdir(exist_ok=True)
+    try:
+        existing = json.loads(_LIQ_INJECT.read_text()) if _LIQ_INJECT.exists() else []
+    except Exception:
+        existing = []
+    token_sym = attrs.get("name", "?").split(" / ")[0]
+    cutoff = time.time() - 1800  # scarta candidati >30 min
+    fresh = [d for d in existing if d.get("ts", 0) > cutoff and d.get("pair_address") != addr]
+    fresh.append({"pair_address": addr, "chain": chain, "token_symbol": token_sym,
+                  "liquidity_usd": liq, "ts": time.time()})
+    tmp = str(_LIQ_INJECT) + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(fresh[-50:], f)
+    os.replace(tmp, str(_LIQ_INJECT))
+
+
 def _append_csv(attrs: dict, chain: str, addr: str, liq: float, age_min: float):
     row = {
         "ts":            datetime.now().isoformat(),
@@ -121,6 +144,10 @@ def _tick():
                 continue
             _append_csv(attrs, chain, addr, liq, age_min)
             _notify(attrs, chain, addr, liq, age_min)
+            try:
+                _inject_fastpoll(attrs, chain, addr, liq)
+            except Exception as _e:
+                log.debug(f"[liq] inject_fastpoll: {_e}")
 
 
 def main(stop_event: threading.Event | None = None):

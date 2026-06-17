@@ -21,6 +21,7 @@ di perdite finanziarie derivanti dall'utilizzo di questo software.
 """
 
 # ── Librerie standard ──────────────────────────────────────────────────────
+import json
 import os
 import csv
 import time
@@ -3192,6 +3193,47 @@ def _fastpoll_add_candidates(df_nearmiss: pd.DataFrame) -> None:
                  + ", ".join(added))
 
 
+_LIQ_INJECT_FILE = Path(__file__).parent.parent / "data" / "liq_inject.json"
+
+def _load_liq_inject() -> None:
+    """Legge data/liq_inject.json (scritto da liq_monitor) e inietta i pool nuovi
+    nella fastpoll watchlist. Vantaggio: inizia a monitorare pool <5min prima che
+    Dune Analytics li indicizzi (lag tipico: ore)."""
+    if not _LIQ_INJECT_FILE.exists():
+        return
+    try:
+        data = json.loads(_LIQ_INJECT_FILE.read_text())
+    except Exception:
+        return
+    cutoff = time.time() - 1800
+    now = datetime.now()
+    injected = []
+    with _fastpoll_lock:
+        for d in data:
+            if d.get("ts", 0) < cutoff:
+                continue
+            pair = d.get("pair_address", "")
+            if not pair or pair in _fastpoll_watch:
+                continue
+            if len(_fastpoll_watch) >= _FASTPOLL_MAX_WATCH:
+                oldest = min(_fastpoll_watch, key=lambda k: _fastpoll_watch[k]["added"])
+                _fastpoll_watch.pop(oldest, None)
+            _fastpoll_watch[pair] = {
+                "row": {
+                    "pair_address": pair,
+                    "chain": d.get("chain", ""),
+                    "token_symbol": d.get("token_symbol", "?"),
+                    "liquidity_usd": d.get("liquidity_usd", 0),
+                    "prepump_composite_score": 0.0,  # sarà rivalutato da generate_signals
+                },
+                "added": now,
+                "streak": 0,
+            }
+            injected.append(d.get("token_symbol", pair[:8]))
+    if injected:
+        log.info(f"[fastpoll] 💧 liq_inject: +{len(injected)} pool nuovi → {', '.join(injected)}")
+
+
 def _fastpoll_refresh_rows(entries: dict) -> list[dict]:
     """Batch-fetch DexScreener e aggiorna i campi dinamici delle righe in watch.
     Ritorna le righe aggiornate (quelle senza risposta API restano fuori dal tick)."""
@@ -3244,6 +3286,7 @@ def fastpoll_loop(stop_event=None) -> None:
     while not (stop_event and stop_event.is_set()):
         time.sleep(_FASTPOLL_INTERVAL_SEC)
         try:
+            _load_liq_inject()   # inietta pool nuovi da liq_monitor (vantaggio vs Dune lag)
             now = datetime.now()
             with _fastpoll_lock:
                 # Scadenza TTL + token entrati in cooldown (già segnalati altrove)

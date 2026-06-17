@@ -441,6 +441,18 @@ def analyze_coin(symbol: str, ohlcv: list, cg: dict) -> Optional[dict]:
     except Exception:
         pass
 
+    # 11. CEX listing boost (+15 pt) — ticker con listing recente su Binance/Coinbase
+    #     segnalato da cex_listing_watcher (data/cex_listings.json, TTL 24h).
+    #     Edge: il prezzo on-chain tende a salire nelle 24h post-annuncio listing.
+    try:
+        from cex_listing_watcher import get_cex_boost
+        _cex_pts = get_cex_boost(symbol.split("/")[0])
+        if _cex_pts:
+            score += _cex_pts
+            log.info(f"[midcap] {symbol} CEX listing boost +{_cex_pts}pt → score {score}")
+    except Exception:
+        pass
+
     # Direzione
     if (ema_bull or price_lean > 0.6) and not breakout_dn:
         direction = "LONG"
