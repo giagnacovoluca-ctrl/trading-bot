@@ -1,12 +1,20 @@
 """
 liquidity_event_monitor.py — Monitor nuovi pool liquidità su Solana e Base.
-Polling GeckoTerminal ogni 30s: pool nuovi (<5min) →
-  - Alert Telegram immediato (tutti, liq>$10k)
-  - Segnale diretto in pump_grad_signals.csv (liq>$25k, bypass lag Dune)
+
+Due path paralleli:
+  1. GeckoTerminal polling ogni 30s (Solana + Base fallback)
+  2. WebSocket on-chain su Base: PairCreated event dal factory Uniswap V2
+     → latenza ~2s (1 blocco), zero polling API
+
+Azioni comuni:
+  - Alert Telegram immediato (liq>$10k)
+  - Segnale in pump_grad_signals.csv (liq>$25k)
+  - Shadow queue (liq $10k-$25k)
   - liq_event_signals.csv (log storico)
-Avviato da run.py (--no-liq per skippare).
 """
+import asyncio
 import csv
+import json
 import logging
 import os
 import sys
@@ -251,11 +259,261 @@ def _tick():
                     log.warning(f"[liq] write_shadow_queue: {e}")
 
 
+# ---------------------------------------------------------------------------
+# WebSocket Base V2 factory — PairCreated on-chain (~2s latenza, 0 API poll)
+# ---------------------------------------------------------------------------
+_BASE_RPC_WSS     = os.environ.get("BASE_RPC_URL", "").replace("https://", "wss://")
+_WETH_BASE        = "0x4200000000000000000000000000000000000006"
+_UNIV2_FACTORY_B  = "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6"
+# keccak256("PairCreated(address,address,address,uint256)")
+_PAIR_CREATED_SIG = "0x0d3648bd0f6ba80134a33ba9275ac585d9d315f0ad8355cddefde31afa28d0e9"
+
+_ABI_UNIV2_PAIR = [
+    {"name": "getReserves", "type": "function", "stateMutability": "view",
+     "inputs": [],
+     "outputs": [{"name": "reserve0", "type": "uint112"},
+                 {"name": "reserve1", "type": "uint112"},
+                 {"name": "blockTimestampLast", "type": "uint32"}]},
+    {"name": "token0", "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "address"}]},
+    {"name": "token1", "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "address"}]},
+    {"name": "decimals", "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "uint8"}]},
+    {"name": "symbol", "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "string"}]},
+]
+_ABI_ERC20_SYM = [
+    {"name": "symbol",   "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "string"}]},
+    {"name": "decimals", "type": "function", "stateMutability": "view",
+     "inputs": [], "outputs": [{"name": "", "type": "uint8"}]},
+]
+
+_weth_usd_cache: dict = {"price": 0.0, "ts": 0.0}
+
+
+def _get_weth_usd_cached() -> float:
+    """WETH/USD da DexScreener, cache 2 min."""
+    now = time.time()
+    if now - _weth_usd_cache["ts"] < 120 and _weth_usd_cache["price"] > 0:
+        return _weth_usd_cache["price"]
+    try:
+        r = requests.get(
+            "https://api.dexscreener.com/latest/dex/pairs/base/"
+            "0x4200000000000000000000000000000000000006",
+            timeout=5)
+        if r.status_code == 200:
+            pairs = r.json().get("pairs") or []
+            for p in pairs:
+                px = float(p.get("priceUsd") or 0)
+                if px > 0:
+                    _weth_usd_cache.update({"price": px, "ts": now})
+                    return px
+    except Exception:
+        pass
+    # Fallback: usa Chainlink via base_executor se disponibile
+    try:
+        from base_executor import _get_weth_usd
+        px = _get_weth_usd()
+        if px > 0:
+            _weth_usd_cache.update({"price": px, "ts": now})
+            return px
+    except Exception:
+        pass
+    return _weth_usd_cache["price"] or 1800.0
+
+
+def _handle_pair_created(log_entry: dict) -> None:
+    """
+    Chiamata quando arriva un evento PairCreated dal factory V2 su Base.
+    Calcola liquidità da reserves on-chain, emette segnale se > soglia.
+    """
+    try:
+        topics = log_entry.get("topics", [])
+        if len(topics) < 3:
+            return
+        # topics[1] = token0 (indexed, bytes32 padded), topics[2] = token1
+        token0 = "0x" + topics[1][-40:]
+        token1 = "0x" + topics[2][-40:]
+        # data: abi-encoded (pair_address, uint)
+        raw_data = log_entry.get("data", "0x")
+        pair_addr = "0x" + raw_data[26:66]  # bytes 12-31 of first 32-byte word
+
+        pair_id = f"base_{pair_addr.lower()}"
+        if pair_id in _seen:
+            return
+        _seen[pair_id] = time.time()
+
+        # Determina quale token è WETH
+        weth_lc = _WETH_BASE.lower()
+        if token0.lower() == weth_lc:
+            token_addr = token1
+            weth_is_t0 = True
+        elif token1.lower() == weth_lc:
+            token_addr = token0
+            weth_is_t0 = False
+        else:
+            log.debug(f"[liq/ws] pair {pair_addr[:12]}: nessun WETH — skip")
+            return
+
+        # Retry reserves fino a che la liquidità viene aggiunta (max 30s, poll 2s)
+        # PairCreated scatta al deploy del pair (reserves=0); la liquidità arriva
+        # nella tx successiva, tipicamente nello stesso blocco o 1-2 blocchi dopo.
+        try:
+            from web3 import Web3
+            w3 = Web3(Web3.HTTPProvider(
+                os.environ.get("BASE_RPC_URL", "https://mainnet.base.org"),
+                request_kwargs={"timeout": 8}
+            ))
+            pair_c  = w3.eth.contract(
+                address=Web3.to_checksum_address(pair_addr), abi=_ABI_UNIV2_PAIR)
+            tok_c   = w3.eth.contract(
+                address=Web3.to_checksum_address(token_addr), abi=_ABI_ERC20_SYM)
+
+            weth_raw = 0
+            tok_raw  = 0
+            for attempt in range(15):          # max 15 × 2s = 30s
+                time.sleep(2)
+                reserves = pair_c.functions.getReserves().call()
+                r0, r1   = reserves[0], reserves[1]
+                weth_raw = r0 if weth_is_t0 else r1
+                tok_raw  = r1 if weth_is_t0 else r0
+                if weth_raw > 0:
+                    log.debug(f"[liq/ws] {pair_addr[:12]} liquidità trovata dopo {(attempt+1)*2}s")
+                    break
+            if weth_raw == 0:
+                log.debug(f"[liq/ws] {pair_addr[:12]}: reserves=0 dopo 30s — skip")
+                return
+
+            tok_dec     = tok_c.functions.decimals().call()
+            tok_sym     = tok_c.functions.symbol().call()
+
+            weth_amt    = weth_raw / 1e18
+            weth_usd    = _get_weth_usd_cached()
+            liq_usd     = weth_amt * weth_usd * 2   # liq totale = 2× lato WETH
+
+            tok_amt     = tok_raw / (10 ** tok_dec)
+            price_usd   = (weth_amt * weth_usd / tok_amt) if tok_amt > 0 else 0.0
+
+        except Exception as e:
+            log.debug(f"[liq/ws] reserves {pair_addr[:12]}: {e}")
+            return
+
+        if liq_usd < MIN_LIQ_ALERT:
+            log.debug(f"[liq/ws] {tok_sym} liq=${liq_usd:.0f} < ${MIN_LIQ_ALERT:,} — skip")
+            return
+
+        # Honeypot check (view call, zero gas):
+        # Simula sell 1% dei token → WETH con formula V2 constant product.
+        # Se tok_raw=0 o l'output simulato è <0.1% del lato WETH → pool non vendibile.
+        # Non cattura tutte le transfer fee, ma elimina i casi ovvi (reserve=0 o pool drenata).
+        if tok_raw == 0:
+            log.info(f"[liq/ws] {tok_sym} honeypot: tok_reserve=0 — skip")
+            return
+        _test_sell    = tok_raw // 100          # 1% delle riserve token
+        _sim_weth_out = (weth_raw * _test_sell) // (tok_raw + _test_sell)
+        _min_expected = weth_raw // 1000        # almeno 0.1% del lato WETH
+        if _sim_weth_out < _min_expected:
+            log.info(f"[liq/ws] {tok_sym} honeypot: sell simulato=${_sim_weth_out/1e18*_get_weth_usd_cached():.2f} troppo basso — skip")
+            return
+
+        age_min = 0.1  # appena creata
+        d = {
+            "addr":         pair_addr,
+            "token_address": token_addr,
+            "token_symbol":  tok_sym,
+            "liq":           liq_usd,
+            "price":         price_usd,
+            "vol_h1":        0.0,
+            "chg_1h":        0.0,
+            "age_min":       age_min,
+        }
+        log.info(f"[liq/ws] ⚡ Base PairCreated: {tok_sym} liq=${liq_usd:,.0f}")
+        _append_log_csv(d, "base")
+
+        if liq_usd >= MIN_LIQ_SIGNAL:
+            _notify(d, "base")
+            try:
+                _write_pump_grad_signal(d, "base")
+            except Exception as e:
+                log.warning(f"[liq/ws] write signal: {e}")
+        else:
+            try:
+                _write_shadow_queue(d, "base")
+            except Exception as e:
+                log.warning(f"[liq/ws] write shadow: {e}")
+
+    except Exception as e:
+        log.warning(f"[liq/ws] handle_pair_created: {e}")
+
+
+async def _ws_base_factory(stop_event: threading.Event) -> None:
+    """Loop WebSocket asincrono: subscribe a PairCreated sul factory V2 Base."""
+    import websockets
+
+    if not _BASE_RPC_WSS or _BASE_RPC_WSS.startswith("wss://https"):
+        log.warning("[liq/ws] BASE_RPC_URL non configurato per WSS — skip")
+        return
+
+    while not stop_event.is_set():
+        try:
+            async with websockets.connect(
+                _BASE_RPC_WSS, ping_interval=20, ping_timeout=30
+            ) as ws:
+                sub = json.dumps({
+                    "jsonrpc": "2.0", "id": 1,
+                    "method": "eth_subscribe",
+                    "params": ["logs", {
+                        "address": _UNIV2_FACTORY_B,
+                        "topics":  [_PAIR_CREATED_SIG]
+                    }]
+                })
+                await ws.send(sub)
+                resp = json.loads(await ws.recv())
+                sub_id = resp.get("result")
+                log.info(f"[liq/ws] ✅ subscribed PairCreated Base V2 (sub={sub_id})")
+
+                while not stop_event.is_set():
+                    try:
+                        msg = await asyncio.wait_for(ws.recv(), timeout=60)
+                        data = json.loads(msg)
+                        entry = data.get("params", {}).get("result")
+                        if entry:
+                            # esegui in thread separato per non bloccare il loop WS
+                            threading.Thread(
+                                target=_handle_pair_created,
+                                args=(entry,), daemon=True
+                            ).start()
+                    except asyncio.TimeoutError:
+                        pass  # keepalive, riprova
+        except Exception as e:
+            log.warning(f"[liq/ws] Base factory WS disconnesso: {e} — reconnect 10s")
+            await asyncio.sleep(10)
+
+
+def _start_base_ws_thread(stop_event: threading.Event) -> None:
+    """Avvia il loop WebSocket in un thread daemon con il proprio event loop."""
+    def _run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_ws_base_factory(stop_event))
+        finally:
+            loop.close()
+    t = threading.Thread(target=_run, name="liq_ws_base", daemon=True)
+    t.start()
+    return t
+
+
 def main(stop_event: threading.Event | None = None):
     log.info(
         f"[liq] ▶ avviato (poll {POLL_SEC}s, alert>${MIN_LIQ_ALERT:,}, "
         f"segnale>${MIN_LIQ_SIGNAL:,}, età<{MAX_POOL_AGE_MIN}min)"
     )
+    # Avvia WebSocket Base V2 factory in parallelo (latenza ~2s, no API poll)
+    _ws_stop = stop_event or threading.Event()
+    _start_base_ws_thread(_ws_stop)
     while True:
         if stop_event and stop_event.is_set():
             break

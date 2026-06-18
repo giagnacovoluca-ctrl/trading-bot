@@ -83,6 +83,7 @@ BF_SIGNALS    = os.path.join(BASE, "reports", "binance_futures_signals.csv")
 MIRROR_SIGNALS    = os.path.join(BASE, "reports", "mirror_signals.csv")
 PRE_GRAD_SIGNALS  = os.path.join(BASE, "reports", "pre_grad_signals.csv")
 REAL_EXEC_CSV     = os.path.join(BASE, "..", "executor", "real_executions.csv")
+BASE_EXEC_CSV     = os.path.join(BASE, "..", "executor", "base_executions.csv")
 BASE_PUMP_SIGNALS  = os.path.join(BASE, "reports", "base_pump_signals.csv")
 MIDCAP_SIGNALS     = os.path.join(BASE, "reports", "midcap_signals.csv")
 SHADOW_CSV         = os.path.join(BASE, "reports", "pump_grad_shadow.csv")
@@ -597,7 +598,7 @@ MAX_SIGNAL_AGE_H: dict = {"defi": 3, "v2": 48, "v3": 48, "bnf": 6, "v3_large": 1
 # midcap: segnale daily (scanner ogni 4h, breakout su candela giornaliera) → validità
 # entry più larga (48h, ~12 cicli scanner) e max hold = 48h*3 = 144h (6gg, vedi riga ~1718)
 MAX_SIGNAL_AGE_H_DEFAULT = 24   # fallback
-REFRESH_SEC      = 30    # frequenza aggiornamento prezzi (era 60s → dimezza latenza entry)
+REFRESH_SEC      = 10    # abbassato 30→10s per ridurre latenza entry LIQ Base (<5min pool)
 
 # Catene abilitate — BSC/ETH disabilitati; BASE abilitato al loro posto.
 # Per riabilitare: ALLOWED_CHAINS = {"solana", "bsc", "ethereum", "base"}
@@ -2112,22 +2113,25 @@ class LiveEngine:
                     # chg1h>20% → token già pompato pre-graduation (es. SOLANA -53€)
                     # Backtest 17/06: vol_h1 1-5k → n=26 WR=19% PnL=-206€ (−7.9€/trade)
                     if effective_system in ("pump_grad", "mirror"):
+                        _sig_chain = row.get("chain", "solana").lower()
                         _sig_liq = float(row.get("liquidity_usd", 0) or 0)
                         if 0 < _sig_liq < 25000:
                             self._signal_skip_cache.add(sid)
-                            log.info(f"[live/pump_grad] {sym_check} liq=${_sig_liq:,.0f} < $25k → skip")
+                            log.debug(f"[live/pump_grad] {sym_check} liq=${_sig_liq:,.0f} < $25k → skip")
                             self._shadow_register(sid, row, "liq<25k", _sig_liq, tok_addr_check, now)
                             continue
                         _sig_chg = float(row.get("change_1h_pct", 0) or 0)
                         if _sig_chg > 80:
                             self._signal_skip_cache.add(sid)
-                            log.info(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 80% → parossismo, skip")
+                            log.debug(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 80% → parossismo, skip")
                             self._shadow_register(sid, row, "chg1h>80%", _sig_chg, tok_addr_check, now)
                             continue
+                        # vol_h1<5k: skip solo su Solana (pool già attive post-graduation)
+                        # Base: pool nuovissime (<2min), vol_h1 è sempre 0 per definizione
                         _sig_vol_pg = float(row.get("volume_1h_usd", 0) or 0)
-                        if 0 < _sig_vol_pg < 5000:
+                        if _sig_chain != "base" and 0 < _sig_vol_pg < 5000:
                             self._signal_skip_cache.add(sid)
-                            log.info(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $5k → skip")
+                            log.debug(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $5k → skip")
                             self._shadow_register(sid, row, "vol_h1<5k", _sig_vol_pg, tok_addr_check, now)
                             continue
 
@@ -2211,7 +2215,7 @@ class LiveEngine:
                         # Guardia volume: token senza liquidità attiva
                         _sig_vol = float(row.get("volume_1h_usd", 0) or 0)
                         if _sig_vol < MIN_VOLUME_1H_USD_DEFI:
-                            log.info(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}<{MIN_VOLUME_1H_USD_DEFI:.0f} → skip")
+                            log.debug(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}<{MIN_VOLUME_1H_USD_DEFI:.0f} → skip")
                             known.add(sid)
                             continue
 
@@ -2234,7 +2238,7 @@ class LiveEngine:
                         if _m:
                             _score = float(_m.group(1))
                             if _score < 0.55:
-                                log.info(f"[live/defi] {sid}: prepump_score={_score:.2f}<0.55 → skip")
+                                log.debug(f"[live/defi] {sid}: prepump_score={_score:.2f}<0.55 → skip")
                                 known.add(sid)
                                 continue
 
@@ -3059,7 +3063,7 @@ class LiveEngine:
                 "change_pct": f"{cfg['tp1_pct']:+.2f}",
                 "vol_h1": f"{cur_vol:.0f}", "bsr": f"{cur_bsr:.3f}",
                 "remaining": f"{remaining:.2f}", "pnl_eur": f"{pnl:+.2f}",
-                "exit_reason": "open",
+                "exit_reason": "tp1" if remaining <= 0 else "open",
                 "note": tp1_note,
             })
 
@@ -4026,6 +4030,317 @@ def _build_kpi_section(hours: float = 24) -> str:
     )
 
 
+def _load_executor_map() -> dict:
+    """
+    Legge real_executions.csv (Solana) e base_executions.csv (Base).
+    Ritorna {signal_id: {"chain", "status", "action", "note", "pnl_exec"}}
+    con lo stato finale per ogni segnale (ultima riga rilevante).
+    """
+    _WHY = {
+        "no_route_raydium_jupiter": "Nessuna route Jupiter/Raydium",
+        "rugcheck_failed":          "Rugcheck fallito",
+        "processed_no_buy":         "Processato ma buy non eseguito",
+        "no_route":                 "Nessuna route V3/Aerodrome/V2",
+        "balance=0_post_buy":       "TX ok ma saldo=0 on-chain",
+        "balance=0_post_swap":      "TX ok ma saldo=0 (honeypot tax)",
+        "honeypot_sell_lock":       "Honeypot: sell simulato bloccato",
+        "reserves_check_failed":    "Reserves non leggibili → skip",
+        "price_impact":             "Price impact troppo alto",
+        "via_pumpswap":             "Eseguito via PumpSwap SDK",
+    }
+    result: dict = {}
+
+    def _parse_csv(path, chain):
+        if not os.path.exists(path):
+            return
+        try:
+            with open(path, encoding="utf-8") as f:
+                rows = list(csv.DictReader(f))
+        except Exception:
+            return
+        by_sid: dict = {}
+        for r in rows:
+            sid = r.get("signal_id", "").strip()
+            if not sid:
+                continue
+            by_sid.setdefault(sid, []).append(r)
+
+        for sid, rs in by_sid.items():
+            # Determina stato finale: preferisci buy/sell su dry_run e skipped
+            priority = {"sent": 5, "confirmed": 5, "failed_onchain": 4,
+                        "error": 3, "stuck": 3, "skipped": 2, "dry_run": 1}
+            best = max(rs, key=lambda r: priority.get(r.get("status",""), 0))
+            action = best.get("action", "")
+            status = best.get("status", "")
+            note   = best.get("note", "") or ""
+
+            # PnL da nota "pnl=+X$"
+            pnl_exec = None
+            for r in rs:
+                n = r.get("note","") or ""
+                if "pnl=" in n:
+                    try:
+                        pnl_exec = float(n.split("pnl=")[1].split("USDC")[0].split("$")[0])
+                    except Exception:
+                        pass
+
+            # Motivo leggibile
+            why = ""
+            for key, label in _WHY.items():
+                if key in note:
+                    why = label
+                    break
+            if not why and "entry_drop=" in note:
+                try:
+                    drop = note.split("entry_drop=")[1].split(">")[0]
+                    why = f"Prezzo calato {drop} prima dell'entry"
+                except Exception:
+                    why = "Prezzo calato prima dell'entry"
+            if not why and "live_liq=" in note and "<10k" in note:
+                try:
+                    liq_val = note.split("live_liq=")[1].split("<")[0]
+                    why = f"Liq live {liq_val} < $10k al momento del buy"
+                except Exception:
+                    why = "Liquidità insufficiente al momento del buy"
+            if not why and "entry_drop=" in note:
+                try:
+                    drop = note.split("entry_drop=")[1].split(">")[0]
+                    why = f"Prezzo calato {drop} prima dell'entry"
+                except Exception:
+                    why = "Prezzo calato prima dell'entry"
+            if not why and action in ("buy_skipped", "buy_failed"):
+                why = note[:70] if note else "Motivo sconosciuto"
+            if not why and status == "dry_run":
+                why = "Dry run"
+            if not why and status in ("stuck",):
+                why = "Sell bloccato (3 tentativi falliti)"
+
+            # Tag esito
+            if status in ("sent", "confirmed"):
+                outcome = "exec"
+            elif action in ("buy_failed", "buy_skipped") or status == "error":
+                outcome = "fail"
+            elif status == "stuck":
+                outcome = "stuck"
+            elif status == "dry_run":
+                outcome = "dryrun"
+            else:
+                outcome = "skip"
+
+            # Token address dalla riga buy (per bottone copia in dashboard)
+            tok_addr = ""
+            for r in rs:
+                candidate = r.get("token_address", "") or ""
+                if candidate and len(candidate) > 10:
+                    tok_addr = candidate
+                    break
+
+            result[sid] = {
+                "chain": chain, "status": status, "action": action,
+                "note": note, "why": why, "outcome": outcome, "pnl_exec": pnl_exec,
+                "token_address": tok_addr,
+            }
+
+    _parse_csv(REAL_EXEC_CSV, "solana")
+    _parse_csv(BASE_EXEC_CSV, "base")
+    return result
+
+
+def _build_executor_section(all_states: dict, executor_map: dict) -> str:
+    """Sezione HTML: confronto Simulator vs Executor per tutti i sistemi."""
+    OUTCOME_LABEL = {
+        "exec":   ("✅", "#3fb950", "Eseguito"),
+        "dryrun": ("🔵", "#58a6ff", "Dry run"),
+        "fail":   ("❌", "#f85149", "Skip/Fail"),
+        "stuck":  ("🔒", "#e3b341", "Sell bloccato"),
+        "skip":   ("⚠️",  "#e3b341", "Skip"),
+        "unseen": ("❓", "#8b949e", "Non raggiunto"),
+    }
+    SYS_COLORS = {
+        "pump_grad": "#f0883e", "mirror": "#bc8cff", "defi": "#1f6feb",
+        "v3": "#e3b341", "v3_large": "#a371f7", "midcap": "#3fb950",
+        "pre_grad": "#58a6ff", "defi_v3": "#39c5cf",
+    }
+
+    # Tutti i sistemi, ordina per ts decrescente
+    candidates = sorted(
+        all_states.items(),
+        key=lambda x: x[1].get("ts", ""), reverse=True
+    )[:300]  # ultimi 300
+
+    rows_html = []
+    rug_count = 0
+    for sid, s in candidates:
+        sym      = s.get("token_symbol", "?")
+        sys_name = s.get("system", "?")
+        chain    = (s.get("chain") or "solana").lower()
+        chain_c  = "🟣" if chain == "solana" else "🔵"
+        remaining = float(s.get("remaining", "0") or 0)
+        pnl_s    = float(s.get("pnl_eur", "0").replace("+","") or 0)
+        exit_r   = s.get("exit_reason", s.get("action","?"))
+        is_open  = remaining > 0
+        sc       = SYS_COLORS.get(sys_name, "#8b949e")
+
+        pnl_color = "#3fb950" if pnl_s > 0 else ("#f85149" if pnl_s < 0 else "#8b949e")
+        sim_str   = ("OPEN" if is_open else f"{pnl_s:+.0f}€")
+        sim_color = "#8b949e" if is_open else pnl_color
+
+        ex = executor_map.get(sid)
+        if ex is None:
+            oc = "unseen"
+            why = "Non raggiunto dall'executor"
+            pnl_ex_str = "—"
+        else:
+            oc  = ex["outcome"]
+            why = ex["why"] or ex["note"][:70]
+            pe  = ex.get("pnl_exec")
+            pnl_ex_str = f"{pe:+.1f}$" if pe is not None else ("OPEN" if oc in ("exec","dryrun") else "—")
+
+        icon, oc_color, oc_label = OUTCOME_LABEL.get(oc, ("❓","#8b949e","?"))
+
+        # Rugpull detection:
+        # 1. Honeypot tax 100%: balance=0_post_swap / honeypot_sell_lock
+        # 2. Sell stuck dopo buy (LP rimossa dopo acquisto)
+        # 3. Sim mostra liq_collapse con pnl vicino a 0 (pool drenata subito)
+        # 4. Hard_sl estremo (>-90%): probabile rug istantaneo
+        _is_rug = False
+        _rug_type = ""
+        ex_note = (ex or {}).get("note", "") or ""
+        if "honeypot_sell_lock" in ex_note or "honeypot_sell_lock" in why:
+            _is_rug = True; _rug_type = "honeypot (sell bloccato)"
+        elif "balance=0_post_swap" in ex_note or "balance=0_post_swap" in why:
+            _is_rug = True; _rug_type = "honeypot (tax 100%)"
+        elif oc == "stuck":
+            _is_rug = True; _rug_type = "sell stuck (LP rimossa?)"
+        elif exit_r in ("liq_collapse",) and not is_open and pnl_s < 5:
+            _is_rug = True; _rug_type = "liq_collapse senza profitto"
+        elif exit_r in ("hard_sl",) and pnl_s < -80:
+            _is_rug = True; _rug_type = "hard_sl estremo (rug istantaneo)"
+
+        if _is_rug:
+            rug_count += 1
+        rug_flag = "1" if _is_rug else "0"
+        rug_cell = (
+            f'<span style="color:#f85149;font-weight:600;font-size:.8rem">🔴 {_rug_type}</span>'
+            if _is_rug else
+            '<span style="color:#3fb950;font-size:.8rem">✅ no</span>'
+        )
+
+        try:
+            parts = sid.rsplit("_", 2)
+            d, t = parts[-2], parts[-1]
+            sig_ts = f"{d[6:8]}/{d[4:6]} {t[:2]}:{t[2:4]}"
+        except Exception:
+            sig_ts = ""
+
+        # Token address: da executor_map o da all_states (pair_address come fallback)
+        tok_addr = (ex or {}).get("token_address", "") or s.get("token_address", "") or ""
+        copy_btn = (
+            f'<button onclick="navigator.clipboard.writeText(\'{tok_addr}\');this.textContent=\'✓\';'
+            f'setTimeout(()=>this.textContent=\'⧉\',1200)" '
+            f'style="background:none;border:1px solid #30363d;border-radius:3px;color:#8b949e;'
+            f'cursor:pointer;font-size:.65rem;padding:0 3px;margin-left:4px" title="{tok_addr}">⧉</button>'
+            if tok_addr else ""
+        )
+        rows_html.append(
+            f'<tr class="exrow" data-chain="{chain}" data-oc="{oc}" data-sys="{sys_name}" data-rug="{rug_flag}">'
+            f'<td style="font-weight:600">{sym}{copy_btn} '
+            f'<span style="font-size:.7rem;color:#484f58">{sig_ts}</span><br>'
+            f'<span class="tag" style="background:{sc}22;color:{sc};font-size:.65rem">{sys_name.upper()}</span></td>'
+            f'<td style="color:#8b949e;font-size:.8rem">{chain_c} {chain}</td>'
+            f'<td style="color:{sim_color};font-weight:600">{sim_str}</td>'
+            f'<td style="color:#8b949e;font-size:.78rem">{exit_r[:18]}</td>'
+            f'<td style="color:{oc_color};font-weight:600">{icon} {oc_label}</td>'
+            f'<td style="color:#8b949e;font-size:.78rem">{pnl_ex_str}</td>'
+            f'<td>{rug_cell}</td>'
+            f'<td style="color:#484f58;font-size:.75rem;max-width:200px">{why}</td>'
+            f'</tr>'
+        )
+
+    rows_str = "\n".join(rows_html)
+    total    = len(candidates)
+    exec_n   = sum(1 for sid, _ in candidates if executor_map.get(sid, {}).get("outcome") == "exec")
+    dry_n    = sum(1 for sid, _ in candidates if executor_map.get(sid, {}).get("outcome") == "dryrun")
+    fail_n   = sum(1 for sid, _ in candidates if executor_map.get(sid, {}).get("outcome") in ("fail","skip"))
+    stuck_n  = sum(1 for sid, _ in candidates if executor_map.get(sid, {}).get("outcome") == "stuck")
+    unseen_n = total - exec_n - dry_n - fail_n - stuck_n
+
+    sys_present = sorted({s.get("system","?") for _, s in candidates if s.get("system")})
+    sys_btns = ''.join(
+        f'<button class="filter-btn" onclick="exFilterSys(this,\'{sy}\')" '
+        f'style="color:{SYS_COLORS.get(sy,"#8b949e")}">{sy.upper()}</button>'
+        for sy in sys_present
+    )
+
+    return (
+        f'<div class="section-title">⚡ Executor vs Simulator — tutti i sistemi</div>\n'
+        f'<div style="margin:6px 0 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">\n'
+        f'  <span style="color:#8b949e;font-size:.75rem">Sistema:</span>\n'
+        f'  <div class="btn-grp">\n'
+        f'    <button class="filter-btn active" onclick="exFilterSys(this,\'\')">Tutti</button>\n'
+        f'    {sys_btns}\n'
+        f'  </div>\n'
+        f'</div>\n'
+        f'<div style="margin:0 0 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">\n'
+        f'  <span style="color:#8b949e;font-size:.75rem">Chain:</span>\n'
+        f'  <div class="btn-grp">\n'
+        f'    <button class="filter-btn active" onclick="exFilterChain(this,\'\')">Tutti</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterChain(this,\'solana\')">🟣 Solana</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterChain(this,\'base\')">🔵 Base</button>\n'
+        f'  </div>\n'
+        f'  <span style="color:#8b949e;font-size:.75rem;margin-left:8px">Esito:</span>\n'
+        f'  <div class="btn-grp">\n'
+        f'    <button class="filter-btn active" onclick="exFilterOc(this,\'\')">Tutti ({total})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterOc(this,\'exec\')" style="color:#3fb950">✅ Eseguito ({exec_n})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterOc(this,\'dryrun\')" style="color:#58a6ff">🔵 Dry run ({dry_n})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterOc(this,\'fail skip\')" style="color:#f85149">❌ Skip/Fail ({fail_n})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterOc(this,\'stuck\')" style="color:#e3b341">🔒 Stuck ({stuck_n})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterOc(this,\'unseen\')" style="color:#8b949e">❓ Non raggiunto ({unseen_n})</button>\n'
+        f'  </div>\n'
+        f'  <span style="color:#8b949e;font-size:.75rem;margin-left:8px">Rugpull:</span>\n'
+        f'  <div class="btn-grp">\n'
+        f'    <button class="filter-btn active" onclick="exFilterRug(this,\'\')">Tutti</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterRug(this,\'1\')" style="color:#f85149">🔴 Rug ({rug_count})</button>\n'
+        f'    <button class="filter-btn" onclick="exFilterRug(this,\'0\')" style="color:#3fb950">✅ Legit</button>\n'
+        f'  </div>\n'
+        f'</div>\n'
+        f'<div class="wrap"><table id="extable">\n'
+        f'  <thead><tr>\n'
+        f'    <th>Token / Sistema</th><th>Chain</th>'
+        f'    <th>Sim PnL</th><th>Sim exit</th>'
+        f'    <th>Executor</th><th>Exec PnL</th>'
+        f'    <th>Rugpull?</th><th>Perché</th>\n'
+        f'  </tr></thead>\n'
+        f'  <tbody id="extbody">{rows_str}</tbody>\n'
+        f'</table></div>\n'
+        f'<script>\n'
+        f'var _exChain="", _exOc="", _exSys="", _exRug="";\n'
+        f'function exFilterSys(btn,v){{_exSys=v;\n'
+        f'  btn.closest(".btn-grp").querySelectorAll("button").forEach(b=>b.classList.remove("active"));\n'
+        f'  btn.classList.add("active"); _exApply();}}\n'
+        f'function exFilterRug(btn,v){{_exRug=v;\n'
+        f'  btn.closest(".btn-grp").querySelectorAll("button").forEach(b=>b.classList.remove("active"));\n'
+        f'  btn.classList.add("active"); _exApply();}}\n'
+        f'function exFilterChain(btn,v){{_exChain=v;\n'
+        f'  btn.closest(".btn-grp").querySelectorAll("button").forEach(b=>b.classList.remove("active"));\n'
+        f'  btn.classList.add("active"); _exApply();}}\n'
+        f'function exFilterOc(btn,v){{_exOc=v;\n'
+        f'  btn.closest(".btn-grp").querySelectorAll("button").forEach(b=>b.classList.remove("active"));\n'
+        f'  btn.classList.add("active"); _exApply();}}\n'
+        f'function _exApply(){{\n'
+        f'  document.querySelectorAll("#extbody .exrow").forEach(r=>{{\n'
+        f'    var c=r.dataset.chain, o=r.dataset.oc, sy=r.dataset.sys, rg=r.dataset.rug;\n'
+        f'    var okC=!_exChain||c===_exChain;\n'
+        f'    var okO=!_exOc||_exOc.split(" ").some(v=>o===v);\n'
+        f'    var okS=!_exSys||sy===_exSys;\n'
+        f'    var okR=!_exRug||rg===_exRug;\n'
+        f'    r.style.display=(okC&&okO&&okS&&okR)?"":"none";\n'
+        f'  }});\n'
+        f'}}\n'
+        f'</script>\n'
+    )
+
+
 def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = None,
                      v3_routed: set = None):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -4144,6 +4459,19 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'</div>'
         )
 
+    def _copy_btn(sid):
+        """Bottone ⧉ che copia il token_address in clipboard."""
+        addr = (_ex_map.get(sid) or {}).get("token_address", "")
+        if not addr:
+            return ""
+        return (
+            f'<button onclick="navigator.clipboard.writeText(\'{addr}\');'
+            f'this.textContent=\'✓\';setTimeout(()=>this.textContent=\'⧉\',1200)" '
+            f'style="background:none;border:1px solid #30363d;border-radius:3px;'
+            f'color:#8b949e;cursor:pointer;font-size:.65rem;padding:0 3px;margin-left:3px" '
+            f'title="{addr}">⧉</button>'
+        )
+
     # ── Righe tabella aperte ─────────────────────────────────────────────────
     def open_row(sid, s):
         sys_name       = _disp_sys(sid, s)
@@ -4230,7 +4558,8 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             if "shadow=true" in note else ""
         return (
             f'<tr class="orow"{opacity} {data_attrs}>'
-            f'<td><a href="{dex_link}" target="_blank" style="color:#58a6ff;font-weight:600">{sym}</a>{shadow_tag}'
+            f'<td><a href="{dex_link}" target="_blank" style="color:#58a6ff;font-weight:600">{sym}</a>'
+            f'{_copy_btn(sid)}{shadow_tag}'
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
             f'<br><span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
@@ -4306,7 +4635,7 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'data-exitts="{exit_ts_epoch:.0f}" data-sys="{sys_name}" '
             f'data-chain="{chain_c}" data-exitr="{exit_r}" data-shadow="{shadow_flag}" '
             f'data-pnl="{pnl:.2f}" data-pct="{chg:.2f}" data-win="{win_flag}" data-token="{sym_lower}">'
-            f'<td style="font-weight:600">{sym}{shadow_tag} '
+            f'<td style="font-weight:600">{sym}{_copy_btn(sid)}{shadow_tag} '
             f'<span class="dup-badge" data-sym="{sym_lower}"></span>'
             f'<span class="tag" style="background:{sc}22;color:{sc}">{_SYS_LABELS.get(sys_name, sys_name.upper())}</span>'
             f'{entry_tag}</td>'
@@ -4319,6 +4648,9 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
             f'<td style="font-size:.75rem;color:#484f58">{note[:70] if shadow_flag else note[:40]}</td>'
             f'</tr>'
         )
+
+    # Carica executor map una volta — usato da open_row, closed_row e executor_section
+    _ex_map = _load_executor_map()
 
     open_rows   = "".join(open_row(sid, s) for sid, s in open_list)
     closed_rows = "".join(closed_row(sid, s) for sid, s in closed_list)
@@ -4498,7 +4830,8 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  </tr></thead>\n'
         f'  <tbody id="tbody">{open_rows}</tbody>\n'
         f'</table></div>\n'
-        f'<div class="section-title">Trade chiusi (<span id="vis_c">—</span> visibili su {len(closed_list)})</div>\n'
+        + _build_executor_section(all_states, _ex_map)
+        + f'<div class="section-title">Trade chiusi (<span id="vis_c">—</span> visibili su {len(closed_list)})</div>\n'
         f'<div class="wrap"><table>\n'
         f'  <thead><tr>\n'
         f'    <th class="sortable" data-sortcol="token" onclick="sortTable(\'token\',\'ctbody\')">'

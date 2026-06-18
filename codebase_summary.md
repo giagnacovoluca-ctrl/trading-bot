@@ -1,5 +1,132 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-18 pomeriggio (DRY MODE PREFLIGHT + RUGPULL DASHBOARD + COPIA ADDRESS):
+
+**base_executor.py** — Preflight checks ora girano anche in dry mode:
+  Tutti i check read-only (no_route, live_liq<$10k, reserves, honeypot sell_lock) sono stati
+  spostati PRIMA del blocco `if not _is_dry()` → in dry mode il dashboard mostra `honeypot_sell_lock`,
+  `live_liq<10k`, `reserves_check_failed` invece di mostrare tutto come `🔵 Dry run`.
+  `_reserves_min_out` calcolato da getReserves (V2 formula) protegge anche in live.
+  Honeypot sell simulation usa `acc.address` se disponibile, altrimenti indirizzo dummy.
+
+**trade_simulator.py** — Sezione Executor vs Simulator espansa:
+  - Tutti i sistemi (rimosso filtro pump_grad/mirror → ora mostra defi, v3, midcap, ecc.)
+  - Filtri aggiuntivi: Sistema (bottoni per ogni sistema presente), Rugpull (🔴/✅)
+  - **Colonna Rugpull**: detecta automaticamente 4 pattern:
+      `honeypot (tax 100%)` → note=balance=0_post_swap
+      `honeypot (sell bloccato)` → note=honeypot_sell_lock
+      `sell stuck (LP rimossa?)` → outcome=stuck
+      `liq_collapse senza profitto` → exit=liq_collapse + pnl<5€
+  - **Bottone ⧉** copia token_address in clipboard (cambia in ✓ per 1.2s per conferma)
+  - `_load_executor_map` salva anche `token_address` dal CSV executor
+  - Nuovi `_WHY` mappings: balance=0_post_swap, honeypot_sell_lock, reserves_check_failed,
+    live_liq<10k, via_pumpswap
+
+**Tipi di rug identificati (Base LIQ):**
+  - Tipo 1 (honeypot tax): buy ok, tokens=0 ricevuti (100% transfer fee). Bloccato da min_out>0.
+  - Tipo 2 (sell_lock): buy ok, tokens ricevuti, sell reverta (contratto blocca il sell).
+    Bloccato da honeypot sell simulation (eth_call prima del buy).
+  - Tipo 3 (LP removal): buy ok, sell ok al momento della sim, poi deployer rimuove LP.
+    NON bloccabile senza timing analysis. Visibile nel dashboard come liq_collapse senza profitto.
+  - Tipo 4 (pool drenata): pool con liq>$25k rilevata, LP drenata prima del buy.
+    Bloccato da live_liq<$10k check (getReserves prima dello swap).
+
+**Stato live**: BASE_LIQ_LIVE=false (dry mode). Prima di tornare live verificare
+  che i preflight in dry mode non mostrino pattern di rug nella dashboard.
+
+Aggiornato: 2026-06-18 notte (LIQ MONITOR WS + SWAP REVERT CHECK + LATENCY FIX):
+
+**liquidity_event_monitor.py** — WebSocket on-chain Base V2 factory (latenza ~2s):
+  Aggiunto thread daemon `_start_base_ws_thread()` che sottoscrive `PairCreated` dal
+  factory Uniswap V2 su Base via Alchemy WebSocket (`wss://`).
+  Flusso: PairCreated → poll `getReserves` ogni 2s fino a liquidità >0 (max 30s) →
+  calcola liq_usd = 2 × WETH_reserves × WETH_USD → emette segnale se >$25k.
+  Parallelo al polling GeckoTerminal (che resta per Solana e come fallback Base).
+  Zero API extra: 1 connessione WebSocket persistente + 3 RPC call per pool trovata.
+  Limite: pool con liquidità aggiunta >30s dopo deploy → catturata da GT poll a 30s.
+
+  Costanti: `_UNIV2_FACTORY_B`, `_PAIR_CREATED_SIG`, `_ABI_UNIV2_PAIR`, `_ABI_ERC20_SYM`
+  Funzioni: `_get_weth_usd_cached()`, `_handle_pair_created()`, `_ws_base_factory()`,
+            `_start_base_ws_thread()`
+
+**base_executor.py** — receipt status check su tutti e 3 i router:
+  `_swap_v3/aero/v2` ora controllano `receipt.status == 0` (TX revertita on-chain)
+  → ritornano None invece di restituire il tx_hash. Prima: swap revertito veniva
+  loggato come "sent" e la posizione aperta nel real_state senza token reali.
+  `execute_buy`: guard `if tokens_est <= 0 after swap → log failed_onchain, return False`.
+  Causa reale IMPECCABLE: swap a 08:55 (20min dopo segnale) su pool già esaurita.
+
+**trade_simulator.py** — REFRESH_SEC 30→10s:
+  Riduce latenza simulator→executor da 0-30s a 0-10s. Nessuna chiamata API aggiuntiva.
+
+**Architettura latenza LIQ Base post-fix**:
+  PairCreated WS (~2s) + simulator (0-10s) + base_executor (0-5s) = ~7s media
+  vs precedente: GeckoTerminal poll (0-30s) + simulator (0-30s) + executor (0-5s) = ~32s
+
+Aggiornato: 2026-06-18 sera (BASE EXECUTOR V2 + MAX_POS FIX + LOG CLEANUP):
+
+**base_executor.py** — 4 fix aggiuntivi (dopo attivazione BASE_LIQ_LIVE):
+  1. **Uniswap V2 su Base**: aggiunto supporto completo (IMPECCABLE/Verity/grantr/RoboCo erano
+     su V2, non su V3/Aerodrome → "no_route"). Nuovi: `UNIV2_ROUTER`, `UNIV2_FACTORY`,
+     `_ABI_UNIV2_ROUTER`, `_ABI_UNIV2_FACTORY`, `_swap_v2()`.
+     `_find_pool` ora cerca V3 → Aerodrome → **V2** in sequenza.
+     Routing buy/sell: `pool_type=="univ2"` usa V2 Router, altrimenti Aerodrome.
+  2. **Quote WETH-only**: `_find_pool` cerca solo pool WETH/token (rimosso USDC da `quotes`).
+     Ragione: il wallet usa sempre WETH come quote (ETH wrappato). Pool USDC non sono
+     tradabili con swap diretto WETH→token. Buy: ETH→wrap→WETH→token. Sell: token→WETH.
+  3. **MAX_POS conta solo posizioni LIVE**: `open_pos` filtra `entry_tx != "DRY_RUN"`.
+     Prima: le vecchie posizioni DRY_RUN (Monid/RELIQT/RVT) bloccavano tutti i nuovi
+     trade live perché riempivano MAX_POS=3.
+  4. **`_read_sim_pnl(signal_id)`**: legge pnl_eur dall'ultima riga closed del simulatore
+     per calcolare PnL realistico in DRY_RUN invece di chiudere sempre a -100%.
+
+**trade_simulator.py** — sezione Executor vs Simulator spostata:
+  Ora appare TRA "Posizioni aperte" e "Trade chiusi" (non in fondo dopo 2500+ righe).
+
+**Semantica DEX Base**:
+  I nuovi pool LIQ su Base (<5min) sono prevalentemente su Uniswap V2, NON su V3/Aerodrome.
+  DexScreener: `dexId=uniswap, labels=['v2']`. Il base_executor ora li gestisce correttamente.
+
+Aggiornato: 2026-06-18 (BASE LIQ LIVE + PUMPSWAP FALLBACK + FIX EXECUTOR + DASHBOARD):
+
+**solana_executor.py** — PumpSwap fallback per `no_route_raydium_jupiter`:
+  quando Jupiter non trova route per LIQ_*/pump_grad (pool <5min non ancora indicizzata),
+  prova PumpSwap SDK on-chain come fallback. DRY_RUN: simula con `entry_price` dal segnale.
+  LIVE: chiama `_pumpswap_buy(token_address, sol_amount)`. Note=`via_pumpswap` nel log.
+
+**base_executor.py** — 5 fix:
+  1. `_is_dry(signal_id)`: per-signal DRY_RUN — LIQ_* vanno live se `BASE_LIQ_LIVE=true`,
+     tutto il resto segue `BASE_DRY_RUN` globale.
+  2. `tp1 frac from remaining`: legge `remaining` dal CSV per sapere se vendere 50% o 100%
+     (pump_grad tp1_fraction=1.0 → remaining=0 → vende tutto).
+  3. `_read_sim_pnl(signal_id)`: helper che legge pnl_eur dall'ultima riga chiusa del
+     simulatore → usato per calcolare PnL realistico in DRY_RUN (invece di sempre -100%).
+  4. `_ensure_approval`: rimosso guard `return DRY_RUN` (dead code nei blocchi live).
+  5. Banner avvio: mostra `LIQ_* = 🟢 LIVE | altri = 🔵 dry_run` invece di solo `DRY_RUN=True`.
+
+**trade_simulator.py** — 5 fix:
+  1. `exit_reason="tp1"` quando `remaining<=0` al tp1 (invece di "open" fuorviante).
+     Prima causa dashboard gonfiato e analisi PnL errata (double-count +2315€).
+  2. `vol_h1<5k` filter: esentato per `chain=="base"` (pool nuovissime <2min, vol=0 sempre).
+  3. Skip logs pump_grad (liq<25k, vol<5k, chg>80%) abbassati da INFO→DEBUG.
+  4. Nuova sezione dashboard "⚡ Executor vs Simulator": cross-reference simulatore vs
+     executor CSV con filtri chain (Solana/Base) ed esito (Exec/DryRun/Skip/Stuck/NonRaggiunto).
+     Funzioni: `_load_executor_map()`, `_build_executor_section()`, costante `BASE_EXEC_CSV`.
+  5. `BASE_EXEC_CSV` aggiunto come costante path.
+
+**defi_optimized.py**: `_blacklist_token` log INFO→DEBUG; `_check_followup_blacklist` aggiunge
+  summary "N token blacklistati da followup" invece di stampare ogni token singolarmente.
+
+**run.py**: `logging.getLogger("websocket").setLevel(WARNING)` — silenzia dump header HTTP
+  completi su ogni 429 dal websocket-client library.
+
+**executor/.env**: `BASE_LIQ_LIVE=true`, `BASE_TRADE_SIZE_ETH=0.002` (~$3.46, 8% capitale),
+  `BASE_MAX_OPEN_POSITIONS=3`.
+
+**codebase_summary.md**: aggiunta sezione 2b "Semantica dei Dati" con tutti gli edge case
+  critici che causano analisi errate (exit_reason="open"+remaining=0, tp1_fraction, shadow
+  outliers, base DRY_RUN -100%, vol_h1 Base esenzione). Leggere prima di analizzare CSV.
+
 Aggiornato: 2026-06-17 sera-9 (FILTRO chg1h>20% → chg1h>80% su shadow backtest:
 1084 shadow trade analizzati — chg1h>20% bloccava trade con PF=4.54 (WR 64%, avg +52%).
 Bucket 20-50%: PF=7.22 ottimale. Soglia alzata a 80% in trade_simulator, publisher,
@@ -398,15 +525,104 @@ unique_tokens_traded/days_since_last_trade=999 sempre per tutti i wallet
 
 | Chain   | Scanner          | Simulator | Executor reale |
 |---------|------------------|-----------|----------------|
-| Solana  | defi_optimized + gemmeV3 | ✅ | ⛔ disabilitato (EXECUTOR_CHAINS=base) |
-| Base    | defi_optimized + gemmeV3 | ✅ | ✅ base_executor live (BASE_DRY_RUN=false) |
+| Solana  | defi_optimized + gemmeV3 + liq_monitor | ✅ | 🔵 dry_run (tutte le strategie) |
+| Base    | defi_optimized + gemmeV3 + liq_monitor | ✅ | ✅ **LIQ_* LIVE** (BASE_LIQ_LIVE=true), altri dry_run |
 | BSC     | disabilitato     | log storico | bsc_executor (inattivo) |
 | ETH     | disabilitato     | log storico | — |
 
-**EXECUTOR_CHAINS** in executor/.env: controlla quali executor avviano in run.py.
-**BASE_TRADE_SIZE_ETH=0.006** (~$15 a ~$2500/ETH), **BASE_MAX_OPEN_POSITIONS=3**
+**EXECUTOR_CHAINS** in executor/.env: `base,solana`
+**BASE_LIQ_LIVE=true** → solo segnali `LIQ_*` su Base vanno live, tutto il resto dry_run.
+**BASE_TRADE_SIZE_ETH=0.002** (~$3.46 a ~$1728/ETH), **BASE_MAX_OPEN_POSITIONS=3**
+**TRADE_SIZE_USDC=5** (Solana, pump_grad dry_run)
 
 **ALLOWED_CHAINS** in trade_simulator: `{"solana", "base"}`
+
+---
+
+## 2b. Semantica dei Dati — Leggere PRIMA di analizzare qualsiasi CSV
+
+> **Regola**: questi edge case non sono ovvi dal nome delle colonne. Ignorarli produce analisi completamente sbagliate (es. -1071€ calcolato come +394€ reale).
+
+### `live_trades.csv` — colonne critiche
+
+| Colonna | Valore | Significato reale |
+|---|---|---|
+| `exit_reason` | `"open"` + `remaining=0` | **Trade CHIUSO al TP1 (100%)** — NON posizione aperta. Tipico di pump_grad/pre_grad/mirror con `tp1_fraction=1.0`. Il campo è scritto sempre "open" al tp1, ma se `remaining=0` il trade è finito. |
+| `exit_reason` | `"open"` + `remaining=0.5` | Trade parzialmente chiuso (tp1 50%), **ancora in trailing**. Corretto come "aperto". |
+| `pnl_eur` (righe `tp1` con remaining>0) | es. `+15.00` | PnL **parziale** (solo la metà chiusa). NON è il pnl finale del trade. Il pnl finale è nella riga `trail_exit`/`hard_sl` successiva. |
+| `pnl_eur` (riga finale, remaining=0) | es. `+23.48` | PnL **totale** del trade, comprensivo del tp1 parziale. Usare SOLO questa riga. |
+| `remaining` | `0.0` | Posizione chiusa al 100% |
+| `remaining` | `0.5` | 50% venduto (tp1 parziale), 50% ancora aperto |
+| `action=skip_stale` | pnl=0 | Segnale mai entrato (prezzo già sceso pre-entry). **NON è una loss.** Escludere da WR/PnL. |
+
+**Come calcolare PnL corretto per signal_id:**
+```python
+# CORRETTO: ultima riga con remaining <= 0
+closed = [r for r in by_sid[sid] if float(r.get('remaining','1') or 1) <= 0.001]
+# SBAGLIATO: somma di tutte le righe → double-count del tp1 (+2315€ inflazione su pump_grad)
+```
+
+### `tp1_fraction` per sistema — comportamento TP1
+
+| Sistema | `tp1_fraction` | Comportamento al TP1 |
+|---|---|---|
+| `pump_grad`, `pre_grad`, `mirror`, `base_pump` | **1.00** | Vende **100%** al TP1. `remaining=0`, `exit_reason="open"` (edge case). Trade completamente chiuso dopo tp1. |
+| `defi`, `v3`, `v3_large`, `v3_midcap`, `midcap` | **0.50** | Vende 50% al TP1, il 50% resta in trailing. `remaining=0.5`, `exit_reason="open"`. Attende trail_exit/hard_sl. |
+
+### `pump_grad_shadow.csv` — shadow tracking filtri
+
+Righe scritte per ogni segnale **scartato** dai filtri (liq<25k, vol_h1<5k, chg1h>80%, liq_queue). Serve per analisi controfattuale.
+
+- `exit_pct` di righe `liq_queue` con valori >10000% → **artefatti** (oracle price anomalo su pool nascente). Cappare a 500% per analisi pulita.
+- `duration_min < 1` per la maggior parte delle righe: shadow risolto al primo fetch dopo la registrazione.
+- WR/PF calcolati sulle shadow **NON sono performance reali** — i token erano troppo nuovi per avere dati affidabili.
+
+### `base_executions.csv` — DRY_RUN
+
+- `tokens_amount=0.000000` in tutte le righe DRY_RUN → **artefatto**: in dry_run non eseguiamo lo swap, quindi non leggiamo il balance reale.
+- `real_pnl_usdc=-99.9998` nel `base_real_state.json` per DRY_RUN → **falso negativo**: il sell fires con `tokens_held=0` → chiude a -100%. In LIVE mode il saldo viene letto on-chain e il pnl è corretto.
+- Per valutare la performance Base LIQ usare `live_trades.csv` (simulatore), NON `base_real_state.json`.
+
+### `real_executions.csv` — Solana executor
+
+| `action` | `status` | Significato |
+|---|---|---|
+| `buy` | `dry_run` | Simulazione (nessun token reale) |
+| `buy` | `sent` / `confirmed` | **Trade reale eseguito** |
+| `buy_failed` | `error` | Route non trovata (Jupiter/Raydium) |
+| `buy_skipped` | `skipped` | Bloccato da rugcheck o entry_drop |
+| `hard_sl_stuck` / `liq_collapse_stuck` | `stuck` | Sell tentato 3 volte, fallito — posizione bloccata on-chain |
+
+### Filtri pump_grad — esenzioni per chain
+
+| Filtro | Solana | Base |
+|---|---|---|
+| `liq < $25k` | ❌ skip | ❌ skip |
+| `chg_1h > 80%` | ❌ skip | ❌ skip |
+| `vol_h1 < $5k` | ❌ skip | ✅ **passa** (pool nuovissime <2min, vol=0 per definizione) |
+
+### DEX su Base — routing executor
+
+| DEX | `pool_type` | Router | Swap function |
+|---|---|---|---|
+| Uniswap V3 | `"v3"` | `0x2626...` | `_swap_v3()` (exactInputSingle) |
+| Aerodrome | `"v2"` | `0xcF77...` | `_swap_aero()` (routes tuple) |
+| **Uniswap V2** | **`"univ2"`** | **`0x4752...`** | **`_swap_v2()`** (path array) |
+
+**Nota critica**: i nuovi pool LIQ su Base (<5min) sono **prevalentemente su Uniswap V2**,
+non su V3/Aerodrome (DexScreener: `dexId=uniswap, labels=['v2']`).
+`_find_pool` cerca in ordine V3 → Aerodrome → V2, solo pool **WETH/token** (no USDC).
+Il wallet opera sempre in WETH: buy `ETH→wrap→WETH→token`, sell `token→WETH`.
+Le posizioni DRY_RUN **non contano** verso `MAX_POS` (filtra `entry_tx != "DRY_RUN"`).
+
+**Pipeline segnali LIQ Base** (dopo WS on-chain):
+```
+PairCreated WS (~2s) ─┐
+                       ├→ pump_grad_signals.csv → simulator (0-10s) → base_executor (0-5s)
+GT poll 30s (fallback)─┘
+```
+`PairCreated` scatta al deploy pair (reserves=0). Il monitor fa retry `getReserves`
+ogni 2s (max 30s) fino a weth_raw>0. GeckoTerminal resta per Solana e pool su altri DEX.
 
 ---
 

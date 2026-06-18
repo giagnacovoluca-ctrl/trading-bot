@@ -1,5 +1,5 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE — injective_autopilot
-Aggiornato: 2026-06-10 (sera)
+Aggiornato: 2026-06-17
 
 ## 🔧 Fix 10/06 sera (serve restart main.py)
 - **decision_engine `_build_decision`**: guard ATR freddo — reject se distanza TP
@@ -12,6 +12,35 @@ Aggiornato: 2026-06-10 (sera)
   kill si riattivava al primo check — trappola permanente).
 - **main.py**: FileHandler ancorato al modulo (prima il log finiva in
   ~/Scrivania/code/ per CWD esterna alla repo).
+
+## 🔧 Fix e miglioramenti 17/06
+
+### `funding_farmer.py` (standalone, avviato da `run_loop.sh`)
+- Log su file: `reports/funding_farmer.log` (prima solo stdout, invisibile)
+- Timeout 10s su ogni `fetch_market_snapshot` (`asyncio.wait_for`) — i task gRPC
+  pendenti silenziosamente non bloccano più il ciclo
+- Gestione SIGTERM: `signal.SIGTERM → KeyboardInterrupt` → asyncio.run() esce pulito
+
+### `run_loop.sh`
+- `_farmer_loop`: farmer avviato come `&` + `wait $child_pid`, trap `INT/TERM` → kill
+  figlio ed exit 0 (prima: `while true` senza segnali → farmer sopravviveva a Ctrl+C)
+- Loop main: esce anche su exit 130 (SIGINT) e 143 (SIGTERM), non solo 0 → doppio
+  Ctrl+C ferma tutto senza loop infinito di riavvii
+- Trap `TERM` sul processo padre propaga kill a `$FARMER_PID`
+
+### `core/decision_engine.py` — Adaptive Weight Gating
+- **PRIMA**: pesi adattativi usati SOLO per ordinare i candidati; gate su `raw score`
+  → segnali con peso basso (es. FUNDING_EXTREME 0.746) entravano comunque
+- **ORA**: gate su `weighted_score = raw_score × mean(signal_weights)` — un segnale
+  con peso degradato non supera più `min_confidence`; un segnale con peso alto
+  (VOL_BREAKOUT → 1.5 max) può far passare trade borderline
+- Log arricchito: `rejected: score=0.50×w=0.866=0.433 < 0.45`
+- Log approval: `raw=0.50 weighted=0.433`
+- `scored` tupla ora `(weighted, raw, trigger, reason)` — nessuna doppia chiamata a `_score`
+
+### `data/injective_client.py`
+- Classe si chiama `InjectiveClient` (non `InjClient`) — documentato per evitare
+  import error futuro
 
 ## ⚡ Layer Analytics & Learning (2026-06-10)
 
@@ -26,9 +55,9 @@ analytics/
 ├── adaptive_scorer.py   ← AdaptiveScorer: pesi per segnale via Bayesian
 │                          updating (Beta prior 2,2) + EWMA expectancy su
 │                          rolling window 50. Neutrale sotto 10 attivazioni.
-│                          Pesi clampati [0.5, 1.5]. Applicati SOLO al
-│                          ranking dei candidati (gate su raw score →
-│                          numero di trade invariato).
+│                          Pesi clampati [0.5, 1.5]. ORA usati anche come
+│                          gate (weighted_score = raw × mean_weight ≥
+│                          min_confidence) oltre che per ranking.
 ├── postmortem.py        ← build_postmortem(): R-multiple, hold, MAE/MFE,
 │                          contributi segnali, valutazione statistica auto
 └── audit.py             ← `python -m analytics.audit`: backfill trade↔segnali,

@@ -70,6 +70,8 @@ _fhandler.setFormatter(_fmt)
 # Configura il root logger con force=True (sovrascrive eventuali basicConfig successivi)
 logging.basicConfig(level=logging.INFO, handlers=[_console, _fhandler], force=True)
 log = logging.getLogger("run")
+# Silenzia il logger websocket-client: dumpa header HTTP completi su ogni 429/errore
+logging.getLogger("websocket").setLevel(logging.WARNING)
 
 import trade_simulator as ts
 

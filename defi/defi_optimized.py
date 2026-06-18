@@ -326,7 +326,7 @@ def _blacklist_token(token_address: str, symbol: str = "") -> None:
     expiry = datetime.now() + __import__("datetime").timedelta(hours=hours)
     with _token_cooldown_lock:
         _token_blacklist[token_address] = expiry
-    log.info(f"[blacklist] 🚫 {symbol or token_address[:8]} blacklistato per {hours}h (dump massiccio rilevato)")
+    log.debug(f"[blacklist] 🚫 {symbol or token_address[:8]} blacklistato per {hours}h (dump massiccio rilevato)")
 
 # ── Storico BSR per token (per calcolare un trend "leading", non solo il valore puntuale) ──
 # Struttura: { pair_address: deque[(timestamp_unix, buy_sell_ratio_1h)] }
@@ -480,9 +480,13 @@ def _check_followup_blacklist() -> None:
                     token_symbol[pair] = sym
                 except ValueError:
                     pass
+        n_new = 0
         for pair, min_chg in token_min_change.items():
             if min_chg <= drop_thresh and not _is_token_blacklisted(pair):
                 _blacklist_token(pair, token_symbol.get(pair, ""))
+                n_new += 1
+        if n_new:
+            log.info(f"[blacklist] {n_new} token blacklistati da followup (drop<{drop_thresh}%)")
     except Exception as e:
         log.warning(f"[blacklist] Errore lettura followup: {e}")
 

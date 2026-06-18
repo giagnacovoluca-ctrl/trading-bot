@@ -636,8 +636,10 @@ def load_real_state() -> dict:
 
 def save_real_state(state: dict):
     try:
-        with open(REAL_STATE_FILE, "w", encoding="utf-8") as f:
+        tmp = REAL_STATE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, default=str)
+        os.replace(tmp, REAL_STATE_FILE)
     except Exception as e:
         log.warning(f"Errore salvataggio real_state: {e}")
     # Rigenera il dashboard HTML dopo ogni salvataggio
@@ -776,22 +778,52 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                 break
             log.warning(f"[BUY] Jupiter tentativo {attempt}: nessun quote (slippage={slippage}bps)")
 
+    # Fallback PumpSwap: pool <5min, non ancora indicizzata da Jupiter
+    # DRY_RUN: simula con prezzo segnale. LIVE: chiama SDK on-chain.
+    _pumpswap_tokens = None
+    _pumpswap_tx_id  = None
     if not _raydium_resp and not quote:
-        log.error(f"[BUY] Nessuna route su Raydium né Jupiter per {token_symbol} ({token_address[:12]}...)")
-        log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
-                       "token_symbol": token_symbol, "action": "buy_failed",
-                       "token_address": token_address, "status": "error",
-                       "note": "no_route_raydium_jupiter"})
-        return False
+        if system == "pump_grad" or signal_id.startswith("LIQ_"):
+            _ps_sol_px = _get_sol_price_usd()
+            if _ps_sol_px > 0:
+                _ps_sol_amt = round(_size_usdc / _ps_sol_px, 6)
+                if dry and entry_price > 0:
+                    _pumpswap_tokens = _size_usdc / entry_price
+                    log.info(f"[BUY] PumpSwap fallback DRY_RUN {token_symbol}: ~{_ps_sol_amt:.4f} SOL")
+                elif not dry:
+                    _ps_r = _pumpswap_buy(token_address, _ps_sol_amt)
+                    if _ps_r:
+                        _pumpswap_tokens = _ps_r["tokens_out"]
+                        _pumpswap_tx_id  = _ps_r["tx_id"]
+                        log.info(f"[BUY] PumpSwap ✓ {token_symbol}: {_pumpswap_tokens:.0f} tokens")
+        if _pumpswap_tokens is None:
+            log.error(f"[BUY] Nessuna route su Raydium né Jupiter né PumpSwap per {token_symbol} ({token_address[:12]}...)")
+            log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                           "token_symbol": token_symbol, "action": "buy_failed",
+                           "token_address": token_address, "status": "error",
+                           "note": "no_route_raydium_jupiter"})
+            return False
+
+    # Calcola decimali sempre (serve per il sell e per real_state)
+    decimals = get_token_decimals(token_address)
 
     # Estrai price_impact e tokens_out dal DEX che ha risposto
-    if _raydium_resp:
+    if _pumpswap_tokens is not None:
+        # PumpSwap SDK ritorna tokens già in unità token (non lamports)
+        price_impact = 0.0
+        tokens_out   = _pumpswap_tokens
+        price_actual = _size_usdc / tokens_out if tokens_out > 0 else 0
+    elif _raydium_resp:
         _rd = _raydium_resp.get("data", {})
         price_impact        = float(_rd.get("priceImpactPct", 0) or 0)
         tokens_out_lamports = int(_rd.get("outputAmount", 0))
+        tokens_out          = tokens_out_lamports / (10 ** decimals)
+        price_actual        = _size_usdc / tokens_out if tokens_out > 0 else 0
     else:
         price_impact        = float(quote.get("priceImpactPct", 0) or 0)
         tokens_out_lamports = int(quote.get("outAmount", 0))
+        tokens_out          = tokens_out_lamports / (10 ** decimals)
+        price_actual        = _size_usdc / tokens_out if tokens_out > 0 else 0
 
     # Verifica price impact
     if price_impact > MAX_PRICE_IMPACT:
@@ -801,12 +833,6 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                        "token_address": token_address, "price_impact_pct": f"{price_impact:.2f}",
                        "status": "skipped", "note": f"price_impact>{MAX_PRICE_IMPACT}%"})
         return False
-
-    # Calcola decimali: sempre via RPC (anche in DRY_RUN) per evitare il bug
-    # 6-vs-9 decimali che gonfia/sgonfia tokens_out di 1000x
-    decimals   = get_token_decimals(token_address)
-    tokens_out = tokens_out_lamports / (10 ** decimals)
-    price_actual  = _size_usdc / tokens_out if tokens_out > 0 else 0
 
     # Filtro prezzo stantio: segnale già dumpato prima dell'acquisto → skip.
     # La soglia è slippage_pct + 12% per escludere la differenza fisiologica
@@ -834,7 +860,12 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
     status  = "dry_run"
 
     if not dry:
-        if _raydium_resp:
+        if _pumpswap_tx_id:
+            # PumpSwap SDK ha già eseguito la TX on-chain
+            tx_hash  = _pumpswap_tx_id
+            provider = "PumpSwap"
+            swap_tx  = None  # già inviata
+        elif _raydium_resp:
             input_ata  = _get_token_ata(keypair_pubkey, USDC_MINT)
             output_ata = _get_token_ata(keypair_pubkey, token_address)  # None se token nuovo → Raydium crea l'ATA
             swap_tx    = raydium_swap_tx(_raydium_resp, keypair_pubkey, input_ata, output_ata)
@@ -851,18 +882,16 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                     swap_tx = jupiter_swap_tx(_fresh_quote, keypair_pubkey)
                     if swap_tx:
                         quote = _fresh_quote
-        if not swap_tx:
-            log.error(f"[BUY] Transazione {provider} non ottenuta per {signal_id}")
-            return False
-        tx_hash = send_transaction(swap_tx)
-        if not tx_hash:
-            log.error(f"[BUY] Invio tx fallito per {signal_id}")
-            return False
+        if not _pumpswap_tx_id:
+            if not swap_tx:
+                log.error(f"[BUY] Transazione {provider} non ottenuta per {signal_id}")
+                return False
+            tx_hash = send_transaction(swap_tx)
+            if not tx_hash:
+                log.error(f"[BUY] Invio tx fallito per {signal_id}")
+                return False
 
-        # Verifica conferma on-chain: controlla il saldo token reale dopo 2s.
-        # Evita posizioni fantasma quando la tx viene rigettata dal programma
-        # (es. slippage exceeded 6001, insufficient funds, ecc.) pur avendo
-        # restituito un hash valido.
+        # Verifica conferma on-chain (Jupiter/Raydium — PumpSwap SDK la verifica internamente)
         time.sleep(2)
         actual_balance = get_token_balance(keypair_pubkey, token_address)
         if actual_balance <= 0:
@@ -915,7 +944,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         "price_impact_pct": f"{price_impact:.2f}",
         "tx_hash":          tx_hash,
         "status":           status,
-        "note":             "",
+        "note":             "via_pumpswap" if _pumpswap_tokens is not None else "",
     })
     return True
 
