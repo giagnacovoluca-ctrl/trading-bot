@@ -64,6 +64,11 @@ PORTFOLIO_DETTAGLIATO.md
 PORTFOLIO_SINTETICO.md
 PITCH_COLLOQUIO.md
 
+# ===== Documenti interni AI =====
+CLAUDE.md
+codebase_summary.md
+opzioni.txt
+
 # ===== Progetti separati (non parte del trading-bot pubblico) =====
 BountyBrain/
 promptwatch/
