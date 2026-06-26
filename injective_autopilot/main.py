@@ -161,6 +161,9 @@ async def run_paper_or_live(mode: str) -> None:
         atr_sl_mult=cfg.atr_sl_multiplier,
         atr_tp_mult=cfg.atr_tp_multiplier,
     )
+    if cfg.skip_tickers:
+        decision_engine.set_skip_tickers(cfg.skip_tickers)
+        log.info("skip_tickers attivi: %s", cfg.skip_tickers)
 
     if mode == "LIVE":
         from paper_trading.engine import PaperTradingEngine

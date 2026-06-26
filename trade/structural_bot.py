@@ -46,6 +46,9 @@ MIN_DYNAMIC_RR         = 4.0        # backtest 10/06 (91 trade, fee taker 0.12% 
 MAX_CONSECUTIVE_LOSSES = 3          # scatta il circuit breaker
 COOLDOWN_BARS          = 60         # alzato 20→60: 5h di pausa dopo circuit breaker (invece di 1h40m)
 ADX_MIN_TREND          = 24         # alzato 22→24: filtra zone di trend marginale
+# 25/06: backtest n=97 — LONG WR=8%, PF=0.27, -9.84€ (zero edge).
+# SHORT WR=46%, PF=1.77, +47€. Disabilitato LONG fino a evidenza contraria.
+ALLOW_LONG             = False
 ATR_MIN_ENTRY          = 65.0       # filtro range compresso: no entry se ATR<65 (evita whipsaw May 31)
 ATR_SL_MULT            = 2.0        # alzato 1.5→2.0: su BTC ATR~45, 1.5× = 67pt troppo stretto per il noise
 SLIPPAGE_PCT           = 0.0002     # 0.02% slippage stimato
@@ -1603,6 +1606,10 @@ def run(executor=None):
                     sig = bounce_signal(df_5m, df_1h, sr_levels, funding_rate, fear_greed)
                     if sig != Signal.HOLD:
                         trade_mode = "bounce"
+                # LONG disabilitato (25/06): WR=8%, PF=0.27, -9.84€ su n=13. Solo SHORT.
+                if sig == Signal.LONG and not ALLOW_LONG:
+                    logging.debug("[HOLD] LONG segnalato ma ALLOW_LONG=False — skip")
+                    sig = Signal.HOLD
                 # ── Hook 4: filtro orario executor (es. 08-22 UTC) ─────────
                 if sig != Signal.HOLD and executor and not executor.can_trade():
                     sig = Signal.HOLD

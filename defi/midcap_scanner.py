@@ -801,8 +801,10 @@ async def _scan_once() -> list[dict]:
         coin_sym = b_sym.replace("/USDT", "")
         cg_data  = valid_cg.get(coin_sym, {})
         result   = analyze_coin(b_sym, ohlcv, cg_data)
+        # hh_hl=True: backtest n=194 — hh_hl=True EV +1.48€/t vs False -0.14€/t
+        # (tot +105€ vs -17€); elimina sl_adaptive su 29/44 casi senza hh_hl
         if (result and result["score"] >= ENRICH_MIN_SCORE and result["direction"] == "LONG"
-                and result["expand_bars"] < MAX_EXPAND_BARS):
+                and result["expand_bars"] < MAX_EXPAND_BARS and result["hh_hl"]):
             candidates.append(result)
 
     candidates.sort(key=lambda x: x["score"], reverse=True)

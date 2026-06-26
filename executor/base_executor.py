@@ -63,9 +63,36 @@ _ROOT = _HERE.parent
 LIVE_CSV           = str(_ROOT / "defi"  / "reports" / "live_trades.csv")
 DEFI_SIGNALS       = str(_ROOT / "defi"  / "reports" / "signals_log.csv")
 V3_SIGNALS         = str(_ROOT / "gemme" / "reports" / "gems_log_v3.csv")
+_HONEYPOT_BL_FILE  = _HERE / "base_honeypot_symbols.json"
 PUMP_GRAD_SIGNALS  = str(_ROOT / "defi"  / "reports" / "pump_grad_signals.csv")
 BASE_STATE_FILE    = str(_HERE / "base_real_state.json")
 BASE_EXEC_CSV      = str(_HERE / "base_executions.csv")
+
+# ---------------------------------------------------------------------------
+# Honeypot symbol blacklist (persistente su disco)
+# ---------------------------------------------------------------------------
+_honeypot_sym_bl: set = set()
+
+def _load_honeypot_bl() -> None:
+    try:
+        data = json.loads(_HONEYPOT_BL_FILE.read_text())
+        _honeypot_sym_bl.update(data)
+        log.info(f"[HONEYPOT_BL] Caricati {len(_honeypot_sym_bl)} simboli blacklistati")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        log.warning(f"[HONEYPOT_BL] Errore caricamento: {e}")
+
+def _add_honeypot_sym(symbol: str) -> None:
+    sym = symbol.strip().lower()
+    if sym in _honeypot_sym_bl:
+        return
+    _honeypot_sym_bl.add(sym)
+    try:
+        _HONEYPOT_BL_FILE.write_text(json.dumps(sorted(_honeypot_sym_bl)))
+    except Exception as e:
+        log.warning(f"[HONEYPOT_BL] Errore salvataggio: {e}")
+    log.info(f"[HONEYPOT_BL] Aggiunto '{symbol}' (tot={len(_honeypot_sym_bl)})")
 
 # ---------------------------------------------------------------------------
 # Config da .env
@@ -612,6 +639,15 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
         log.warning(f"[BUY] {signal_id}: nessun token_address → skip")
         return False
 
+    # Honeypot blacklist: skip immediato senza RPC se il simbolo è noto honeypot
+    if token_symbol.strip().lower() in _honeypot_sym_bl:
+        log.debug(f"[BUY] {token_symbol}: in honeypot_sym_bl — skip")
+        log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                       "token_symbol": token_symbol, "action": "buy_skipped",
+                       "token_address": token_address, "status": "skipped",
+                       "note": "honeypot_sym_blacklisted"})
+        return False
+
     decimals   = _get_decimals(token_address)
     weth_usd   = _get_weth_usd()
 
@@ -699,6 +735,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                         ).call({"from": _sim_from})
                         if not _sell_out or _sell_out[-1] == 0:
                             log.warning(f"[BUY] {token_symbol}: sell simulato=0 (honeypot) — skip")
+                            _add_honeypot_sym(token_symbol)
                             log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                                            "token_symbol": token_symbol, "action": "buy_skipped",
                                            "token_address": token_address, "status": "skipped",
@@ -706,6 +743,7 @@ def execute_buy(signal_id: str, token_symbol: str, token_address: str,
                             return False
                     except Exception:
                         log.warning(f"[BUY] {token_symbol}: sell simulato revertito (honeypot) — skip")
+                        _add_honeypot_sym(token_symbol)
                         log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
                                        "token_symbol": token_symbol, "action": "buy_skipped",
                                        "token_address": token_address, "status": "skipped",
@@ -1231,6 +1269,7 @@ def process_row(row: dict, processed: set, real_state: dict, token_lookup: dict)
 # Main
 # ---------------------------------------------------------------------------
 def main(stop_event=None):
+    _load_honeypot_bl()
     _liq_mode = "🟢 LIVE" if _LIQ_LIVE else "🔵 dry_run"
     _other_mode = "🔵 dry_run" if DRY_RUN else "🟢 LIVE"
     log.info("=" * 60)
@@ -1240,6 +1279,7 @@ def main(stop_event=None):
     log.info(f"  MAX_POS    = {MAX_POS}")
     log.info(f"  SLIPPAGE   = {SLIPPAGE_BPS}bps")
     log.info(f"  RPC        = {BASE_RPC_URL}")
+    log.info(f"  HONEYPOT_BL= {len(_honeypot_sym_bl)} simboli")
     log.info("=" * 60)
 
     if not WEB3_AVAILABLE:

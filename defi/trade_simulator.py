@@ -177,7 +177,12 @@ CONFIGS = {
     # Pattern tipico: graduation pump +50-300% in 1-2h, poi retracement 20-30%
     # Rispetto a defi standard: TP1 più alto, trail più largo, SL leggermente più ampio
     "pump_grad": dict(
-        tp1_pct              = 25.0,   # abbassato 30→25: pre_grad entra a graduation price, +25% più facile da raggiungere
+        # 25/06: backtest n=266 LIQ_ token_outcomes (post-18/06) — median peak=93.3%.
+        # TP1=25%→50%: WR cala solo 65.8%→56.8% (-9pp) ma E[pnl] +6.76€/t vs -0.66€/t.
+        # Il gap 25%-35% è solo 3.8% dei segnali (62.0% vs 65.8%) → quasi nessuna perdita.
+        # shadow liq_queue (liq<25k) mostrava solo 17.9% a 35% — ma LIQ_ >25k pompano molto
+        # di più (mediana 93%). Rivalutare dopo 3 settimane.
+        tp1_pct              = 50.0,
         tp2_pct              = 80.0,
         tp1_fraction         = 1.00,   # vende 100% al tp1: pool liquida al picco, evita trail su pool morte
         tp1_trail_only       = False,  # no trail: uscita unica e pulita
@@ -294,8 +299,13 @@ CONFIGS = {
         # i picchi minori più comuni. Live-monitoring: validare dopo 2-3 settimane.
         trail_activate_pct   = 5.0,
         trail_drop_pct       = 3.0,
-        sl_consecutive_neg   = 5,
-        sl_threshold_pct     = -12.0,
+        # 25/06: backtest n=7 sl_adaptive → tutti usciti tra -12% e -17% (median -12.5%).
+        # CEX daily-candle volatilità ATR >> 12% → sl_adaptive scattava su noise normale.
+        # WR algo (senza manual_pause) era 74.1% ma PnL negativo per sole 7 loss sl_adaptive.
+        # Raised threshold -12%→-20%, window 5→8 (4min): chiede conferma più lunga
+        # su calo significativo prima di uscire. Rivalutare dopo 3-4 settimane.
+        sl_consecutive_neg   = 8,
+        sl_threshold_pct     = -20.0,
         hard_sl_pct          = None,   # no hard SL: CEX spot mid/large-cap non rugga
         vol_drop_exit_ratio  = 0.20,
         vol_crash_grace_min  = 25.0,
@@ -1994,19 +2004,22 @@ class LiveEngine:
                             _cg_bsr  = float(row.get("cg_dex_bsr", 0) or 0)
                             _cg_liq  = float(row.get("cg_dex_liq", 0) or 0)
                             _cg_chg  = float(row.get("cg_price_chg24", 0) or 0)
+                            # 26/06: rimossa restrizione chain=="solana".
+                            # Il path CoinGecko generava 0 segnali: i token midcap su CG
+                            # con DEX primario su Solana sono rarissimi (quasi tutti su ETH/BSC).
+                            # Il gate rimane robusto: mcap>$10M + bsr>=0.60 + liq>=$30k + chg24>=+5%.
                             if (sig_mcap > 10_000_000
                                     and _cg_bsr >= 0.60
                                     and _cg_liq >= 30_000
-                                    and _cg_chg >= 5.0
-                                    and chain == "solana"):
+                                    and _cg_chg >= 5.0):
                                 effective_system = "v3_large"
                                 log.info(f"[routing] {sid}: CoinGecko mid-cap promosso a v3_large "
-                                         f"(mcap=${sig_mcap/1e6:.1f}M bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg={_cg_chg:+.1f}%)")
+                                         f"(mcap=${sig_mcap/1e6:.1f}M bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg={_cg_chg:+.1f}% chain={chain})")
                             else:
                                 # v3_midcap disabilitato: sostituito da midcap_scanner (BB Squeeze)
                                 _skip_routing(
                                     f"CoinGecko {sig_src} mcap=${sig_mcap:,.0f} non promosso a v3_large "
-                                    f"(bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg24={_cg_chg:+.1f}%) "
+                                    f"(bsr={_cg_bsr:.2f} liq=${_cg_liq:,.0f} chg24={_cg_chg:+.1f}% chain={chain}) "
                                     "e v3_midcap disabilitato"
                                 )
                                 known.add(sid)
@@ -2020,15 +2033,19 @@ class LiveEngine:
                             _bsr_vl    = float(row.get("buy_sell_ratio_1h", 1.0) or 1.0)
                             _inflow_vl = int(float(row.get("inflow_wallet_count", 0) or 0))
                             _pnl_vl    = float(row.get("avg_wallet_pnl_pct", 0) or 0)
+                            # inflow=10 è il placeholder hardcoded per binance_scan (no on-chain data).
+                            # Non bloccare su inflow quando è il default: bsr+tier+score coprono già.
+                            # score 65→60: cattura GOLD borderline (storico: 2 token bloccati a 61-62).
+                            _inflow_ok = _inflow_vl >= 15 or _inflow_vl == 10
                             if (_tier_vl not in ("DIAMOND", "GOLD")
-                                    or _score_vl < 65
+                                    or _score_vl < 60
                                     or _bsr_vl < 0.6
-                                    or _inflow_vl < 15
+                                    or not _inflow_ok
                                     or _pnl_vl < 10):
                                 _skip_routing(
                                     f"gate v3_large: tier={_tier_vl} score={_score_vl:.0f} "
                                     f"bsr={_bsr_vl:.2f} inflow={_inflow_vl} pnl={_pnl_vl:.0f}% "
-                                    "(serve DIAMOND/GOLD + score>=65 + bsr>=0.6 + inflow>=15 + pnl>=10%)"
+                                    "(serve DIAMOND/GOLD + score>=60 + bsr>=0.6 + pnl>=10%)"
                                 )
                                 known.add(sid)
                                 continue
@@ -2045,6 +2062,16 @@ class LiveEngine:
                                 _skip_routing(
                                     f"gate via_gemmeV3: tier={_tier_vg} score={_score_vg:.0f} "
                                     "(serve score>=50, no BRONZE) — bypassa filtri defi"
+                                )
+                                known.add(sid)
+                                continue
+                            # 25/06 backtest n=137 v3 all-time: bsr 0.5-0.8 → n=12, -143€ (-11.94€/t).
+                            # bsr >= 0.8 passa; bsr < 0.8 è segnale di sellers dominanti → rug imminente.
+                            _bsr_vg = float(row.get("buy_sell_ratio_1h", 0) or 0)
+                            if 0 < _bsr_vg < 0.8:
+                                _skip_routing(
+                                    f"gate via_gemmeV3: bsr={_bsr_vg:.2f} < 0.8 "
+                                    "(sellers dominanti — backtest: -143€ su n=12)"
                                 )
                                 known.add(sid)
                                 continue
@@ -2126,13 +2153,18 @@ class LiveEngine:
                             log.debug(f"[live/pump_grad] {sym_check} chg1h={_sig_chg:+.0f}% > 80% → parossismo, skip")
                             self._shadow_register(sid, row, "chg1h>80%", _sig_chg, tok_addr_check, now)
                             continue
-                        # vol_h1<5k: skip solo su Solana (pool già attive post-graduation)
+                        # vol_h1<15k: skip solo su Solana (pool già attive post-graduation)
                         # Base: pool nuovissime (<2min), vol_h1 è sempre 0 per definizione
+                        # 25/06 backtest n=1585 LIQ_ post-18/06:
+                        #   vol_h1 0-5k:   n=14,  WR=50%,  PF=34.0, +137€   ← vol_h1=0 = pool nuovissima
+                        #   vol_h1 5k-15k: n=555, WR=61%, PF=0.595, -5806€  ← killer (-10.46€/t)
+                        #   vol_h1 15k+:   n=374, WR=82%, PF=2.07,  +3572€  ← edge reale
+                        # vol_h1=0 è legittimo (nuova pool senza dati 1h ancora), va tenuto.
                         _sig_vol_pg = float(row.get("volume_1h_usd", 0) or 0)
-                        if _sig_chain != "base" and 0 < _sig_vol_pg < 5000:
+                        if _sig_chain != "base" and 0 < _sig_vol_pg < 15000:
                             self._signal_skip_cache.add(sid)
-                            log.debug(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $5k → skip")
-                            self._shadow_register(sid, row, "vol_h1<5k", _sig_vol_pg, tok_addr_check, now)
+                            log.debug(f"[live/pump_grad] {sym_check} vol_h1=${_sig_vol_pg:,.0f} < $15k → skip")
+                            self._shadow_register(sid, row, "vol_h1<15k", _sig_vol_pg, tok_addr_check, now)
                             continue
 
                     # Filtro re-entry su token in downtrend:
@@ -2212,10 +2244,16 @@ class LiveEngine:
 
                     # ── Filtri qualità DEFI ────────────────────────────────────────────────
                     if effective_system == "defi":
-                        # Guardia volume: token senza liquidità attiva
+                        # Guardia volume: token senza liquidità attiva o troppo liquido
+                        # Backtest n=605: vol 50k-150k unico bucket positivo (+238€, +1.42€/t)
+                        # vol >150k: n=66, WR=39%, avg=-2.49€/t, tot=-164€ (token troppo maturi)
                         _sig_vol = float(row.get("volume_1h_usd", 0) or 0)
                         if _sig_vol < MIN_VOLUME_1H_USD_DEFI:
                             log.debug(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}<{MIN_VOLUME_1H_USD_DEFI:.0f} → skip")
+                            known.add(sid)
+                            continue
+                        if _sig_vol > 150_000:
+                            log.debug(f"[live/defi] {sid}: vol_h1=${_sig_vol:.0f}>150k → skip")
                             known.add(sid)
                             continue
 

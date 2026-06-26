@@ -39,6 +39,11 @@ FUNDING_GREAT     = 0.0008   # 0.08%/8h → APY ~35% — ottimo
 _REPORTS = _HERE / "reports"
 _CSV_OUT  = _REPORTS / "funding_opportunities.csv"
 
+# Delta tracker: cumulativeFunding è un totale che cresce; la rata per-periodo
+# è il delta tra due poll consecutivi normalizzato a 8h.
+_prev_cumulative: dict[str, float] = {}
+_prev_poll_ts: float = 0.0
+
 
 def _get_market_names() -> dict[str, str]:
     try:
@@ -49,9 +54,17 @@ def _get_market_names() -> dict[str, str]:
 
 
 async def _scan_all_markets() -> list[dict]:
-    """Fetch funding rate per tutti i market configurati, filtra sopra soglia."""
+    """Fetch funding rate per tutti i market configurati, filtra sopra soglia.
+
+    cumulativeFunding è un accumulatore crescente. La rata periodica è il delta
+    tra due poll, normalizzato a 8h: rate_8h = delta / elapsed_hours * 8.
+    Al primo poll (nessun prev) solo diagnostica, nessuna opportunità emessa.
+    """
+    global _prev_cumulative, _prev_poll_ts
+
     from config.settings import Settings
     from data.injective_client import InjectiveClient
+    import time as _time
 
     cfg    = Settings()
     client = InjectiveClient(cfg)
@@ -63,7 +76,13 @@ async def _scan_all_markets() -> list[dict]:
         log.error(f"[funding] connect error: {e}")
         return []
 
-    results = []
+    now = _time.time()
+    elapsed_hours = (now - _prev_poll_ts) / 3600.0 if _prev_poll_ts else 0.0
+    is_first_poll = _prev_poll_ts == 0.0
+
+    current_cumulative: dict[str, float] = {}
+    raw_snapshots: list[tuple[str, str, float, float]] = []  # (market_id, ticker, cumulative, mid)
+
     for market_id in cfg.market_ids:
         try:
             snap = await asyncio.wait_for(
@@ -71,25 +90,11 @@ async def _scan_all_markets() -> list[dict]:
             )
             if not snap:
                 continue
-            fr = snap.funding_rate   # cumulativo come decimal (es. 0.0005 = 0.05%/8h)
-            if abs(fr) < FUNDING_THRESHOLD:
-                continue
-            ticker  = names.get(market_id, market_id[:16])
-            side    = "SHORT" if fr > 0 else "LONG"
-            apy_pct = abs(fr) * 3 * 365 * 100   # 3 round/gg × 365
-            results.append({
-                "market_id":       market_id,
-                "ticker":          ticker,
-                "funding_rate_8h": fr,
-                "pct_8h":          fr * 100,
-                "apy_pct":         apy_pct,
-                "side":            side,
-                "rating":          "★★★" if abs(fr) >= FUNDING_GREAT else "★★",
-                "mid_price":       snap.mid if snap else 0,
-            })
-            log.info(
-                f"[funding] {ticker:10s}  fr={fr*100:+.4f}%/8h  APY≈{apy_pct:.1f}%  → {side}  {results[-1]['rating']}"
-            )
+            cum = snap.funding_rate   # cumulativeFunding normalizzato (1e18)
+            mid = getattr(snap, "mid", 0) or 0
+            ticker = names.get(market_id, market_id[:16])
+            current_cumulative[market_id] = cum
+            raw_snapshots.append((market_id, ticker, cum, mid))
         except asyncio.TimeoutError:
             log.warning(f"[funding] {market_id[:16]}: fetch timeout (10s)")
         except Exception as e:
@@ -99,6 +104,62 @@ async def _scan_all_markets() -> list[dict]:
         await client.close()
     except Exception:
         pass
+
+    # Diagnostica: stampa sempre i top-5 per |cumulativo| e, se disponibile, per |delta|
+    if raw_snapshots:
+        by_cum = sorted(raw_snapshots, key=lambda x: abs(x[2]), reverse=True)[:5]
+        log.info(
+            "[funding] diagnostica cumulative top-5: "
+            + " | ".join(f"{t}={c:+.6f}" for _, t, c, _ in by_cum)
+        )
+
+    if is_first_poll:
+        log.info("[funding] primo poll — accumulo baseline, nessuna opportunità emessa")
+        _prev_cumulative = current_cumulative
+        _prev_poll_ts = now
+        return []
+
+    # Calcola delta per ogni market
+    results = []
+    deltas: list[tuple[str, str, float, float]] = []
+    for market_id, ticker, cum, mid in raw_snapshots:
+        prev_cum = _prev_cumulative.get(market_id)
+        if prev_cum is None:
+            continue
+        delta = cum - prev_cum
+        # Normalizza a 8h (3 round/gg → 8h per round)
+        rate_8h = delta / elapsed_hours * 8.0 if elapsed_hours > 0.01 else 0.0
+        deltas.append((market_id, ticker, rate_8h, mid))
+
+    # Diagnostica delta top-5
+    if deltas:
+        by_delta = sorted(deltas, key=lambda x: abs(x[2]), reverse=True)[:5]
+        log.info(
+            "[funding] diagnostica delta/8h top-5: "
+            + " | ".join(f"{t}={r*100:+.4f}%" for _, t, r, _ in by_delta)
+        )
+
+    for market_id, ticker, rate_8h, mid in deltas:
+        if abs(rate_8h) < FUNDING_THRESHOLD:
+            continue
+        side    = "SHORT" if rate_8h > 0 else "LONG"
+        apy_pct = abs(rate_8h) * 3 * 365 * 100
+        results.append({
+            "market_id":       market_id,
+            "ticker":          ticker,
+            "funding_rate_8h": rate_8h,
+            "pct_8h":          rate_8h * 100,
+            "apy_pct":         apy_pct,
+            "side":            side,
+            "rating":          "★★★" if abs(rate_8h) >= FUNDING_GREAT else "★★",
+            "mid_price":       mid,
+        })
+        log.info(
+            f"[funding] {ticker:10s}  fr={rate_8h*100:+.4f}%/8h  APY≈{apy_pct:.1f}%  → {side}  {results[-1]['rating']}"
+        )
+
+    _prev_cumulative = current_cumulative
+    _prev_poll_ts = now
 
     return sorted(results, key=lambda x: abs(x["funding_rate_8h"]), reverse=True)
 

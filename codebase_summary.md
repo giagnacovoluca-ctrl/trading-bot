@@ -1,5 +1,103 @@
 # ARCHITETTURA E MAPPA DEL CODEBASE
 Usa questa mappa per capire la struttura del progetto senza rileggere i file interi.
+Aggiornato: 2026-06-26 sera (INJECTIVE 4 FIX + FUNDING FARMER BUG + V3_LARGE COINGECKO):
+
+**Analisi autopilot Injective (n=74 PAPER chiusi, -55.76$):**
+- INJ: 14/14 trades FE=Y → già coperti da P1 post-restart. Causa principale -54.33$.
+- HOOD: n=10, WR=20%, -35.94$, FE=N → aggiunto a skip_tickers. Tokenized stock, segnali non affidabili.
+- SHORT: WR=29% vs breakeven 33.3%, -55.31$ → P4: SHORT richiedono conf≥0.60 (+0.05 vs LONG).
+- Confidence [0.65,0.80): WR=9%, -78.32$ → P3 già in codice (25/06). Zona "overconfidence".
+- SL trades MFE medio=0.18% → entry sbagliate, non SL troppo stretto. Non allargare SL.
+
+**Fix P4 — decision_engine.py:**
+  SHORT richiedono min_confidence + 0.05 = 0.60 (vs 0.55 per LONG).
+  Dato storico: LONG -0.46$ (breakeven), SHORT -55.31$ (WR 29%).
+
+**Fix HOOD skip — config/settings.py + main.py:**
+  `skip_tickers: list[str] = ["HOOD"]` in Settings.
+  `decision_engine.set_skip_tickers(cfg.skip_tickers)` in main.py dopo init.
+  Metodo `set_skip_tickers` aggiunto a DecisionEngine.
+
+**Funding farmer bug fix — funding_farmer.py:**
+  Bug: usava `cumulativeFunding` assoluto confrontato con soglia periodica 0.0003 → 0 segnali in 50+ cicli.
+  Fix: calcola delta tra poll consecutivi, normalizza a 8h. Primo poll = baseline, dal secondo = rate reali.
+  Aggiunto diagnostic log top-5 (cumulative e delta) per debug futuro.
+  Variabili globali: `_prev_cumulative: dict[str, float]`, `_prev_poll_ts: float`.
+
+**v3_large frequenza — trade_simulator.py ~riga 2007:**
+  Root cause: gate CoinGecko aveva `and chain == "solana"` hardcoded. Token midcap ($10M+)
+  su CoinGecko raramente hanno pool primario su Solana → 0 segnali CoinGecko in tutta la storia.
+  Fix 1: rimosso `chain == "solana"` → accetta ETH/BSC. Gate: mcap>$10M+bsr≥0.60+liq≥30k+chg24≥+5%.
+  Fix 2 (BinanceScan): score 65→60. `inflow=10` = placeholder hardcoded → bypass con `inflow==10`.
+  Distribuzione storica v3_large: solana=85, ethereum=13, bsc=12 su 110 eventi totali.
+  Restart run.py attiva i fix. Primo ciclo CoinGecko mostrerà nei log i candidati ETH/BSC.
+
+**Filtri chiave post-26/06 sera (injective_autopilot — richiede restart run_loop.sh):**
+- P1: sentinel_blocked_combos=[["FUNDING_EXTREME"]] (copre 100% INJ storico)
+- P2: vol_ratio≥1.5 → skip sentinel
+- P3: confidence [0.65,0.80) → skip decision_engine
+- P4: SHORT min_confidence=0.60 (vs 0.55 LONG)
+- HOOD: in skip_tickers
+
+Aggiornato: 2026-06-26 (PIVOT defi+midcap+v3_large — 2 filtri implementati):
+
+**Analisi architetturale 26/06 — pivot verso sistemi con edge reale:**
+- LIQ/pump_grad: 12 trade reali Solana, -$46.91 USDC totale. entry_drop=99.9% su ~100 segnali.
+  Root cause: latenza segnale→buy=35s media, rug avviene in 1-2s. Simulatore mostra +6747€
+  fittizi (usa prezzi DexScreener laggati, non prezzi esecuzione reale). Nessun edge eseguibile.
+- Sistemi con edge reale: defi tp1_trail (n=135, +2103€, WR 95%), midcap trailing (n=79, +292€,
+  WR 94%), v3_large (PF 7.15, n=50, +231€). Questi trattano token maturi → latenza irrilevante.
+
+**Fix 1 — defi vol_h1 cap 150k (trade_simulator.py ~2242):**
+- Backtest n=605: vol 50k-150k unico bucket positivo (+238€, +1.42€/t); vol >150k: n=66, -164€
+  (-2.49€/t). Token troppo liquidi = troppo maturi, upside limitato rispetto al SL -8%.
+- Stima miglioramento: +165€ sul periodo storico.
+
+**Fix 2 — midcap hh_hl=True hard gate (midcap_scanner.py ~804):**
+- Backtest n=194: hh_hl=True (n=71) EV +1.48€/t tot +105€; hh_hl=False (n=123) EV -0.14€/t tot -17€.
+- sl_adaptive (il killer, -542€ totale): 29/44 casi su hh_hl=False → eliminati.
+- Riduce segnali/giorno da 9.8 a ~3.6 ma aumenta qualità. hh_hl = close > SMA10 > SMA20.
+
+**Filtri chiave post-26/06:**
+- defi: vol_h1 ∈ [15k, 150k] (doppio cap, nuovo) + anti-dump + prepump_composite
+- midcap: hh_hl=True obbligatorio (NUOVO) + adx<=55 + score>=35
+
+Aggiornato: 2026-06-25 (QUANT ANALYSIS + 8 FIX SU 4 SISTEMI):
+
+**Analisi quant settimana 18-25/06 — finding principali:**
+- Base LIQ simulator: 0 trade reali profittevoli. Root cause: ~20 entità deployano pool honeypot.
+  Fix: blacklist 70 simboli ripetuti in base_executor.py (IMPLEMENTATO 25/06).
+- Solana LIQ: TP1=25% → breakeven WR richiesto 75.7%, effettivo 70.5% → net-loss strutturale.
+  Fix: tp1_pct 25%→50% → E[pnl] da -0.66€/t a +6.76€/t (shadow backtest n=266).
+- Solana LIQ vol_h1 5k-15k: 555 trade, -5806€ (-10.46€/t). vol_h1=0 (pool nuovissima) = best.
+  Fix: threshold alzato 5k→15k; vol_h1=0 esentato (pool brand-new).
+- Midcap sl_adaptive: WR algoritmica 74.1%, pnl negativo solo per 7 loss sl_adaptive <20%.
+  Fix: sl_consecutive_neg 5→8 snap, sl_threshold -12%→-20%.
+- Injective (n=73 PAPER): FUNDING_EXTREME = killer (-105$, PF 0.67); senza = PF 1.18.
+  Fix P1: sentinel_blocked_combos = [["FUNDING_EXTREME"]] (blocca FE da solo).
+  Fix P2: vol_ratio ≥ 1.5 → skip in sentinel.py (0/6 win, -53$).
+  Fix P3: confidence [0.65,0.80) → skip in decision_engine.py (WR 9%, -78$).
+  Backtest post-filtri: PF 0.843→1.509, PnL -75$→+59$ (n=73→22).
+- BTC Strutturale: LONG WR 8%, PF 0.27, -9.84€ → ALLOW_LONG=False in structural_bot.py.
+- V3 BSR entry: bsr 0.5-0.8 = -143€ su n=12 (-11.94€/t).
+  Fix: gate via_gemmeV3 bsr<0.8 → skip_routing in trade_simulator.py (riga ~2061).
+
+**Solana executor assessment (25/06):**
+- entry_drop: 119 blocchi, mediana drop 99.9%, 95% erano rug confermati. ~$1130 salvati.
+- rugcheck_failed: 31 blocchi (~$310 salvati). price_impact>5%: 14 blocchi.
+- Post-18/06: 235 segnali ricevuti, 0 buy eseguiti (tutti filtrati da entry_drop perché
+  venivano dal bucket vol_h1 5k-15k). Con il fix vol_h1≥15k, segnali di qualità migliore
+  arriveranno all'executor → dovrebbe tornare ad eseguire buy reali.
+- Trade reali storici (n=4): LGBTQ(-1.54$), DABIHGAH(-1.87$), DELL(-13.75$), SOLANALIFE(+2.64$).
+
+**Filtri chiave post-25/06 in trade_simulator.py:**
+- LIQ_ Solana: liq>=25k + chg1h<=80% + (vol_h1=0 OR vol_h1>=15k) + tp1=50%
+- via_gemmeV3: tier!=BRONZE + score>=50 + bsr>=0.8 (NUOVO)
+- midcap: sl_consecutive_neg=8, sl_threshold=-20%
+
+**vol_h1 >150k**: n=6 (post-18/06), dati insufficienti — non implementare soglia max.
+  Rivalutare dopo 30+ trade nel bucket (stima: 4-6 settimane post-restart).
+
 Aggiornato: 2026-06-18 pomeriggio (DRY MODE PREFLIGHT + RUGPULL DASHBOARD + COPIA ADDRESS):
 
 **base_executor.py** — Preflight checks ora girano anche in dry mode:

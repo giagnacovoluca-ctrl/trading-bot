@@ -102,6 +102,9 @@ class DecisionEngine:
         ws = [self._signal_weights.get(s.split("(")[0], 1.0) for s in active_signals]
         return sum(ws) / len(ws)
 
+    def set_skip_tickers(self, tickers: list[str]) -> None:
+        self._skip_tickers: set[str] = set(tickers)
+
     async def decide_batch(
         self,
         triggers: list[Any],
@@ -115,12 +118,17 @@ class DecisionEngine:
         t0 = time.monotonic()
         self._total_calls += 1
 
+        skip = getattr(self, "_skip_tickers", set())
         open_tickers = {p.ticker for p in positions} if positions else set()
         max_new = max(0, max_open_positions - len(positions))
 
         scored: list[tuple[float, float, Any, str]] = []  # (weighted, raw, trigger, reason)
         for trigger in triggers:
             if trigger.ticker in open_tickers:
+                continue
+            if trigger.ticker in skip:
+                log.info("[%s] rejected: ticker in skip_tickers list", trigger.ticker)
+                self._rejected += 1
                 continue
             if trigger.direction_bias == "MIXED":
                 log.info("[%s] rejected: MIXED direction", trigger.ticker)
@@ -136,6 +144,22 @@ class DecisionEngine:
             wf = self._weight_factor(trigger.active_signals)
             weighted = score * wf
             if weighted >= self.min_confidence:
+                # P3 (25/06): confidence [0.65, 0.80) = zona overconfidence → WR 9%, PF 0.20, -78$.
+                # AI sovrastima la qualità del setup in questo range; >0.80 è ok (PF 1.54).
+                if 0.65 <= weighted < 0.80:
+                    log.info("[%s] rejected: confidence=%.2f in overconfidence zone [0.65,0.80)", trigger.ticker, weighted)
+                    self._rejected += 1
+                    continue
+                # P4 (26/06): SHORT in bull regime = WR 29%, -55.31$ su n=28 trade.
+                # SHORTs richiedono soglia +0.05 per compensare il bias direzionale.
+                short_min = self.min_confidence + 0.05
+                if trigger.direction_bias == "SHORT" and weighted < short_min:
+                    log.info(
+                        "[%s] rejected SHORT: confidence=%.2f < %.2f (short_min threshold)",
+                        trigger.ticker, weighted, short_min,
+                    )
+                    self._rejected += 1
+                    continue
                 scored.append((weighted, score, trigger, reason))
             else:
                 log.info("[%s] rejected: score=%.2f×w=%.3f=%.2f < %.2f (%s)", trigger.ticker, score, wf, weighted, self.min_confidence, reason)

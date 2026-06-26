@@ -25,6 +25,7 @@
 **/reports_demo/*.csv
 **/reports_demo/*.html
 **/*_executions.csv
+**/*_executions_backup_*.csv
 **/*_signals.csv
 **/signals_log.csv
 **/live_trades.csv
@@ -57,6 +58,16 @@ env/
 *.docx
 **/test_write
 .claude/settings.local.json
+
+# ===== Progetti separati (non parte del trading-bot pubblico) =====
+BountyBrain/
+promptwatch/
+dependatriage/
+docsync/
+graphify-out/
+.swarm/
+data/
+defi/data/
 
 # ===== OS / editor =====
 .DS_Store

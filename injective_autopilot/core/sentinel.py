@@ -286,6 +286,12 @@ class Sentinel:
         # (verifica se la tesi di trade originale è ancora valida).
         ctx.last_signal_types = {s.split("(")[0] for s in active_signals}
 
+        # P2 (25/06): VOL_RATIO >= 1.5 → 0/6 win nel backtest (100% loss, -53$).
+        # Alta volatilità = spread/slippage elevato, nessun edge direzionale.
+        if vol_regime.ratio >= 1.5:
+            log.debug("[%s] vol_ratio=%.2f >= 1.5 → skip (high-volatility regime)", ctx.ticker, vol_regime.ratio)
+            return None
+
         tier_s_active = funding.is_extreme
         min_signals_required = 1 if tier_s_active else 2
         if len(active_signals) < min_signals_required:

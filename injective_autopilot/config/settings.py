@@ -129,12 +129,19 @@ class Settings(BaseSettings):
     recheck_min_overlap: int = 1             # se < N segnali originali sono ancora attivi → tesi invalidata, chiudi a mercato
 
     # ── Combo di segnali bloccate ─────────────────────────────────────
-    # Audit su 57 trade PAPER (16/06): FUNDING_EXTREME da solo PF=1.12 (+3.95$),
-    # FUNDING+REGIME_SHIFT insieme PF=0.52 (-122.45$, n=35) → la combo è il killer.
-    # Ogni sotto-lista è un insieme di segnali: se TUTTI sono attivi → trigger bloccato.
-    sentinel_blocked_combos: list[list[str]] = [["FUNDING_EXTREME", "REGIME_SHIFT"]]
+    # Audit su 73 trade PAPER (25/06): FUNDING_EXTREME da solo = -105$ (n=45, PF=0.67).
+    # Senza FUNDING_EXTREME: n=28, PF=1.18, +29$. Backtest P1+P2+P3: PF=1.509, +59$.
+    # La logica era invertita: funding estremo → trend persistente, non reversal.
+    # Lista-singola ["FUNDING_EXTREME"] = blocca qualsiasi trigger dove è presente.
+    sentinel_blocked_combos: list[list[str]] = [["FUNDING_EXTREME"]]
     # Nessun segnale obbligatorio (OBI primo=PF 1.95 ma non imponibile via whitelist)
     sentinel_required_signals: list[str] = []
+
+    # ── Ticker skip list ──────────────────────────────────────────────
+    # Ticker con performance storicamente negativa e segnali non affidabili.
+    # HOOD (26/06): n=10, WR=20%, -35.94$, 8/10 FE=N → non coperto da P1.
+    # Tokenized stock su Injective: bassa liquidità, segnali non trasferibili.
+    skip_tickers: list[str] = ["HOOD"]
 
     # ── Signal thresholds ─────────────────────────────────────────────
     obi_threshold: float = 0.60              # |OBI| > threshold → signal
