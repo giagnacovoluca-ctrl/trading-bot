@@ -59,6 +59,11 @@ env/
 **/test_write
 .claude/settings.local.json
 
+# ===== Documenti privati colloquio =====
+PORTFOLIO_DETTAGLIATO.md
+PORTFOLIO_SINTETICO.md
+PITCH_COLLOQUIO.md
+
 # ===== Progetti separati (non parte del trading-bot pubblico) =====
 BountyBrain/
 promptwatch/
