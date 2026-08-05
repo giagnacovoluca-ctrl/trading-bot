@@ -56,8 +56,8 @@ def start_tunnel():
     subprocess.run(["pkill", "-f", "localtunnel"], stderr=subprocess.DEVNULL)
     
     print("[Watchdog] Avvio il Tunnel tramite localtunnel...")
-    cmd = "bash start_localtunnel.sh"
-    tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    cmd = "bash ../start_localtunnel.sh"
+    tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     TUNNEL_URL = "https://fancy-rooms-bet.loca.lt"
     print(f"[Watchdog] Nuovo URL Tunnel impostato fisso: {TUNNEL_URL}")
