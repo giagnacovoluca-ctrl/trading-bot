@@ -115,7 +115,7 @@ def main():
     console.print("[cyan]3. Creazione Video MP4 dalle immagini e aggiunta musica...[/]")
     clips = []
     for p in image_paths:
-        clip = ImageClip(str(p)).set_duration(3.0)
+        clip = ImageClip(str(p)).set_duration(11.0)
         clips.append(clip)
         
     final_video = concatenate_videoclips(clips, method="compose")
