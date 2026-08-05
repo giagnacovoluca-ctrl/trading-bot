@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/magic/Scrivania/code/GIT/FraDodo
+cd /home/ubuntu/GIT/FraDodo
 
 # Kill any existing screens if we run this again
 screen -X -S fradodo_bot quit 2>/dev/null

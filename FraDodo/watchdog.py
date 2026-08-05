@@ -63,7 +63,7 @@ def start_tunnel():
     subprocess.run(["pkill", "-f", "cloudflared tunnel"], stderr=subprocess.DEVNULL)
     
     print("[Watchdog] Avvio il Tunnel tramite cloudflared...")
-    cmd = "/home/magic/.local/bin/cloudflared tunnel --url http://localhost:8000"
+    cmd = "/home/ubuntu/.local/bin/cloudflared tunnel --url http://localhost:8000"
     tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
     
     # Leggi la prima riga per ottenere l'URL in un thread separato
