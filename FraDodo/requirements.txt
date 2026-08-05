@@ -7,3 +7,4 @@ python-dotenv
 aiohttp
 jinja2
 python-multipart
+requests
