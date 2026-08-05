@@ -53,14 +53,16 @@ def start_tunnel():
     if tunnel_process:
         tunnel_process.terminate()
         tunnel_process = None
-    subprocess.run(["pkill", "-f", "nokey@localhost.run"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "localtunnel"], stderr=subprocess.DEVNULL)
     
-    print("[Watchdog] Avvio il Tunnel tramite localhost.run...")
-    cmd = "ssh -o StrictHostKeyChecking=no -R 80:localhost:8000 nokey@localhost.run"
+    print("[Watchdog] Avvio il Tunnel tramite localtunnel...")
+    cmd = "bash start_localtunnel.sh"
     tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     
-    # Leggi la prima riga per ottenere l'URL in un thread separato
-    threading.Thread(target=_read_tunnel_output, args=(tunnel_process,), daemon=True).start()
+    TUNNEL_URL = "https://fancy-rooms-bet.loca.lt"
+    print(f"[Watchdog] Nuovo URL Tunnel impostato fisso: {TUNNEL_URL}")
+    with open("current_url.txt", "w") as f:
+        f.write(TUNNEL_URL)
             
 def tunnel_monitor():
     while True:
