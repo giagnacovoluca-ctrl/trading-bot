@@ -1,0 +1,95 @@
+{
+  "nodes": [
+    {"id": "base_html", "label": "base.html (dashboard layout)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "ai_analysis_html", "label": "ai_analysis.html (AI decisions dashboard)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/ai_analysis.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "journal_html", "label": "journal.html (trade journal)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/journal.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "learning_html", "label": "learning.html (adaptive learning weights)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/learning.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "market_analytics_html", "label": "market_analytics.html (market leaderboard analytics)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/market_analytics.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "overview_html", "label": "overview.html (equity curve overview)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/overview.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "performance_html", "label": "performance.html (performance metrics)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/performance.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "risk_html", "label": "risk.html (risk management/kill switch)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/risk.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "signal_analytics_html", "label": "signal_analytics.html (signal ranking analytics)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/signal_analytics.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "signals_html", "label": "signals.html (sentinel triggers)", "file_type": "code", "source_file": "injective_autopilot/dashboard/templates/signals.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "injective_autopilot_requirements", "label": "injective_autopilot/requirements.txt", "file_type": "code", "source_file": "injective_autopilot/requirements.txt", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "requirements", "label": "requirements.txt (root)", "file_type": "code", "source_file": "requirements.txt", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "opzioni_txt", "label": "opzioni.txt (run.py launch options notes)", "file_type": "document", "source_file": "opzioni.txt", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "executor_dashboard_html", "label": "executor_dashboard.html (executor vs simulator report)", "file_type": "code", "source_file": "reports/executor_dashboard.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "run_py", "label": "run.py (orchestrator)", "file_type": "code", "source_file": "run.py", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "fastapi_jinja2_plotly", "label": "FastAPI + Jinja2 + Plotly dashboard stack", "file_type": "concept", "source_file": "injective_autopilot/requirements.txt", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "claude_ai_decision_logging", "label": "Claude AI trade decision logging", "file_type": "concept", "source_file": "injective_autopilot/dashboard/templates/ai_analysis.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "kill_switch_concept", "label": "Kill switch / daily drawdown protection", "file_type": "concept", "source_file": "injective_autopilot/dashboard/templates/risk.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "adaptive_weights_concept", "label": "Adaptive signal weights (Bayesian + EWMA)", "file_type": "concept", "source_file": "injective_autopilot/dashboard/templates/learning.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "signal_expectancy_ranking", "label": "Signal expectancy ranking", "file_type": "concept", "source_file": "injective_autopilot/dashboard/templates/signal_analytics.html", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}
+  ],
+  "edges": [
+    {"source": "ai_analysis_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/ai_analysis.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "journal_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/journal.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "learning_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/learning.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "market_analytics_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/market_analytics.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "overview_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/overview.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "performance_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/performance.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "risk_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/risk.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "signal_analytics_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/signal_analytics.html", "source_location": "line 1", "weight": 1.0},
+    {"source": "signals_html", "target": "base_html", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/signals.html", "source_location": "line 1", "weight": 1.0},
+
+    {"source": "base_html", "target": "overview_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 38", "weight": 1.0},
+    {"source": "base_html", "target": "performance_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 39", "weight": 1.0},
+    {"source": "base_html", "target": "journal_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 40", "weight": 1.0},
+    {"source": "base_html", "target": "signals_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 41", "weight": 1.0},
+    {"source": "base_html", "target": "risk_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 42", "weight": 1.0},
+    {"source": "base_html", "target": "ai_analysis_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 43", "weight": 1.0},
+    {"source": "base_html", "target": "signal_analytics_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 44", "weight": 1.0},
+    {"source": "base_html", "target": "market_analytics_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 45", "weight": 1.0},
+    {"source": "base_html", "target": "learning_html", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/dashboard/templates/base.html", "source_location": "line 46", "weight": 1.0},
+
+    {"source": "ai_analysis_html", "target": "claude_ai_decision_logging", "relation": "shares_data_with", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "injective_autopilot/dashboard/templates/ai_analysis.html", "source_location": null, "weight": 1.0},
+    {"source": "risk_html", "target": "kill_switch_concept", "relation": "shares_data_with", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "injective_autopilot/dashboard/templates/risk.html", "source_location": null, "weight": 1.0},
+    {"source": "learning_html", "target": "adaptive_weights_concept", "relation": "shares_data_with", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "injective_autopilot/dashboard/templates/learning.html", "source_location": null, "weight": 1.0},
+    {"source": "signal_analytics_html", "target": "signal_expectancy_ranking", "relation": "shares_data_with", "confidence": "INFERRED", "confidence_score": 0.9, "source_file": "injective_autopilot/dashboard/templates/signal_analytics.html", "source_location": null, "weight": 1.0},
+
+    {"source": "market_analytics_html", "target": "signal_analytics_html", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "injective_autopilot/dashboard/templates/market_analytics.html", "source_location": null, "weight": 1.0},
+
+    {"source": "performance_html", "target": "overview_html", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.7, "source_file": "injective_autopilot/dashboard/templates/performance.html", "source_location": null, "weight": 1.0},
+
+    {"source": "injective_autopilot_requirements", "target": "fastapi_jinja2_plotly", "relation": "shares_data_with", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "injective_autopilot/requirements.txt", "source_location": "lines 26-29", "weight": 1.0},
+    {"source": "fastapi_jinja2_plotly", "target": "base_html", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": "injective_autopilot/requirements.txt", "source_location": null, "weight": 1.0},
+
+    {"source": "executor_dashboard_html", "target": "run_py", "relation": "shares_data_with", "confidence": "INFERRED", "confidence_score": 0.8, "source_file": "reports/executor_dashboard.html", "source_location": null, "weight": 1.0},
+    {"source": "opzioni_txt", "target": "run_py", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "opzioni.txt", "source_location": "lines 1-13", "weight": 1.0},
+
+    {"source": "requirements", "target": "run_py", "relation": "shares_data_with", "confidence": "AMBIGUOUS", "confidence_score": 0.2, "source_file": "requirements.txt", "source_location": null, "weight": 1.0},
+
+    {"source": "executor_dashboard_html", "target": "signals_html", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.6, "source_file": "reports/executor_dashboard.html", "source_location": null, "weight": 1.0}
+  ],
+  "hyperedges": [
+    {
+      "id": "dashboard_templates_extend_base",
+      "label": "Injective Autopilot dashboard pages extending base.html layout",
+      "nodes": ["base_html", "overview_html", "performance_html", "journal_html", "signals_html", "risk_html", "ai_analysis_html", "signal_analytics_html", "market_analytics_html", "learning_html"],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "injective_autopilot/dashboard/templates/base.html"
+    },
+    {
+      "id": "trade_performance_analytics_pages",
+      "label": "Trade performance/analytics views (overview, performance, market_analytics, signal_analytics)",
+      "nodes": ["overview_html", "performance_html", "market_analytics_html", "signal_analytics_html"],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "injective_autopilot/dashboard/templates/performance.html"
+    },
+    {
+      "id": "injective_autopilot_dashboard_stack",
+      "label": "Injective Autopilot dashboard tech stack (FastAPI/Jinja2/Plotly + templates)",
+      "nodes": ["injective_autopilot_requirements", "fastapi_jinja2_plotly", "base_html"],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "injective_autopilot/requirements.txt"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

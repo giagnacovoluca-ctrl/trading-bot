@@ -215,15 +215,15 @@ if not args.no_pump:
     except Exception as e:
         log.warning(f"[run] Pump scanner non avviato: {e}")
 
-# ── 2b. Pre-graduation monitor (intercetta PRIMA del pump) ────────────────────
-if not args.no_pump:
-    try:
-        from pre_grad_monitor import PreGradMonitor
-        _pre_grad = PreGradMonitor()
-        _pre_grad.start()
-        log.info("[run] ▶ Pre-graduation monitor avviato")
-    except Exception as e:
-        log.warning(f"[run] Pre-grad monitor non avviato: {e}")
+# ── 2b. Pre-graduation monitor (DISABILITATO: Win Rate 0.1% e zavorra perdite) ─
+# if not args.no_pump:
+#     try:
+#         from pre_grad_monitor import PreGradMonitor
+#         _pre_grad = PreGradMonitor()
+#         _pre_grad.start()
+#         log.info("[run] ▶ Pre-graduation monitor avviato")
+#     except Exception as e:
+#         log.warning(f"[run] Pre-grad monitor non avviato: {e}")
 
 # ── 2c. Base pump scanner (nuove pool Uniswap V3 + Aerodrome su Base) ─────────
 if not args.no_pump:

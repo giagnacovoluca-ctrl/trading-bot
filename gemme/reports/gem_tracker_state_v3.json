@@ -1,0 +1,1121 @@
+{
+  "CPEG_20260802_124156": {
+    "gem_id": "CPEG_20260802_124156",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 5.266e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 88755.60628100001,
+    "timestamp_entry": "2026-08-02T12:41:56.503622"
+  },
+  "GRVT_20260802_131955": {
+    "gem_id": "GRVT_20260802_131955",
+    "token_symbol": "GRVT",
+    "chain": "base",
+    "pair_address": "0x410cF90a1eD4627e1617C0B6dB09431fA69c52ee",
+    "token_address": "0xbd8f119E2d8573565BA16d1552096ac95d0deeF4",
+    "price_entry_usd": 1.308e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 94504.12987000003,
+    "timestamp_entry": "2026-08-02T13:19:55.886365"
+  },
+  "CATE_20260802_145634": {
+    "gem_id": "CATE_20260802_145634",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "qhJ7kLjrE68sbDF11CpwMt3P9rqiwZtretM5ZzeAX6o",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.01908,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 125396.98024926631,
+    "timestamp_entry": "2026-08-02T14:56:34.699121"
+  },
+  "AI2U2_20260802_172956": {
+    "gem_id": "AI2U2_20260802_172956",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 4.128e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 98770.67098600003,
+    "timestamp_entry": "2026-08-02T17:29:56.756607"
+  },
+  "JORDAN_20260802_181919": {
+    "gem_id": "JORDAN_20260802_181919",
+    "token_symbol": "JORDAN",
+    "chain": "solana",
+    "pair_address": "5xstd6cxw2bWGU3wfvCmGZrhRsSBBTQhXGN7iq5gWuGS",
+    "token_address": "8TLxeYnnWpMFiC9npbh7XzyHpLtTYmw6DCuHBJjppump",
+    "price_entry_usd": 0.0008273,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 86162.83676437155,
+    "timestamp_entry": "2026-08-02T18:19:19.529792"
+  },
+  "CPEG_20260802_210915": {
+    "gem_id": "CPEG_20260802_210915",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 4.862e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 90851.04940500003,
+    "timestamp_entry": "2026-08-02T21:09:15.329198"
+  },
+  "Kimchi_20260802_212415": {
+    "gem_id": "Kimchi_20260802_212415",
+    "token_symbol": "Kimchi",
+    "chain": "solana",
+    "pair_address": "6f1HD3hodH3A8zHSL4ddA5yB6TjGYpidwiZVHJJRBn5M",
+    "token_address": "Am8iBffqgaedfdK5XhtorbcRrKzwH9nyL3ySikQfpump",
+    "price_entry_usd": 0.001789,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 29988.019346697223,
+    "timestamp_entry": "2026-08-02T21:24:15.601525"
+  },
+  "GRVT_20260802_213037": {
+    "gem_id": "GRVT_20260802_213037",
+    "token_symbol": "GRVT",
+    "chain": "base",
+    "pair_address": "0x410cF90a1eD4627e1617C0B6dB09431fA69c52ee",
+    "token_address": "0xbd8f119E2d8573565BA16d1552096ac95d0deeF4",
+    "price_entry_usd": 1.317e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 94524.49348300006,
+    "timestamp_entry": "2026-08-02T21:30:37.163632"
+  },
+  "Chiikawa_20260802_215657": {
+    "gem_id": "Chiikawa_20260802_215657",
+    "token_symbol": "Chiikawa",
+    "chain": "solana",
+    "pair_address": "G8Nec4gpaEgabHz3NfTGR7kfiFyLQypjjEL8KsigZniy",
+    "token_address": "2c1KjiyQow66QfsnCtoyuqfo3AuxgpBMEoAq5oiiXqdu",
+    "price_entry_usd": 0.001285,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 23653.032958169828,
+    "timestamp_entry": "2026-08-02T21:56:57.128143"
+  },
+  "DRC_20260802_220332": {
+    "gem_id": "DRC_20260802_220332",
+    "token_symbol": "DRC",
+    "chain": "base",
+    "pair_address": "0xEf4045A41889D780E14212048584C5cCB14044D2",
+    "token_address": "0x27d24125c875516a8981d853fe8058ce08f84A81",
+    "price_entry_usd": 1.795e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 37011.177701000015,
+    "timestamp_entry": "2026-08-02T22:03:32.195263"
+  },
+  "ALBRH_20260802_220925": {
+    "gem_id": "ALBRH_20260802_220925",
+    "token_symbol": "ALBRH",
+    "chain": "base",
+    "pair_address": "0x48361B66EA2A3ff413a845e83B8149826A16D926",
+    "token_address": "0xb683A88E9d894d0b71A3147945cCFDcDB5d6Ca8f",
+    "price_entry_usd": 7.989e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      36,
+      12,
+      48,
+      24,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 35699.326924,
+    "timestamp_entry": "2026-08-02T22:09:25.591760"
+  },
+  "CATE_20260803_004530": {
+    "gem_id": "CATE_20260803_004530",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "qhJ7kLjrE68sbDF11CpwMt3P9rqiwZtretM5ZzeAX6o",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.03368,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 229735.02668337993,
+    "timestamp_entry": "2026-08-03T00:45:30.989739"
+  },
+  "Hitler_20260803_013028": {
+    "gem_id": "Hitler_20260803_013028",
+    "token_symbol": "Hitler",
+    "chain": "solana",
+    "pair_address": "Fv6mDWWcaX5PQgfaXrjcbo2JsDGeS8TzedbfDFkdfX7o",
+    "token_address": "9pPYeCgueHKoESoLi1pgcZ8dUy9TwD5zQUeCLLCDpump",
+    "price_entry_usd": 0.0001077,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 11976.830801721117,
+    "timestamp_entry": "2026-08-03T01:30:28.270599"
+  },
+  "AI2U2_20260803_013659": {
+    "gem_id": "AI2U2_20260803_013659",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 5.303e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 102029.31900899996,
+    "timestamp_entry": "2026-08-03T01:36:59.302463"
+  },
+  "JORDAN_20260803_042504": {
+    "gem_id": "JORDAN_20260803_042504",
+    "token_symbol": "JORDAN",
+    "chain": "solana",
+    "pair_address": "5xstd6cxw2bWGU3wfvCmGZrhRsSBBTQhXGN7iq5gWuGS",
+    "token_address": "8TLxeYnnWpMFiC9npbh7XzyHpLtTYmw6DCuHBJjppump",
+    "price_entry_usd": 0.000687,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 55225.51168405725,
+    "timestamp_entry": "2026-08-03T04:25:04.722507"
+  },
+  "FROGE_20260803_050355": {
+    "gem_id": "FROGE_20260803_050355",
+    "token_symbol": "FROGE",
+    "chain": "solana",
+    "pair_address": "GFBnBd12WqYvk6YyhEzfNxLwg7ZLmSPcecy47va9Wmw1",
+    "token_address": "FVZhiS1uXdxpVMyGZTS22fz3caHUxxxXPkHPG21Zpump",
+    "price_entry_usd": 0.0001371,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 16297.77581166045,
+    "timestamp_entry": "2026-08-03T05:03:55.352696"
+  },
+  "CPEG_20260803_052118": {
+    "gem_id": "CPEG_20260803_052118",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 5.74e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 87850.384461,
+    "timestamp_entry": "2026-08-03T05:21:18.227011"
+  },
+  "GRVT_20260803_053256": {
+    "gem_id": "GRVT_20260803_053256",
+    "token_symbol": "GRVT",
+    "chain": "base",
+    "pair_address": "0x410cF90a1eD4627e1617C0B6dB09431fA69c52ee",
+    "token_address": "0xbd8f119E2d8573565BA16d1552096ac95d0deeF4",
+    "price_entry_usd": 1.389e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 87480.14397799995,
+    "timestamp_entry": "2026-08-03T05:32:56.908538"
+  },
+  "OFFICIAL_20260803_092342": {
+    "gem_id": "OFFICIAL_20260803_092342",
+    "token_symbol": "OFFICIAL",
+    "chain": "solana",
+    "pair_address": "8ekm3GbMWTGGpre33h3hCeRqqiXeMQJSwB2MLY6Ux3a2",
+    "token_address": "8rWNVQoFyhWgKfBQGo1o7va5imP9rYT9jNroDqN4pump",
+    "price_entry_usd": 0.0007707,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 268121.1098091954,
+    "timestamp_entry": "2026-08-03T09:23:42.597261"
+  },
+  "AI2U2_20260803_094626": {
+    "gem_id": "AI2U2_20260803_094626",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 6.754e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 98943.45780399999,
+    "timestamp_entry": "2026-08-03T09:46:26.434740"
+  },
+  "CATE_20260803_114559": {
+    "gem_id": "CATE_20260803_114559",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "HMzvsEEmtzHhvZNw9uwbaG85HCTmFnkbhzUx16cy7ca3",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.04023,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 969713.6469948108,
+    "timestamp_entry": "2026-08-03T11:45:59.862778"
+  },
+  "PIZZA_20260803_124806": {
+    "gem_id": "PIZZA_20260803_124806",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 1.106e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 35179.65244600001,
+    "timestamp_entry": "2026-08-03T12:48:06.093293"
+  },
+  "CPEG_20260803_133132": {
+    "gem_id": "CPEG_20260803_133132",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 6.052e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 88747.353358,
+    "timestamp_entry": "2026-08-03T13:31:32.724367"
+  },
+  "SPX10K_20260803_165423": {
+    "gem_id": "SPX10K_20260803_165423",
+    "token_symbol": "SPX10K",
+    "chain": "base",
+    "pair_address": "0xF646F54867099892FaEbb8c54b86a4379D8B4F81",
+    "token_address": "0x10f05B37BB4b4E997c3d390c9037718c979E191e",
+    "price_entry_usd": 0.000135,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 53827.18393199863,
+    "timestamp_entry": "2026-08-03T16:54:23.913189"
+  },
+  "AI2U2_20260803_175330": {
+    "gem_id": "AI2U2_20260803_175330",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 8.69e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 97641.60708944757,
+    "timestamp_entry": "2026-08-03T17:53:30.307628"
+  },
+  "OFFICIAL_20260803_190124": {
+    "gem_id": "OFFICIAL_20260803_190124",
+    "token_symbol": "OFFICIAL",
+    "chain": "solana",
+    "pair_address": "8ekm3GbMWTGGpre33h3hCeRqqiXeMQJSwB2MLY6Ux3a2",
+    "token_address": "8rWNVQoFyhWgKfBQGo1o7va5imP9rYT9jNroDqN4pump",
+    "price_entry_usd": 0.000831,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 23405.143413916085,
+    "timestamp_entry": "2026-08-03T19:01:24.471506"
+  },
+  "PIZZA_20260803_214643": {
+    "gem_id": "PIZZA_20260803_214643",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 2.538e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 96760.55273799998,
+    "timestamp_entry": "2026-08-03T21:46:43.900487"
+  },
+  "CPEG_20260803_214650": {
+    "gem_id": "CPEG_20260803_214650",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 8.169e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 88545.61637499997,
+    "timestamp_entry": "2026-08-03T21:46:50.148785"
+  },
+  "CATE_20260803_222236": {
+    "gem_id": "CATE_20260803_222236",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "HMzvsEEmtzHhvZNw9uwbaG85HCTmFnkbhzUx16cy7ca3",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.05149,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 4668322.169517947,
+    "timestamp_entry": "2026-08-03T22:22:36.145444"
+  },
+  "lmeow_20260803_234057": {
+    "gem_id": "lmeow_20260803_234057",
+    "token_symbol": "lmeow",
+    "chain": "solana",
+    "pair_address": "Aj9ELbTQw1NaGBDwJ5vns3P6dMXQHk4XJsdSiZWVkFVo",
+    "token_address": "9tWD7CuW2g59fgMUnggo4cZqB6XHEZrHtBaa8q7dpump",
+    "price_entry_usd": 0.0004875,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 115385.86007630955,
+    "timestamp_entry": "2026-08-03T23:40:57.767877"
+  },
+  "PIPPIN_20260804_013123": {
+    "gem_id": "PIPPIN_20260804_013123",
+    "token_symbol": "PIPPIN",
+    "chain": "solana",
+    "pair_address": "8WwcNqdZjCY5Pt7AkhupAFknV2txca9sq6YBkGzLbvdt",
+    "token_address": "Dfh5DzRgSvvCFDoYc2ciTkMrbDfRKybA4SoFbPmApump",
+    "price_entry_usd": 0.01928,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 320130.95,
+    "timestamp_entry": "2026-08-04T01:31:23.069289"
+  },
+  "AI2U2_20260804_015619": {
+    "gem_id": "AI2U2_20260804_015619",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 9.935e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 110408.60285699998,
+    "timestamp_entry": "2026-08-04T01:56:19.556994"
+  },
+  "GEOM_20260804_030608": {
+    "gem_id": "GEOM_20260804_030608",
+    "token_symbol": "GEOM",
+    "chain": "solana",
+    "pair_address": "9nHqVFew1awxmtMjaoeY5K6beH3xUwzPjGVWBHcoyxv7",
+    "token_address": "6dX5M8DY6VTFtVRX5yzWn9RE4MkJTyoAVbAodk6cpump",
+    "price_entry_usd": 0.0006934,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 6256.394427551999,
+    "timestamp_entry": "2026-08-04T03:06:08.425636"
+  },
+  "BIRB_20260804_040620": {
+    "gem_id": "BIRB_20260804_040620",
+    "token_symbol": "BIRB",
+    "chain": "solana",
+    "pair_address": "GUWFT7bbLphGrcpAPnnEnBbe1uErv9e6LLC2qPx2wZy1",
+    "token_address": "G7vQWurMkMMm2dU3iZpXYFTHT9Biio4F4gZCrwFpKNwG",
+    "price_entry_usd": 0.04911,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 228401.90000000002,
+    "timestamp_entry": "2026-08-04T04:06:20.988881"
+  },
+  "ZEREBRO_20260804_041218": {
+    "gem_id": "ZEREBRO_20260804_041218",
+    "token_symbol": "ZEREBRO",
+    "chain": "solana",
+    "pair_address": "3sjNoCnkkhWPVXYGDtem8rCciHSGc9jSFZuUAzKbvRVp",
+    "token_address": "8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn",
+    "price_entry_usd": 0.03895,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 437571.4,
+    "timestamp_entry": "2026-08-04T04:12:18.287632"
+  },
+  "Dino_20260804_044048": {
+    "gem_id": "Dino_20260804_044048",
+    "token_symbol": "Dino",
+    "chain": "solana",
+    "pair_address": "HfKcf5BDtfpeZg1mJJbWhQ5dMf8AZ7QaP2CmK93cQ87Z",
+    "token_address": "CaXFnAyYJVxBQdbDiYBgrkLYYh1XqTuVEJZsuvbkpump",
+    "price_entry_usd": 0.0001362,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 63014.623650009664,
+    "timestamp_entry": "2026-08-04T04:40:48.917671"
+  },
+  "Doom_20260804_052250": {
+    "gem_id": "Doom_20260804_052250",
+    "token_symbol": "Doom",
+    "chain": "solana",
+    "pair_address": "AfQX4MRUfKHgK27oukTtgFPKQ9WvPqRnJXR2pJquCNBh",
+    "token_address": "Gymbmn9wwMKe4NnmVceyyfpncp9arbwPfSdBsyY9pump",
+    "price_entry_usd": 0.004074,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 268041.4636713098,
+    "timestamp_entry": "2026-08-04T05:22:50.801155"
+  },
+  "CPEG_20260804_060047": {
+    "gem_id": "CPEG_20260804_060047",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 8.738e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 93301.99981799997,
+    "timestamp_entry": "2026-08-04T06:00:47.920296"
+  },
+  "PIZZA_20260804_061911": {
+    "gem_id": "PIZZA_20260804_061911",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 4.21e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 98961.46779800006,
+    "timestamp_entry": "2026-08-04T06:19:11.747682"
+  },
+  "CATE_20260804_063515": {
+    "gem_id": "CATE_20260804_063515",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "HMzvsEEmtzHhvZNw9uwbaG85HCTmFnkbhzUx16cy7ca3",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.02952,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 3448500.6670437097,
+    "timestamp_entry": "2026-08-04T06:35:15.372225"
+  },
+  "lmeow_20260804_102152": {
+    "gem_id": "lmeow_20260804_102152",
+    "token_symbol": "lmeow",
+    "chain": "solana",
+    "pair_address": "Aj9ELbTQw1NaGBDwJ5vns3P6dMXQHk4XJsdSiZWVkFVo",
+    "token_address": "9tWD7CuW2g59fgMUnggo4cZqB6XHEZrHtBaa8q7dpump",
+    "price_entry_usd": 0.0004023,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 14595.779962050217,
+    "timestamp_entry": "2026-08-04T10:21:52.953506"
+  },
+  "AI2U2_20260804_121446": {
+    "gem_id": "AI2U2_20260804_121446",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 1.013e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 110338.97707000002,
+    "timestamp_entry": "2026-08-04T12:14:46.735022"
+  },
+  "BIRB_20260804_132739": {
+    "gem_id": "BIRB_20260804_132739",
+    "token_symbol": "BIRB",
+    "chain": "solana",
+    "pair_address": "GUWFT7bbLphGrcpAPnnEnBbe1uErv9e6LLC2qPx2wZy1",
+    "token_address": "G7vQWurMkMMm2dU3iZpXYFTHT9Biio4F4gZCrwFpKNwG",
+    "price_entry_usd": 0.04995,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 363790.95,
+    "timestamp_entry": "2026-08-04T13:27:39.354140"
+  },
+  "PIZZA_20260804_151231": {
+    "gem_id": "PIZZA_20260804_151231",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 5.861e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 97167.68518700001,
+    "timestamp_entry": "2026-08-04T15:12:31.159233"
+  },
+  "CPEG_20260804_151236": {
+    "gem_id": "CPEG_20260804_151236",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 7.386e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 87791.30569699996,
+    "timestamp_entry": "2026-08-04T15:12:36.689824"
+  },
+  "JLY_20260804_152934": {
+    "gem_id": "JLY_20260804_152934",
+    "token_symbol": "JLY",
+    "chain": "solana",
+    "pair_address": "GtuhXCzfN7y9yUjG58PpYseSrX6kYkBnnVBMnKCzEm6Z",
+    "token_address": "6fEaYuzirTMXFnFo7dGKHJs8wWVFPdh1bfZL9oRPpump",
+    "price_entry_usd": 0.0002743,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 48734.746308693546,
+    "timestamp_entry": "2026-08-04T15:29:35.004651"
+  },
+  "MEGUSTA_20260804_152946": {
+    "gem_id": "MEGUSTA_20260804_152946",
+    "token_symbol": "MEGUSTA",
+    "chain": "solana",
+    "pair_address": "2x2X2XCnRbfYjoCLn1EhMuTWbSY47GyGHGAEwHr7DwhB",
+    "token_address": "2YxEmTED9G5ZpxwfBHuVzPVQ4TfMYTAjMo5Tx1WApump",
+    "price_entry_usd": 0.0007317,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 47803.33562770775,
+    "timestamp_entry": "2026-08-04T15:29:46.389480"
+  },
+  "TikTok_20260804_153509": {
+    "gem_id": "TikTok_20260804_153509",
+    "token_symbol": "TikTok",
+    "chain": "solana",
+    "pair_address": "4pmwGWmRrDNEYDVNrF4EgyZW1jxEE5thnGxqCscuMHiC",
+    "token_address": "89RAitwPJBEfLK4Gcg5iv7AjFABHWNvoD5rkvRkvpump",
+    "price_entry_usd": 0.00281,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 1941986.1923949735,
+    "timestamp_entry": "2026-08-04T15:35:09.573414"
+  },
+  "FOMO_20260804_155334": {
+    "gem_id": "FOMO_20260804_155334",
+    "token_symbol": "FOMO",
+    "chain": "solana",
+    "pair_address": "GVb6azh6ChX7MRUNS5A7xHNxMY7gvEifqskhUpstSNXQ",
+    "token_address": "E14Zh2nA8GTwAXh5XSbz6XuVkEeDZDmx9ANibUvapump",
+    "price_entry_usd": 0.000137,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 120054.06927617606,
+    "timestamp_entry": "2026-08-04T15:53:34.022626"
+  },
+  "Doom_20260804_160538": {
+    "gem_id": "Doom_20260804_160538",
+    "token_symbol": "Doom",
+    "chain": "solana",
+    "pair_address": "AfQX4MRUfKHgK27oukTtgFPKQ9WvPqRnJXR2pJquCNBh",
+    "token_address": "Gymbmn9wwMKe4NnmVceyyfpncp9arbwPfSdBsyY9pump",
+    "price_entry_usd": 0.006047,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 493301.1581471508,
+    "timestamp_entry": "2026-08-04T16:05:38.378504"
+  },
+  "CATE_20260804_165356": {
+    "gem_id": "CATE_20260804_165356",
+    "token_symbol": "CATE",
+    "chain": "solana",
+    "pair_address": "HMzvsEEmtzHhvZNw9uwbaG85HCTmFnkbhzUx16cy7ca3",
+    "token_address": "Ai66LHZG9MCzg1WKdawwqduVAXpNDUuV8M3uyq5ppump",
+    "price_entry_usd": 0.02802,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 1524891.1417194013,
+    "timestamp_entry": "2026-08-04T16:53:56.738552"
+  },
+  "QUID_20260804_171321": {
+    "gem_id": "QUID_20260804_171321",
+    "token_symbol": "QUID",
+    "chain": "base",
+    "pair_address": "0x07C4bc0F5fb6Cb069124DF3e1aE0B8fD8148ccC4",
+    "token_address": "0x1a44233FAe8D50F1AeB3a5d58dd426ff4814Cb53",
+    "price_entry_usd": 0.1217,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 7129205.312296555,
+    "timestamp_entry": "2026-08-04T17:13:21.285718"
+  },
+  "AI2U2_20260804_203545": {
+    "gem_id": "AI2U2_20260804_203545",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 8.777e-07,
+    "snapshots_done": 5,
+    "milestones_done": [
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 94877.076067,
+    "timestamp_entry": "2026-08-04T20:35:45.525996"
+  },
+  "CPEG_20260804_234848": {
+    "gem_id": "CPEG_20260804_234848",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 6.006e-07,
+    "snapshots_done": 5,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 79208.25800300001,
+    "timestamp_entry": "2026-08-04T23:48:48.291159"
+  },
+  "KIO_20260805_000018": {
+    "gem_id": "KIO_20260805_000018",
+    "token_symbol": "KIO",
+    "chain": "solana",
+    "pair_address": "CCyE73oa7dqrCS16FHt3tWEvNhtLzrqZwn4c8sMDXFWq",
+    "token_address": "7rMnp9EJd61SvNn8LGc7SAJeQxM36oeECKmP2a7opump",
+    "price_entry_usd": 0.0001212,
+    "snapshots_done": 5,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 9730.848647782315,
+    "timestamp_entry": "2026-08-05T00:00:18.869770"
+  },
+  "PIZZA_20260805_002610": {
+    "gem_id": "PIZZA_20260805_002610",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 5.892e-07,
+    "snapshots_done": 5,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 86991.22462700002,
+    "timestamp_entry": "2026-08-05T00:26:10.295252"
+  },
+  "JLY_20260805_003026": {
+    "gem_id": "JLY_20260805_003026",
+    "token_symbol": "JLY",
+    "chain": "solana",
+    "pair_address": "GtuhXCzfN7y9yUjG58PpYseSrX6kYkBnnVBMnKCzEm6Z",
+    "token_address": "6fEaYuzirTMXFnFo7dGKHJs8wWVFPdh1bfZL9oRPpump",
+    "price_entry_usd": 0.001006,
+    "snapshots_done": 5,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 69687.13702025072,
+    "timestamp_entry": "2026-08-05T00:30:26.636114"
+  },
+  "Instagram_20260805_004353": {
+    "gem_id": "Instagram_20260805_004353",
+    "token_symbol": "Instagram",
+    "chain": "solana",
+    "pair_address": "5W21DWFcsB4AiEaizL5S1r1utDWGDtUhUengczbYf15P",
+    "token_address": "Ef4E8vBoosFWhxXWqRHQAsXiuuAbocrN9PnpgHNrpump",
+    "price_entry_usd": 0.0003369,
+    "snapshots_done": 5,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 17581.02822402696,
+    "last_price_usd": 0.0002307,
+    "timestamp_entry": "2026-08-05T00:43:53.574917"
+  },
+  "CUPSEY_20260805_031416": {
+    "gem_id": "CUPSEY_20260805_031416",
+    "token_symbol": "CUPSEY",
+    "chain": "solana",
+    "pair_address": "DPzKoJVewaH1wpchD3gWKeeGm7G2mXkBW48uRniAgbVx",
+    "token_address": "6NwarBvDkXhByqVp2Qkq5i9XbtA2B3Bwe8SWGu9vpump",
+    "price_entry_usd": 0.01445,
+    "snapshots_done": 3,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 237363.5,
+    "timestamp_entry": "2026-08-05T03:14:16.840506"
+  },
+  "AI2U2_20260805_044148": {
+    "gem_id": "AI2U2_20260805_044148",
+    "token_symbol": "AI2U2",
+    "chain": "base",
+    "pair_address": "0x64a60d4423Fe10158267238bB41E425eB78fA745",
+    "token_address": "0xdeC50B6eB9D963b04220E35bf35417ba2887D71D",
+    "price_entry_usd": 1.152e-06,
+    "snapshots_done": 3,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 90858.54871,
+    "last_price_usd": 1.303e-06,
+    "timestamp_entry": "2026-08-05T04:41:48.371090"
+  },
+  "CPEG_20260805_080131": {
+    "gem_id": "CPEG_20260805_080131",
+    "token_symbol": "CPEG",
+    "chain": "base",
+    "pair_address": "0x05F57027D1741133d587BD9cE2d1c435d96E5adD",
+    "token_address": "0x2923C2A1348e1140BE9C85Fb322606a794004205",
+    "price_entry_usd": 6.524e-07,
+    "snapshots_done": 1,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 86850.21902499997,
+    "timestamp_entry": "2026-08-05T08:01:31.113714"
+  },
+  "PIZZA_20260805_085500": {
+    "gem_id": "PIZZA_20260805_085500",
+    "token_symbol": "PIZZA",
+    "chain": "base",
+    "pair_address": "0xc4839DBb976DFDae1A0c0574B26380aCF939AfF2",
+    "token_address": "0x22Db06DcAC80Ec4aa95E026bCab8cF77C8069791",
+    "price_entry_usd": 7.251e-07,
+    "snapshots_done": 1,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 81567.95298500004,
+    "last_price_usd": 7.616e-07,
+    "timestamp_entry": "2026-08-05T08:55:00.592889"
+  },
+  "JLY_20260805_100918": {
+    "gem_id": "JLY_20260805_100918",
+    "token_symbol": "JLY",
+    "chain": "solana",
+    "pair_address": "GtuhXCzfN7y9yUjG58PpYseSrX6kYkBnnVBMnKCzEm6Z",
+    "token_address": "6fEaYuzirTMXFnFo7dGKHJs8wWVFPdh1bfZL9oRPpump",
+    "price_entry_usd": 0.001477,
+    "snapshots_done": 0,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 21193.333044405514,
+    "timestamp_entry": "2026-08-05T10:09:18.023144"
+  },
+  "Tucker_20260805_101521": {
+    "gem_id": "Tucker_20260805_101521",
+    "token_symbol": "Tucker",
+    "chain": "solana",
+    "pair_address": "6AZVGxjbRTJLymhDYWsZVnD1g9nSJPJr7RWhdQ1vBkWR",
+    "token_address": "EM2DQsHnknmdd9xTEiG2c9LfYzpAh1io3Td6Rs7Apump",
+    "price_entry_usd": 0.0001147,
+    "snapshots_done": 0,
+    "milestones_done": [],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 26850.792686940178,
+    "timestamp_entry": "2026-08-05T10:15:21.720792"
+  },
+  "Niggolas_20260805_111236": {
+    "gem_id": "Niggolas_20260805_111236",
+    "token_symbol": "Niggolas",
+    "chain": "solana",
+    "pair_address": "ARKQqAb75EY6gZAwDix9fWUqRkVMrdagRzuQby4Hc3Vs",
+    "token_address": "9VKCbbd7c3Y6MRAmvB9rzgAtuGjvFZSHTZPqa6FNpump",
+    "price_entry_usd": 0.0001425,
+    "snapshots_done": 0,
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 8452.265175452081,
+    "timestamp_entry": "2026-08-05T11:12:36.579911"
+  }
+}

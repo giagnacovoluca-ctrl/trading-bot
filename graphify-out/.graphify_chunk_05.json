@@ -1,0 +1,157 @@
+{
+  "nodes": [
+    {"id": "hive_mind_wizard", "label": "hive-mind-wizard command", "file_type": "document", "source_file": ".claude/commands/hive-mind/hive-mind-wizard.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind", "label": "hive-mind command", "file_type": "document", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind_init", "label": "hive-mind init subcommand", "file_type": "concept", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind_spawn", "label": "hive-mind spawn subcommand", "file_type": "concept", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind_status", "label": "hive-mind status subcommand", "file_type": "concept", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind_resume", "label": "hive-mind resume subcommand", "file_type": "concept", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hive_mind_stop", "label": "hive-mind stop subcommand", "file_type": "concept", "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+
+    {"id": "hooks_readme", "label": "Hooks Commands README", "file_type": "document", "source_file": ".claude/commands/hooks/README.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_overview", "label": "Claude Code Hooks Overview", "file_type": "document", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_post_edit", "label": "hook post-edit", "file_type": "document", "source_file": ".claude/commands/hooks/post-edit.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_post_task", "label": "hook post-task", "file_type": "document", "source_file": ".claude/commands/hooks/post-task.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_pre_edit", "label": "hook pre-edit", "file_type": "document", "source_file": ".claude/commands/hooks/pre-edit.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_pre_task", "label": "hook pre-task", "file_type": "document", "source_file": ".claude/commands/hooks/pre-task.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_session_end", "label": "hook session-end", "file_type": "document", "source_file": ".claude/commands/hooks/session-end.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_setup", "label": "Setting Up ruv-swarm Hooks", "file_type": "document", "source_file": ".claude/commands/hooks/setup.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_pretooluse_config", "label": "PreToolUse hook configuration (.claude/settings.json)", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_pre_bash", "label": "pre-bash hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_post_bash", "label": "post-bash hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_post_search", "label": "post-search hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_mcp_initialized", "label": "mcp-initialized hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_agent_spawned", "label": "agent-spawned hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_task_orchestrated", "label": "task-orchestrated hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_neural_trained", "label": "neural-trained hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_notify", "label": "notify hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "hooks_session_restore", "label": "session-restore hook", "file_type": "concept", "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+
+    {"id": "memory_readme", "label": "Memory Commands README", "file_type": "document", "source_file": ".claude/commands/memory/README.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "memory_persist", "label": "memory-persist command", "file_type": "document", "source_file": ".claude/commands/memory/memory-persist.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "memory_search", "label": "memory-search command", "file_type": "document", "source_file": ".claude/commands/memory/memory-search.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "memory_usage", "label": "memory-usage command", "file_type": "document", "source_file": ".claude/commands/memory/memory-usage.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "memory_neural", "label": "Neural Pattern Training (memory neural)", "file_type": "document", "source_file": ".claude/commands/memory/neural.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_neural_train", "label": "mcp__claude-flow__neural_train tool", "file_type": "concept", "source_file": ".claude/commands/memory/neural.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_neural_status", "label": "mcp__claude-flow__neural_status tool", "file_type": "concept", "source_file": ".claude/commands/memory/neural.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_neural_patterns", "label": "mcp__claude-flow__neural_patterns tool", "file_type": "concept", "source_file": ".claude/commands/memory/neural.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+
+    {"id": "monitoring_readme", "label": "Monitoring Commands README", "file_type": "document", "source_file": ".claude/commands/monitoring/README.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "monitoring_agent_metrics", "label": "agent-metrics command", "file_type": "document", "source_file": ".claude/commands/monitoring/agent-metrics.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "monitoring_agents", "label": "List Active Patterns (agents command)", "file_type": "document", "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_agent_list", "label": "mcp__claude-flow__agent_list tool", "file_type": "concept", "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_agent_metrics", "label": "mcp__claude-flow__agent_metrics tool", "file_type": "concept", "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "monitoring_real_time_view", "label": "real-time-view command", "file_type": "document", "source_file": ".claude/commands/monitoring/real-time-view.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "monitoring_status", "label": "Check Coordination Status (monitoring status)", "file_type": "document", "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_swarm_status", "label": "mcp__claude-flow__swarm_status tool", "file_type": "concept", "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_swarm_monitor", "label": "mcp__claude-flow__swarm_monitor tool", "file_type": "concept", "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "mcp_health_check", "label": "mcp__claude-flow__health_check tool", "file_type": "concept", "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "monitoring_swarm_monitor", "label": "swarm-monitor command", "file_type": "document", "source_file": ".claude/commands/monitoring/swarm-monitor.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}
+  ],
+  "edges": [
+    {"source": "hooks_readme", "target": "hooks_pre_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/README.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_readme", "target": "hooks_post_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/README.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_readme", "target": "hooks_pre_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/README.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_readme", "target": "hooks_post_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/README.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_readme", "target": "hooks_session_end", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/README.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hooks_overview", "target": "hooks_pre_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_pre_bash", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_pre_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_post_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_post_bash", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_post_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_mcp_initialized", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_agent_spawned", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_task_orchestrated", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_neural_trained", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_notify", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_session_end", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_session_restore", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_pretooluse_config", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/overview.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hive_mind", "target": "hive_mind_init", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "weight": 1.0},
+    {"source": "hive_mind", "target": "hive_mind_spawn", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "weight": 1.0},
+    {"source": "hive_mind", "target": "hive_mind_status", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "weight": 1.0},
+    {"source": "hive_mind", "target": "hive_mind_resume", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "weight": 1.0},
+    {"source": "hive_mind", "target": "hive_mind_stop", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hive-mind/hive-mind.md", "source_location": null, "weight": 1.0},
+    {"source": "hive_mind_wizard", "target": "hive_mind", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/hive-mind/hive-mind-wizard.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hooks_pre_edit", "target": "hooks_post_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/pre-edit.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_pre_edit", "target": "memory_usage", "relation": "references", "confidence": "AMBIGUOUS", "confidence_score": 0.2, "source_file": ".claude/commands/hooks/pre-edit.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_post_edit", "target": "hooks_pre_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/post-edit.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_post_edit", "target": "memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/post-edit.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_post_edit", "target": "memory_neural", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/post-edit.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hooks_pre_task", "target": "hooks_post_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/pre-task.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_pre_task", "target": "memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/pre-task.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_post_task", "target": "hooks_pre_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/post-task.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_post_task", "target": "memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/post-task.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hooks_session_end", "target": "hooks_session_restore", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/session-end.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_session_end", "target": "memory_persist", "relation": "references", "confidence": "AMBIGUOUS", "confidence_score": 0.25, "source_file": ".claude/commands/hooks/session-end.md", "source_location": null, "weight": 1.0},
+
+    {"source": "hooks_setup", "target": "hooks_pre_edit", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/setup.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_setup", "target": "hooks_session_end", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/setup.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_setup", "target": "hooks_pretooluse_config", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/hooks/setup.md", "source_location": null, "weight": 1.0},
+    {"source": "hooks_overview", "target": "hooks_setup", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": ".claude/commands/hooks/setup.md", "source_location": null, "weight": 1.0},
+
+    {"source": "memory_readme", "target": "memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/README.md", "source_location": null, "weight": 1.0},
+    {"source": "memory_readme", "target": "memory_persist", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/README.md", "source_location": null, "weight": 1.0},
+    {"source": "memory_readme", "target": "memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/README.md", "source_location": null, "weight": 1.0},
+
+    {"source": "memory_neural", "target": "mcp_neural_train", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/neural.md", "source_location": null, "weight": 1.0},
+    {"source": "memory_neural", "target": "mcp_neural_status", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/neural.md", "source_location": null, "weight": 1.0},
+    {"source": "memory_neural", "target": "mcp_neural_patterns", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/memory/neural.md", "source_location": null, "weight": 1.0},
+    {"source": "mcp_neural_patterns", "target": "mcp_neural_train", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/memory/neural.md", "source_location": null, "weight": 1.0},
+
+    {"source": "monitoring_readme", "target": "monitoring_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/README.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_readme", "target": "monitoring_agent_metrics", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/README.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_readme", "target": "monitoring_real_time_view", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/README.md", "source_location": null, "weight": 1.0},
+
+    {"source": "monitoring_agents", "target": "mcp_agent_list", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_agents", "target": "mcp_agent_metrics", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_agents", "target": "mcp_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/agents.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_agent_metrics", "target": "mcp_agent_metrics", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": ".claude/commands/monitoring/agent-metrics.md", "source_location": null, "weight": 1.0},
+
+    {"source": "monitoring_status", "target": "mcp_swarm_status", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_status", "target": "mcp_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_status", "target": "mcp_agent_metrics", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_status", "target": "mcp_health_check", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "weight": 1.0},
+    {"source": "mcp_swarm_status", "target": "mcp_swarm_monitor", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/monitoring/status.md", "source_location": null, "weight": 1.0},
+
+    {"source": "monitoring_swarm_monitor", "target": "mcp_swarm_monitor", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": ".claude/commands/monitoring/swarm-monitor.md", "source_location": null, "weight": 1.0},
+    {"source": "monitoring_real_time_view", "target": "monitoring_swarm_monitor", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.7, "source_file": ".claude/commands/monitoring/real-time-view.md", "source_location": null, "weight": 1.0}
+  ],
+  "hyperedges": [
+    {
+      "id": "hooks_lifecycle_flow",
+      "label": "Claude Code task/edit hook lifecycle (pre/post pairs + session end)",
+      "nodes": ["hooks_pre_task", "hooks_post_task", "hooks_pre_edit", "hooks_post_edit", "hooks_session_end"],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.9,
+      "source_file": ".claude/commands/hooks/overview.md"
+    },
+    {
+      "id": "memory_persistence_flow",
+      "label": "Memory storage, search and persistence commands",
+      "nodes": ["memory_usage", "memory_search", "memory_persist"],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.85,
+      "source_file": ".claude/commands/memory/README.md"
+    },
+    {
+      "id": "swarm_monitoring_suite",
+      "label": "Swarm/agent monitoring command suite",
+      "nodes": ["monitoring_swarm_monitor", "monitoring_agent_metrics", "monitoring_real_time_view", "monitoring_status"],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 0.8,
+      "source_file": ".claude/commands/monitoring/README.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

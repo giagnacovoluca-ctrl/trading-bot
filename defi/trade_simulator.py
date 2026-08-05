@@ -113,6 +113,7 @@ _hard_sl_blacklist: dict = {}
 _COOLDOWN_MAP: dict = {
     "entry":             8,
     "liq_collapse":      24,
+    "exit_liq_pump":     24,   # honeypot pattern — stesso cooldown del rug
     "hard_sl":           24,
     "sl_adaptive":       24,
     "exit_bsr_collapse": 4,
@@ -149,8 +150,8 @@ CONFIGS = {
         sl_threshold_pct     = -15.0,
         hard_sl_pct          = -8.0,
         vol_drop_exit_ratio  = 0.20,
-        bsr_exit_threshold   = 0.45,   # era 0.50 → 0.45: exit_quality mostra 67% BSR prematuri, richiede più pressione vendita
-        bsr_confirm_count    = 7,      # era 5 → 7: exit_quality <10min = 71% prematuri, più conferme riducono i falsi segnali
+        bsr_exit_threshold   = 0.35,   # abbassato 0.45 → 0.35: evita uscite premature da finte oscillazioni
+        bsr_confirm_count    = 12,     # aumentato 7 → 12: richiede conferme prolungate prima di uscire
     ),
     # ── pump.fun PRE-graduation — token ancora sulla bonding curve ───────────
     # Entrata a ~72 SOL (8 SOL prima della graduation a 80 SOL).
@@ -1645,6 +1646,7 @@ class LiveEngine:
             "pair_address": pair_addr,
             "token_address": tok_addr,
             "entry_price":  entry_price,
+            "entry_liq":    float(row.get("liquidity_usd", skip_val if "liq" in reason else 0) or 0),
             "skip_reason":  reason,
             "skip_value":   skip_val,
             "peak_pct":     float("-inf"),
@@ -1686,28 +1688,43 @@ class LiveEngine:
         done = []
         for sid, sh in list(self._shadows.items()):
             age_min = (now - sh["ts_entry"]).total_seconds() / 60
-            # Time limit superato: chiudi al prezzo corrente (o sconosciuto)
-            def _shadow_price(pair_addr, chain):
-                """_fetch_price ritorna tupla (price,...) — estrae solo il prezzo."""
-                r = _fetch_price(pair_addr, chain)
-                return r[0] if r else None
+
+            raw_fetch = _fetch_price(sh["pair_address"], sh["chain"])
+            if not raw_fetch:
+                if age_min >= self._SHADOW_LIMIT_M:
+                    self._shadow_close(sid, sh, 0.0, "time_limit", now)
+                    done.append(sid)
+                continue
+
+            fetch_price = raw_fetch[0]
+            fetch_liq   = raw_fetch[3] if len(raw_fetch) > 3 else 0
+
+            # Aggiorna entry_liq dal primo fetch live se non disponibile dal segnale
+            if sh.get("entry_liq", 0) == 0 and fetch_liq > 0:
+                sh["entry_liq"] = fetch_liq
 
             if age_min >= self._SHADOW_LIMIT_M:
-                fetch = _shadow_price(sh["pair_address"], sh["chain"])
-                ep    = sh["entry_price"]
-                pct   = ((fetch - ep) / ep * 100) if (fetch and ep > 0) else 0.0
+                ep  = sh["entry_price"]
+                pct = ((fetch_price - ep) / ep * 100) if (fetch_price and ep > 0) else 0.0
                 self._shadow_close(sid, sh, pct, "time_limit", now)
                 done.append(sid)
                 continue
-            fetch = _shadow_price(sh["pair_address"], sh["chain"])
-            if not fetch or fetch <= 0:
+
+            ep = sh["entry_price"]
+            if ep <= 0 or fetch_price <= 0:
                 continue
-            ep  = sh["entry_price"]
-            if ep <= 0:
-                continue
-            pct = (fetch - ep) / ep * 100
+            pct = (fetch_price - ep) / ep * 100
             sh["peak_pct"] = max(sh.get("peak_pct", float("-inf")), pct)
-            if pct >= self._SHADOW_TP1:
+
+            # exit_liq_pump: stessa logica delle posizioni live
+            _sh_entry_liq = sh.get("entry_liq", 0)
+            if (_sh_entry_liq > 5_000
+                    and fetch_liq > 25_000
+                    and fetch_liq > _sh_entry_liq * 1.8
+                    and age_min > 2.0):
+                self._shadow_close(sid, sh, pct, "exit_liq_pump_would_hit", now)
+                done.append(sid)
+            elif pct >= self._SHADOW_TP1:
                 self._shadow_close(sid, sh, pct, "tp1_would_hit", now)
                 done.append(sid)
             elif pct <= self._SHADOW_HARD_SL:
@@ -2181,6 +2198,11 @@ class LiveEngine:
                                      f"prezzo {new_ep:.3e} < {last_ep:.3e}×0.75 ({drop_pct:+.1f}% dal prev entry)")
                             continue
 
+                    # Disabilita sistemi zavorra a basso win rate (pre_grad, v2, v3_midcap)
+                    if effective_system in ("pre_grad", "v2", "v3_midcap"):
+                        known.add(sid)
+                        continue
+
                     ts_str = str(row.get("timestamp_entry", row.get("timestamp", "")))
                     try:
                         ts = datetime.fromisoformat(ts_str)
@@ -2257,10 +2279,17 @@ class LiveEngine:
                             known.add(sid)
                             continue
 
-                        # Filtro anti-dump: non entrare su token che sta scendendo
-                        # change_1h < -2% E BSR < 0.5 → distribuzione attiva, non accumulo
+                        # Filtro BSR Momentum per DEFI: richiede BSR >= 1.0 (pressione compratori)
+                        # + filtro anti-dump: chg1h < -2% E BSR < 0.50 → distribuzione attiva
                         _sig_chg1h = float(row.get("change_1h_pct", 0) or 0)
                         _sig_bsr   = float(row.get("buy_sell_ratio_1h", 1) or 1)
+                        if _sig_bsr < 1.0:
+                            log.info(
+                                f"[live/defi] {sid}: momentum filter "
+                                f"bsr={_sig_bsr:.2f}<1.0 → skip"
+                            )
+                            known.add(sid)
+                            continue
                         if _sig_chg1h < -2.0 and _sig_bsr < 0.50:
                             log.info(
                                 f"[live/defi] {sid}: anti-dump "
@@ -2904,7 +2933,7 @@ class LiveEngine:
         # Usa position_open_ts (quando l'engine ha aperto la posizione) invece di entry_ts
         # (timestamp del segnale) per evitare che la grace si consumi durante il lag di pickup.
         # Fix bug: se il parse fallisce _in_grace=True (sicuro) invece di False.
-        ENTRY_GRACE_MIN = 13.0
+        ENTRY_GRACE_MIN = 18.0  # esteso da 13.0 a 18.0: protegge dall'71% di uscite premature nei primi 15 min
         _entry_age_min = 0.0
         try:
             _grace_ts_str = pos.get("position_open_ts") or pos["entry_ts"]
@@ -2931,6 +2960,22 @@ class LiveEngine:
                   exit_r="liq_collapse")
             pos["prev_liq"] = cur_liq; pos["last_update"] = now; return
         pos["prev_liq"] = cur_liq
+
+        # 2-pre-2: LP pump detection — segnale honeypot pre-rug (SOLO pump_grad/pre_grad)
+        # Pattern: creator aggiunge LP per gonfiare il prezzo, poi drena tutto in <10s.
+        # Dati storici: tutti i 23 rug liq_velocity avevano prev_liq $33k-$62k al momento
+        # del drain. Nessun token vincente ha mai visto la pool crescere a $30k+ prima del TP1.
+        # Uscendo quando liq > 1.8x entry_liq e > $25k, siamo ancora in profitto E
+        # la pool ha abbastanza liq per eseguire la sell su Jupiter senza stuck.
+        if (not _in_grace
+                and pos.get("system") in ("pump_grad", "pre_grad")
+                and pos.get("entry_liq", 0) > 5_000
+                and cur_liq > 25_000
+                and cur_liq > pos["entry_liq"] * 1.8):
+            _exit("exit_liq_pump",
+                  f"liq_pump: ${cur_liq:.0f} > 1.8x entry_liq=${pos['entry_liq']:.0f} (honeypot signal — esco prima del drain)",
+                  exit_r="exit_liq_pump")
+            pos["last_update"] = now; return
 
         # 2a. Soglia relativa pump_grad/pre_grad: exit se liq < X% dell'entry_liq
         # pre_grad usa 40% (più stretto di pump_grad 30%) perché entra a liq più bassa
@@ -3045,11 +3090,11 @@ class LiveEngine:
         # 4.5 BSR collapse (dopo hard_sl: se entrambi scattano nello stesso ciclo vince hard_sl)
         # pump_grad: 2 conferme | flagged v3 (momentum deteriorato): 2 exit / 3 warn | defi: 5 | altri: 4
         BSR_CONFIRM_COUNT = (
-            2 if pos.get("system") == "pump_grad"
-            else cfg.get("bsr_confirm_count", 7) if pos.get("system") == "defi"
+            4 if pos.get("system") == "pump_grad"
+            else cfg.get("bsr_confirm_count", 12) if pos.get("system") == "defi"
             else 2 if _v3_flag == "exit"
             else 3 if _v3_flag == "warn"
-            else 4
+            else 6
         )
         BSR_MIN_VOL_USD   = 3_000
         if not _in_grace and cur_vol >= BSR_MIN_VOL_USD and cur_bsr < cfg.get("bsr_exit_threshold", 0.50):
@@ -3907,13 +3952,172 @@ def _build_inj_section() -> str:
         f'  var n=0;\n'
         f'  document.querySelectorAll("#inj_tbody tr.injrow").forEach(function(r){{\n'
         f'    var ok=(!fd||r.dataset.dir===fd)&&(!fs||r.dataset.stato===fs)\n'
-        f'        &&(!ft||r.dataset.ticker.indexOf(ft)>=0);\n'
-        f'    r.style.display=ok?"":"none"; if(ok)n++;\n'
-        f'  }});\n'
         f'  document.getElementById("inj_vis").textContent=n+" visibili";\n'
         f'}}\n'
         f'</script>\n'
         f'</details>\n'
+    )
+
+
+def _build_grid_section() -> str:
+    """Sezione read-only con lo stato del Grid Trading Bot."""
+    import json
+    import csv
+    from pathlib import Path
+    
+    state_file = Path("/home/magic/Scrivania/code/GIT/trade/reports/grid_state.json")
+    trades_file = Path("/home/magic/Scrivania/code/GIT/trade/reports/grid_trades.csv")
+    
+    if not state_file.exists():
+        return ""
+        
+    try:
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+    except Exception as e:
+        return (f'<div class="section-title">📊 Grid Trading Bot</div>'
+                f'<div style="color:#8b949e;font-size:.8rem;padding:8px">Errore lettura stato: {e}</div>')
+                
+    cum_pnl = state.get("cumulative_pnl", 0.0)
+    grids = state.get("grids", {})
+    
+    pnl_c = "#3fb950" if cum_pnl >= 0 else "#f85149"
+    
+    grid_details = ""
+    for pair, g in grids.items():
+        paused = " (PAUSED)" if g.get("paused") else ""
+        inv = g.get("inventory", 0.0)
+        real_pnl = g.get("realized_pnl", 0.0)
+        center = g.get("center_price", 0.0)
+        r_pct = g.get("range_pct", 0.0) * 100
+        
+        levels = g.get("levels", [])
+        buy_lvls = sum(1 for l in levels if l.get("side") == "buy" and l.get("status") == "open")
+        sell_lvls = sum(1 for l in levels if l.get("side") == "sell" and l.get("status") == "open")
+        
+        grid_details += (
+            f'<div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; margin-bottom:10px; min-width:280px; flex:1">'
+            f'  <div style="font-weight:600; font-size:1rem; border-bottom:1px solid #21262d; padding-bottom:6px; margin-bottom:8px">{pair}{paused}</div>'
+            f'  <div style="display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:4px"><span style="color:#8b949e">Center Price:</span> <span>{center:.4f}</span></div>'
+            f'  <div style="display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:4px"><span style="color:#8b949e">Range:</span> <span>±{r_pct:.2f}%</span></div>'
+            f'  <div style="display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:4px"><span style="color:#8b949e">Net Inventory:</span> <span>{inv:.6f}</span></div>'
+            f'  <div style="display:flex; justify-content:space-between; font-size:.8rem; margin-bottom:4px"><span style="color:#8b949e">Buy/Sell Levels:</span> <span>{buy_lvls} BUY / {sell_lvls} SELL</span></div>'
+            f'  <div style="display:flex; justify-content:space-between; font-size:.8rem; font-weight:600"><span style="color:#8b949e">Realized PnL:</span> <span style="color:{"#3fb950" if real_pnl >= 0 else "#f85149"}">${real_pnl:+.4f}</span></div>'
+            f'</div>'
+        )
+        
+    trade_rows = ""
+    try:
+        if trades_file.exists():
+            with open(trades_file, encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)[-10:]
+                for r in reversed(rows):
+                    p = float(r.get("pnl_usd") or 0.0)
+                    pc = "#3fb950" if p > 0 else ("#f85149" if p < 0 else "#8b949e")
+                    ts_fmt = r.get("ts", "")[:19].replace("T", " ")
+                    trade_rows += (
+                        f'<tr>'
+                        f'  <td>{ts_fmt}</td>'
+                        f'  <td style="font-weight:600">{r.get("pair")}</td>'
+                        f'  <td style="color:{pc}">{r.get("side").upper()}</td>'
+                        f'  <td style="font-family:monospace">{float(r.get("price", 0)):.4f}</td>'
+                        f'  <td style="font-family:monospace">{float(r.get("qty", 0)):.6f}</td>'
+                        f'  <td style="color:{pc}; font-weight:600">{p:+.4f}$</td>'
+                        f'  <td>{r.get("grid_level")}</td>'
+                        f'</tr>'
+                    )
+    except Exception as e:
+        trade_rows = f'<tr><td colspan="7" style="color:#8b949e; text-align:center">Errore lettura trade: {e}</td></tr>'
+        
+    return (
+        f'<details style="margin:4px 0 14px" open>\n'
+        f'<summary style="cursor:pointer;list-style-position:inside;background:#161b22;'
+        f'border:1px solid #30363d;border-radius:8px;padding:10px 14px;font-weight:600">'
+        f'📊 Grid Trading Bot (Binance Spot PAPER) '
+        f'<span style="font-size:.75rem;font-weight:400;color:#8b949e;margin-left:10px">'
+        f'P&L Totale: <span style="color:{pnl_c}; font-weight:600">${cum_pnl:+.2f}</span>'
+        f'</span></summary>\n'
+        f'<div style="display:flex; gap:10px; flex-wrap:wrap; margin:10px 0">\n'
+        f'{grid_details}'
+        f'</div>\n'
+        f'<div class="wrap"><table>\n'
+        f'  <thead><tr><th>Timestamp</th><th>Coppia</th><th>Lato</th><th>Prezzo</th><th>Quantità</th><th>PnL</th><th>Livello</th></tr></thead>\n'
+        f'  <tbody>{trade_rows}</tbody>\n'
+        f'</table></div>\n'
+        f'</details>'
+    )
+
+
+def _build_funding_farmer_section() -> str:
+    """Sezione read-only con lo stato del Funding Farmer."""
+    import csv
+    from pathlib import Path
+    
+    trades_file = Path("/home/magic/Scrivania/code/GIT/injective_autopilot/reports/funding_trades.csv")
+    if not trades_file.exists():
+        return ""
+        
+    rows = []
+    try:
+        with open(trades_file, encoding="utf-8") as f:
+            rows = list(csv.DictReader(f))
+    except Exception as e:
+        return (f'<div class="section-title">🌾 Funding Farmer</div>'
+                f'<div style="color:#8b949e;font-size:.8rem;padding:8px">Errore lettura log: {e}</div>')
+                
+    opened = [r for r in rows if r.get("status") == "OPEN"]
+    closed = [r for r in rows if r.get("status") == "CLOSED"]
+    
+    total_funding = sum(float(r.get("funding_collected") or 0.0) for r in rows)
+    total_unrealized = sum(float(r.get("unrealized_pnl") or 0.0) for r in opened)
+    total_hedge = sum(float(r.get("hedge_pnl") or 0.0) for r in rows)
+    
+    net_pnl = total_funding + total_unrealized + total_hedge
+    net_c = "#3fb950" if net_pnl >= 0 else "#f85149"
+    
+    trs = ""
+    for r in reversed(rows[-15:]):
+        status = r.get("status")
+        is_open = status == "OPEN"
+        f_collected = float(r.get("funding_collected") or 0.0)
+        upnl = float(r.get("unrealized_pnl") or 0.0)
+        hpnl = float(r.get("hedge_pnl") or 0.0)
+        
+        direction = r.get("direction", "").upper()
+        dir_c = "#3fb950" if direction == "LONG" else "#f85149"
+        
+        status_lbl = '<span style="color:#58a6ff">● OPEN</span>' if is_open else '<span style="color:#8b949e">CLOSED</span>'
+        
+        ts_fmt = r.get("ts", "")[:19].replace("T", " ")
+        trs += (
+            f'<tr>'
+            f'  <td>{ts_fmt}</td>'
+            f'  <td style="font-weight:600">{r.get("market")}</td>'
+            f'  <td style="color:{dir_c}">{direction}</td>'
+            f'  <td style="font-family:monospace">{float(r.get("entry_price") or 0.0):.6f}</td>'
+            f'  <td style="font-family:monospace">{float(r.get("size") or 0.0):.4f}</td>'
+            f'  <td style="color:#3fb950; font-weight:600">${f_collected:+.4f}</td>'
+            f'  <td style="color:{"#3fb950" if upnl >= 0 else "#f85149"}">${upnl:+.4f}</td>'
+            f'  <td style="color:{"#3fb950" if hpnl >= 0 else "#f85149"}">${hpnl:+.4f}</td>'
+            f'  <td>{status_lbl}</td>'
+            f'</tr>'
+        )
+        
+    return (
+        f'<details style="margin:4px 0 14px" open>\n'
+        f'<summary style="cursor:pointer;list-style-position:inside;background:#161b22;'
+        f'border:1px solid #30363d;border-radius:8px;padding:10px 14px;font-weight:600">'
+        f'🌾 Funding Rate Farmer (Injective/Binance PAPER) '
+        f'<span style="font-size:.75rem;font-weight:400;color:#8b949e;margin-left:10px">'
+        f'Aperte {len(opened)} &middot; Chiuse {len(closed)} &middot; '
+        f'Net P&L: <span style="color:{net_c}; font-weight:600">${net_pnl:+.2f}</span>'
+        f' (Funding: +${total_funding:.2f}, Hedge PnL: {total_hedge:+.2f}$)'
+        f'</span></summary>\n'
+        f'<div class="wrap"><table>\n'
+        f'  <thead><tr><th>Timestamp</th><th>Mercato</th><th>Lato</th><th>Prezzo Entrata</th><th>Size</th><th>Funding Ricevuto</th><th>Unrealized PnL</th><th>Hedge PnL</th><th>Stato</th></tr></thead>\n'
+        f'  <tbody>{trs}</tbody>\n'
+        f'</table></div>\n'
+        f'</details>'
     )
 
 
@@ -4758,6 +4962,11 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         '.wrap{overflow-x:auto}\n'
         '.disclaimer{background:#161005;border:1px solid #6e5908;border-radius:6px;'
         'padding:10px 14px;margin-top:24px;font-size:.72rem;color:#b39a2e}\n'
+        '.tabs { display:flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #21262d; }\n'
+        '.tabs button { background: none; border: none; padding: 10px 16px; color: #8b949e; cursor: pointer; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; transition: 0.2s; }\n'
+        '.tabs button:hover { color: #e6edf3; }\n'
+        '.tabs button.active { color: #58a6ff; border-bottom: 2px solid #58a6ff; }\n'
+        '.tabcontent { display: none; }\n'
         '</style>\n'
         '</head>\n<body>\n'
         '<div style="max-width:1600px;margin:0 auto">\n'
@@ -4777,6 +4986,13 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'<div class="val" style="color:#e3b341">{has_data}</div></div>\n'
         f'  </div>\n'
         f'</div>\n'
+        f'<div class="tabs">\n'
+        f'  <button class="tablinks active" onclick="openTab(event, \'tab-defi\')">&#128200; DEFI Simulator</button>\n'
+        f'  <button class="tablinks" onclick="openTab(event, \'tab-inj\')">&#129302; Injective</button>\n'
+        f'  <button class="tablinks" onclick="openTab(event, \'tab-grid\')">&#128202; Grid</button>\n'
+        f'  <button class="tablinks" onclick="openTab(event, \'tab-farmer\')">&#127806; Funding</button>\n'
+        f'</div>\n'
+        f'<div id="tab-defi" class="tabcontent" style="display:block;">\n'
         f'<div class="sys-cards">\n'
         f'{sys_card("defi","#1f6feb")}'
         f'{sys_card("defi_v3","#39c5cf")}'
@@ -4787,7 +5003,6 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'{sys_card("pre_grad","#58a6ff")}'
         f'{sys_card("mirror","#bc8cff")}'
         f'</div>\n'
-        f'{_build_inj_section()}'
         f'{_build_kpi_section(hours=24)}'
         f'<div class="filters">\n'
         f'  <span class="lbl2">Dal:</span>\n'
@@ -4887,9 +5102,22 @@ def _build_live_html(open_list, closed_list, all_states, entry_prices: dict = No
         f'  </tr></thead>\n'
         f'  <tbody id="ctbody">{closed_rows}</tbody>\n'
         f'</table></div>\n'
+        f'</div>\n'
+        f'<div id="tab-inj" class="tabcontent">\n{_build_inj_section()}</div>\n'
+        f'<div id="tab-grid" class="tabcontent">\n{_build_grid_section()}</div>\n'
+        f'<div id="tab-farmer" class="tabcontent">\n{_build_funding_farmer_section()}</div>\n'
         f'<div class="disclaimer">&#9888; Solo a scopo educativo. '
         f'Non costituisce consulenza finanziaria.</div>\n'
         f'<script>\n'
+        f'function openTab(evt, tabName) {{\n'
+        f'  var i, tabcontent, tablinks;\n'
+        f'  tabcontent = document.getElementsByClassName("tabcontent");\n'
+        f'  for (i = 0; i < tabcontent.length; i++) {{ tabcontent[i].style.display = "none"; }}\n'
+        f'  tablinks = document.getElementsByClassName("tablinks");\n'
+        f'  for (i = 0; i < tablinks.length; i++) {{ tablinks[i].className = tablinks[i].className.replace(" active", ""); }}\n'
+        f'  document.getElementById(tabName).style.display = "block";\n'
+        f'  if(evt) evt.currentTarget.className += " active";\n'
+        f'}}\n'
         f'var _sys="", _chain="", _outcome="", _exitr="", _tokSearch="", _sortCol="", _sortDir=-1, _cutoff_ts=0;\n'
         f'function dateNDaysAgo(n){{\n'
         f'  var d=new Date(); d.setDate(d.getDate()-n);\n'

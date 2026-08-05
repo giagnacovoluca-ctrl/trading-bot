@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KSD Contest Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-trophy brand-icon"></i>
+        <span class="brand-text">KSD CONTEST</span>
+      </div>
+      <div class="sidebar-menu">
+        <a href="#sec-contest" class="menu-item active">
+          <i class="fa-solid fa-gamepad menu-icon"></i>
+          <span>Contest</span>
+        </a>
+        <a href="#sec-classifica" class="menu-item" id="navClassifica">
+          <i class="fa-solid fa-chart-simple menu-icon" style="color: var(--accent-green)"></i>
+          <span>Classifica</span>
+        </a>
+        <a href="/admin" class="menu-item">
+          <i class="fa-solid fa-square-check menu-icon" style="color: var(--accent-green)"></i>
+          <span>Approvazioni</span>
+        </a>
+        <a href="#sec-stats" class="menu-item" id="navHof">
+          <i class="fa-solid fa-medal menu-icon" style="color: var(--accent-gold)"></i>
+          <span>Hall of Fame</span>
+        </a>
+        <a href="/admin" class="menu-item">
+          <i class="fa-solid fa-gear menu-icon" style="color: var(--accent-red)"></i>
+          <span>Staff Panel</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <header class="top-bar">
+        <div class="page-title">
+          <i class="fa-solid fa-trophy"></i>
+          <span>Contest Dashboard</span>
+        </div>
+        <div class="user-profile">
+          <span id="userNameDisplay" style="font-weight: 600; font-size: 14px;">Ospite</span>
+          <div class="avatar" id="userAvatar">
+            ?
+            <div class="status-indicator" style="background-color: #666"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="content-wrapper">
+        
+        <!-- Alerts Jinja -->
+        {% if error %}
+        <div style="background: rgba(218, 55, 60, 0.1); border: 1px solid var(--accent-red); color: #FA777C; padding: 16px; border-radius: 12px; margin-bottom: 24px; font-weight: 500;">
+          <i class="fa-solid fa-triangle-exclamation"></i> {{ error }}
+        </div>
+        {% endif %}
+        {% if success %}
+        <div style="background: rgba(35, 165, 89, 0.1); border: 1px solid var(--accent-green); color: #4ade80; padding: 16px; border-radius: 12px; margin-bottom: 24px; font-weight: 500;">
+          <i class="fa-solid fa-check"></i> {{ success }}
+        </div>
+        {% endif %}
+
+        <div class="contest-card">
+          <div class="card-header" id="sec-contest">
+            <h1 class="card-title">KASH!DO Contest Manager v3</h1>
+            <p class="card-subtitle">Dashboard Integrata per tutti i giocatori del server KSD.</p>
+          </div>
+
+          <!-- Bounties Section -->
+          {% if bounties %}
+          <div style="background: rgba(241, 196, 15, 0.1); border: 1px solid var(--accent-gold); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
+            <h3 style="color: var(--accent-gold); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-star"></i> Sfide Attive (Bounties)
+            </h3>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+              {% for b in bounties %}
+              <div style="background: rgba(0,0,0,0.3); padding: 12px 16px; border-radius: 8px; flex: 1; min-width: 250px;">
+                <div style="font-weight: 600; color: white; margin-bottom: 4px;">{{ b.title }}</div>
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">{{ b.description }}</div>
+                <div style="color: var(--accent-gold); font-weight: bold; font-size: 14px;"><i class="fa-solid fa-coins"></i> {{ b.reward_points }} Punti Bonus</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Moduli Invio Dati presi dal vecchio index -->
+          <div style="display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 32px;">
+            <div style="flex: 1; min-width: 300px; background: rgba(255,255,255,0.02); padding: 24px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+              <h3 style="color: var(--accent-blue); margin-bottom: 16px;"><i class="fa-solid fa-user-plus"></i> Iscrizione Rapida</h3>
+              <form action="/register" method="POST" style="display: flex; flex-direction: column; gap: 12px;">
+                <input type="text" name="discord_id" required placeholder="Discord ID" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%;">
+                <input type="text" name="activision_id" required placeholder="Activision ID (es. Nome#1234)" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%;">
+                <button type="submit" class="btn btn-secondary" style="width: 100%; justify-content: center;">Iscriviti</button>
+              </form>
+            </div>
+
+            <div style="flex: 1; min-width: 300px; background: rgba(241, 196, 15, 0.05); padding: 24px; border-radius: 16px; border: 1px solid rgba(241, 196, 15, 0.2);" id="sec-invia">
+              <h3 style="color: var(--accent-gold); margin-bottom: 16px;"><i class="fa-solid fa-trophy"></i> Invia Contest Mensile</h3>
+              <form action="/upload_contest" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
+                <input list="registered_players" id="player_name_input" name="player_name" required placeholder="Il tuo Nome in Game (es. FraDodo)" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%;">
+                <datalist id="registered_players">
+                  {% for p in players %}
+                  <option value="{{ p.activision_id }}">
+                  {% endfor %}
+                </datalist>
+                  <input type="number" name="kills" required placeholder="Kills" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 50%;">
+                  <input type="number" name="posizione" required placeholder="Posizione" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 50%;">
+                </div>
+                <input type="file" name="screenshot" accept="image/*" required style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; color: white; width: 100%;">
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; background-color: var(--accent-gold); color: black;">Invia Risultato</button>
+              </form>
+            </div>
+          </div>
+          
+          <script>
+            // Pre-fill form se l'utente arriva da Discord
+            const urlParams = new URLSearchParams(window.location.search);
+            const userName = urlParams.get('name');
+            
+            if (userName) {
+                const nameInput = document.getElementById('player_name_input');
+                if (nameInput) {
+                    nameInput.value = userName;
+                }
+            }
+          </script>
+
+          <div class="card-header" id="sec-classifica">
+            <h1 class="card-title">Classifica Live</h1>
+          </div>
+          
+          <div style="overflow-x: auto; margin-bottom: 32px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                  <th style="padding: 16px; color: var(--text-secondary);">Player</th>
+                  <th style="padding: 16px; color: var(--accent-gold);">🏆 Punti Contest</th>
+                  <th style="padding: 16px; color: var(--accent-blue);">Punti Base</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">Match</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">Kills</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">K/M</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">Danno Med.</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">Win %</th>
+                  <th style="padding: 16px; color: var(--text-secondary);">Azione</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in players %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; cursor: pointer;" onclick="loadPlayerChart('{{ p.discord_id }}', '{{ p.activision_id }}')">
+                  <td style="padding: 16px;">
+                    <div style="font-weight: 600; color: white;">
+                      {{ p.activision_id }}
+                      {% if p.has_pending %}
+                        <span style="font-size: 10px; background: rgba(241, 196, 15, 0.2); color: var(--accent-gold); padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Da confermare</span>
+                      {% else %}
+                        <span style="font-size: 10px; background: rgba(35, 165, 89, 0.2); color: #4ade80; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Confermati</span>
+                      {% endif %}
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">{{ p.discord_id }}</div>
+                  </td>
+                  <td style="padding: 16px; font-weight: bold; color: var(--accent-gold);">{{ p.contest_points or 0 }}</td>
+                  <td style="padding: 16px; font-weight: bold; color: var(--accent-blue);">{{ p.points }}</td>
+                  <td style="padding: 16px;">{{ p.matches_played }}</td>
+                  <td style="padding: 16px;">{{ p.total_kills }}</td>
+                  <td style="padding: 16px; color: #4ade80;">{{ p.kd_ratio }}</td>
+                  <td style="padding: 16px; color: #f87171;">{{ p.avg_damage }}</td>
+                  <td style="padding: 16px; color: #60a5fa;">{{ p.win_rate }}</td>
+                  <td style="padding: 16px;" onclick="event.stopPropagation()">
+                    <button onclick="promptDeletePlayer('{{ p.discord_id }}', '{{ p.activision_id }}')" style="background: rgba(218, 55, 60, 0.2); border: 1px solid var(--accent-red); color: #FA777C; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" style="padding: 24px; text-align: center; color: var(--text-muted);">Nessun giocatore registrato.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="chart-container" id="sec-stats" style="margin-top: 32px; padding: 24px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            <h3 style="color: white; margin-bottom: 16px;" id="chartTitle">Seleziona un giocatore dalla classifica per vedere il grafico</h3>
+            <canvas id="progressChart" style="height: 300px; display: none;"></canvas>
+          </div>
+          
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const playersData = {{ players | tojson | safe }};
+    // Inject players data into the chart logically (example simple mapping)
+    window.playersData = playersData;
+    
+    function promptDeletePlayer(discordId, playerName) {
+        const pwd = prompt("Inserisci la password di amministratore per eliminare il giocatore " + playerName + ":");
+        if (pwd) {
+            // Crea un form dinamicamente e invialo
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/delete_player';
+            
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'discord_id';
+            idInput.value = discordId;
+            
+            const pwdInput = document.createElement('input');
+            pwdInput.type = 'hidden';
+            pwdInput.name = 'password';
+            pwdInput.value = pwd;
+            
+            form.appendChild(idInput);
+            form.appendChild(pwdInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+  </script>
+  <script src="/static/main.js?v=4"></script>
+</body>
+</html>

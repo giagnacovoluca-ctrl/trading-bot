@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - FraDodo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0b0f19; color: #e2e8f0; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-red-500">Pannello Amministratore</h1>
+            <a href="/" class="text-cyan-400 hover:underline">Torna alla Home</a>
+        </div>
+        
+        <div class="bg-gray-900 border border-red-500 rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Coda di Revisione OCR</h2>
+            
+            {% for m in pending %}
+            <div class="border border-gray-700 rounded p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-800">
+                <div>
+                    <p class="font-bold">Player: <span class="text-cyan-400">{{ m.activision_id }}</span></p>
+                    <a href="{{ m.screenshot_url }}" target="_blank">
+                        <img src="{{ m.screenshot_url }}" class="mt-2 h-48 object-cover rounded border border-gray-600" alt="Screenshot Match">
+                    </a>
+                    <p class="text-sm mt-1 text-gray-400">Confidenza OCR media: {{ m.ocr_confidence }}</p>
+                </div>
+                <form action="/admin/resolve" method="POST" class="flex flex-col gap-3">
+                    <input type="hidden" name="match_id" value="{{ m.id }}">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-sm text-gray-400">Kills</label>
+                            <input type="number" name="kills" value="{{ m.kills }}" class="bg-gray-700 p-2 rounded w-full text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400">Danni</label>
+                            <input type="number" name="damage" value="{{ m.damage }}" class="bg-gray-700 p-2 rounded w-full text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400">Piazzamento</label>
+                            <input type="number" name="placement" value="{{ m.placement }}" class="bg-gray-700 p-2 rounded w-full text-white">
+                        </div>
+                    </div>
+                    <input type="password" name="password" placeholder="Password Admin" required class="bg-gray-700 p-2 rounded w-full mt-auto">
+                    
+                    <div class="flex gap-2 mt-2">
+                        <button type="submit" name="action" value="approve" class="bg-green-600 hover:bg-green-700 text-white p-2 rounded flex-1 transition">Approva (Correggi)</button>
+                        <button type="submit" name="action" value="reject" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded flex-1 transition">Rifiuta</button>
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <p class="text-gray-500">Nessuna revisione in coda. Tutto pulito!</p>
+            {% endfor %}
+        </div>
+
+        <div class="bg-gray-900 border border-red-500 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4">Gestione Torneo</h2>
+            <form action="/admin/reset" method="POST" onsubmit="return confirm('Sei sicuro di voler azzerare la classifica? Questa azione è irreversibile.');">
+                <input type="password" name="password" placeholder="Password Admin" required class="bg-gray-800 p-2 rounded mb-2 w-full max-w-xs">
+                <br>
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded max-w-xs w-full transition">Azzera Classifica Torneo</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

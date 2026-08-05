@@ -1,0 +1,4 @@
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.prefix, expected /home/magic/Scrivania/code/GIT/venv, got /home/magic/Scrivania/code/GIT/defi/../venv
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/magic/Scrivania/code/GIT/venv, got /home/magic/Scrivania/code/GIT/defi/../venv
+2026-07-31 16:22:03 | INFO     | run | [run] backup live_trades → live_trades_backup_20260731_162203.csv
+2026-07-31 16:22:03 | INFO     | trade_sim | [live] Stato caricato da JSON: 12 posizioni.

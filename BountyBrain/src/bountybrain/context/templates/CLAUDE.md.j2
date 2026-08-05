@@ -1,0 +1,45 @@
+# BountyBrain Context — {{ bounty.id }}
+> Generated: {{ generated_at }}
+
+## Task
+**{{ bounty.title }}**
+
+| Field | Value |
+|-------|-------|
+| Platform | {{ bounty.platform }} |
+| Payout | ${{ "%.0f"|format(bounty.features.payout_usd if bounty.features else 0) }} |
+| EPHH Score | ${{ "%.1f"|format(ranking.ephh) }}/human-hour |
+| P(correct) | {{ "%.0f"|format(ranking.p_correct * 100) }}% |
+| P(merge) | {{ "%.0f"|format(ranking.p_maintainer_accepts * 100) }}% |
+| Human hours (predicted) | {{ ranking.human_hours_predicted }}h |
+| Confidence | {{ "%.0f"|format(ranking.confidence * 100) }}% |
+| Scorer phase | Phase {{ ranking.scorer_phase }} |
+
+## Repository
+{{ bounty.repo_url }}
+
+## Issue
+{{ bounty.url }}
+
+## Description
+{{ bounty.body[:3000] }}
+
+{% if similar_tasks %}
+## Similar Past Tasks (Knowledge Base)
+{% for t in similar_tasks %}
+- **{{ t.get('task_type', 'unknown') }}** — status: {{ t.get('status', '?') }} | {{ t.get('human_hours_actual', '?') }}h | {{ t.get('n_prompts', '?') }} prompts | similarity: {{ "%.0f"|format(t.get('similarity_score', 0) * 100) }}%
+  {% if t.get('bootstrap_commands') %}Bootstrap: `{{ t['bootstrap_commands'] | join(' && ') }}`{% endif %}
+  {% if t.get('effective_first_prompt') %}First prompt: "{{ t['effective_first_prompt'][:120] }}"{% endif %}
+{% endfor %}
+{% endif %}
+
+## Working Instructions
+1. Read FIRST_STEPS.md immediately and run each command
+2. Read TASK.md for the full issue description and acceptance criteria
+3. Make the minimal change that satisfies the requirements
+4. Run all tests before opening a PR
+5. After the PR is merged/rejected, log the outcome in BountyBrain:
+   ```
+   curl -X POST http://localhost:8080/api/outcome -H "Content-Type: application/json" \
+     -d '{"bounty_id": "{{ bounty.id }}", "status": "merged", "payout_received": 0, "human_hours_actual": 0}'
+   ```

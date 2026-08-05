@@ -1,0 +1,332 @@
+"""
+Module B — Audio Generation.
+
+Genera il voiceover italiano via edge-tts (gratuito) o ElevenLabs (premium),
+poi mixa opzionalmente una traccia ambient sotto la voce.
+
+Uso:
+    audio_path, duration = generate_italian_voiceover(
+        text="Benvenuto...",
+        output_path="temp/voiceover.mp3",
+        provider="edge",   # oppure "elevenlabs"
+    )
+"""
+
+from __future__ import annotations
+import asyncio
+import math
+import random
+import os
+import shutil
+from pathlib import Path
+
+from rich.console import Console
+from pydub import AudioSegment
+
+import config
+
+console = Console()
+
+
+# ── Edge-TTS ──────────────────────────────────────────────────────────────────
+
+async def _edge_tts_async(text: str, output_path: Path, voice: str, rate: str, pitch: str, volume: str) -> None:
+    """Wrapper async per edge-tts."""
+    import edge_tts  # lazy import: non necessario se si usa ElevenLabs
+    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch, volume=volume)
+    await communicate.save(str(output_path))
+
+
+def _generate_edge(text: str, output_path: Path, voice: str | None = None) -> Path:
+    voice   = voice or config.EDGE_TTS_VOICE
+    rate    = config.EDGE_TTS_RATE
+    pitch   = config.EDGE_TTS_PITCH
+    volume  = config.EDGE_TTS_VOLUME
+
+    console.print(f"[cyan]edge-tts[/] → voce: [bold]{voice}[/], rate={rate}, pitch={pitch}")
+    asyncio.run(_edge_tts_async(text, output_path, voice, rate, pitch, volume))
+    console.print(f"[green]✓[/] voiceover salvato: {output_path}")
+    return output_path
+
+
+# ── ElevenLabs ────────────────────────────────────────────────────────────────
+
+def _generate_elevenlabs(text: str, output_path: Path) -> Path:
+    """Genera audio via ElevenLabs API (multilingual v2)."""
+    try:
+        from elevenlabs.client import ElevenLabs
+        from elevenlabs import VoiceSettings
+    except ImportError as e:
+        raise RuntimeError("elevenlabs non installato: pip install elevenlabs") from e
+
+    if not config.ELEVENLABS_API_KEY:
+        raise ValueError("ELEVENLABS_API_KEY mancante nel file .env")
+
+    client = ElevenLabs(api_key=config.ELEVENLABS_API_KEY)
+    console.print(f"[magenta]ElevenLabs[/] → voice_id: [bold]{config.ELEVENLABS_VOICE_ID}[/]")
+
+    audio_generator = client.text_to_speech.convert(
+        voice_id=config.ELEVENLABS_VOICE_ID,
+        text=text,
+        model_id=config.EL_MODEL,
+        voice_settings=VoiceSettings(
+            stability=config.EL_STABILITY,
+            similarity_boost=config.EL_SIMILARITY_BOOST,
+            style=config.EL_STYLE,
+            use_speaker_boost=config.EL_USE_SPEAKER_BOOST,
+        ),
+    )
+    with open(output_path, "wb") as f:
+        for chunk in audio_generator:
+            f.write(chunk)
+
+    console.print(f"[green]✓[/] ElevenLabs salvato: {output_path}")
+    return output_path
+
+
+# ── Coqui XTTS v2 (Voice Cloning) ────────────────────────────────────────────
+
+def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None = None) -> Path:
+    """Genera audio via XTTS v2 Coqui TTS (clonazione vocale zero-shot)."""
+    import os
+    os.environ["COQUI_TOS_AGREED"] = "1"
+    try:
+        import torch
+        import soundfile as sf
+        import torchaudio
+        import transformers.utils.import_utils as tu
+        import transformers.pytorch_utils as pu
+
+        if not hasattr(pu, 'isin_mps_friendly'):
+            pu.isin_mps_friendly = lambda elements, test_elements: torch.isin(elements, test_elements)
+        tu.is_torchcodec_available = lambda: True
+
+        def _torchaudio_load_sf(filepath, **kwargs):
+            data, samplerate = sf.read(filepath)
+            tensor = torch.from_numpy(data).float()
+            if tensor.ndim == 1:
+                tensor = tensor.unsqueeze(0)
+            elif tensor.ndim == 2:
+                tensor = tensor.t()
+            return tensor, samplerate
+
+        torchaudio.load = _torchaudio_load_sf
+
+        from TTS.api import TTS
+    except ImportError as e:
+        raise RuntimeError(
+            "Coqui TTS non installato nel virtualenv.\n"
+            "Installa con: source venv_video/bin/activate && pip install coqui-tts torch torchaudio soundfile"
+        ) from e
+
+    speaker_sample = Path(speaker_wav) if speaker_wav else config.XTTS_DEFAULT_SPEAKER
+    if not speaker_sample.exists():
+        raise FileNotFoundError(
+            f"Campione vocale per XTTS non trovato: {speaker_sample}\n"
+            f"Inserisci un file .wav della tua voce in assets/voices/mia_voce.wav oppure specifica --voice percorso/audio.wav"
+        )
+
+    console.print(f"[bold cyan]XTTS v2 (Clonazione Vocale)[/] → speaker: [bold]{speaker_sample.name}[/]")
+    import torch
+    use_gpu = torch.cuda.is_available()
+
+    tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
+
+    # Pulizia testo per evitare balbettii e problemi di clonazione
+    clean_tts_text = text.replace('"', '').replace('*', '').replace('(', '').replace(')', '').replace('-', ' ')
+    
+    # Sostituiamo la punteggiatura forte con a capo (il modello a volte legge "punto" a voce alta)
+    clean_tts_text = clean_tts_text.replace('.', '\n').replace('!', '\n').replace('?', '\n')
+    lines = [line.strip() for line in clean_tts_text.split('\n') if len(line.strip()) > 2]
+    clean_tts_text = '\n'.join(lines)
+
+    if output_path.suffix.lower() == ".mp3":
+        from pydub import AudioSegment
+        AudioSegment.converter = config._FFMPEG_BIN
+        ffmpeg_dir = str(Path(config._FFMPEG_BIN).parent)
+        if ffmpeg_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+
+        wav_temp = output_path.with_suffix(".temp.wav")
+        tts.tts_to_file(
+            text=clean_tts_text,
+            speaker_wav=str(speaker_sample),
+            language="it",
+            file_path=str(wav_temp),
+        )
+        sound = AudioSegment.from_wav(str(wav_temp))
+        sound.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
+        if wav_temp.exists():
+            wav_temp.unlink()
+    else:
+        tts.tts_to_file(
+            text=clean_tts_text,
+            speaker_wav=str(speaker_sample),
+            language="it",
+            file_path=str(output_path),
+        )
+
+    # Free memory to prevent OOM during video generation
+    del tts
+    import gc
+    gc.collect()
+    if use_gpu:
+        torch.cuda.empty_cache()
+
+    console.print(f"[green]✓[/] Voce clonata XTTS salvata: {output_path}")
+    return output_path
+
+
+# ── Audio Duration ────────────────────────────────────────────────────────────
+
+def get_audio_duration(path: Path) -> float:
+    """Restituisce la durata in secondi usando mutagen (pure Python, senza ffprobe)."""
+    suffix = path.suffix.lower()
+    try:
+        if suffix == ".mp3":
+            from mutagen.mp3 import MP3
+            return float(MP3(str(path)).info.length)
+        elif suffix in (".wav", ".wave"):
+            from mutagen.wave import WAVE
+            return float(WAVE(str(path)).info.length)
+        elif suffix in (".ogg", ".oga"):
+            from mutagen.oggvorbis import OggVorbis
+            return float(OggVorbis(str(path)).info.length)
+        elif suffix in (".flac",):
+            from mutagen.flac import FLAC
+            return float(FLAC(str(path)).info.length)
+        else:
+            from mutagen import File as MutagenFile
+            audio = MutagenFile(str(path))
+            if audio and audio.info:
+                return float(audio.info.length)
+    except Exception as e:
+        console.print(f"[yellow]mutagen fallback ({e})[/] — stima da file size")
+
+    # Stima fallback: ~128kbps MP3 ≈ 16000 byte/s
+    size = path.stat().st_size
+    return max(1.0, size / 16_000)
+
+
+# ── Ambient Mix ───────────────────────────────────────────────────────────────
+
+def _find_ambient_track(script_text: str = "") -> Path | None:
+    """Cerca un file audio nella cartella ambient (mp3/wav/ogg/flac). 
+    Sceglie una sottocartella in base alle parole chiave del testo."""
+    exts = ("*.mp3", "*.wav", "*.ogg", "*.flac", "*.m4a")
+    
+    # Smart BGM Logic
+    text_lower = script_text.lower()
+    mood = ""
+    if any(k in text_lower for k in ["meditazione", "zen", "calma", "respiro", "mente", "stress"]):
+        mood = "zen"
+    elif any(k in text_lower for k in ["scienza", "fisica", "universo", "spazio", "quantistica", "dna"]):
+        mood = "scienza"
+    elif any(k in text_lower for k in ["energia", "fuoco", "soldi", "motivazione", "successo"]):
+        mood = "energica"
+        
+    search_dirs = []
+    if mood:
+        mood_dir = config.AMBIENT_DIR / mood
+        if mood_dir.exists():
+            search_dirs.append(mood_dir)
+            console.print(f"[cyan]Smart BGM:[/] Rilevato mood '{mood}'.")
+            
+    # Fallback to general ambient directory
+    search_dirs.append(config.AMBIENT_DIR)
+    
+    candidates: list[Path] = []
+    for s_dir in search_dirs:
+        for pattern in exts:
+            candidates.extend(s_dir.glob(pattern))
+        if candidates: 
+            break # if we found tracks in the preferred dir, stop
+            
+    if not candidates:
+        return None
+    return random.choice(candidates)
+
+
+def _mix_with_ambient(voiceover_path: Path, output_path: Path, ambient_path: Path) -> Path:
+    """
+    Mixa il voiceover con la traccia ambient.
+    - La traccia ambient viene loopata se più corta del voiceover.
+    - Il volume ambient è abbassato a AMBIENT_VOLUME_DB.
+    - Il voiceover è a VOICEOVER_VOLUME_DB.
+    """
+    from pydub import AudioSegment
+    AudioSegment.converter = config._FFMPEG_BIN
+    ffmpeg_dir = str(Path(config._FFMPEG_BIN).parent)
+    if ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+
+    voice = AudioSegment.from_file(str(voiceover_path))
+    ambient = AudioSegment.from_file(str(ambient_path))
+
+    # Loop ambient se necessario
+    voice_ms = len(voice)
+    if len(ambient) < voice_ms:
+        loops = math.ceil(voice_ms / len(ambient))
+        ambient = ambient * loops
+    ambient = ambient[:voice_ms]
+
+    # Aggiusta volumi
+    voice   = voice   + config.VOICEOVER_VOLUME_DB
+    ambient = ambient + config.AMBIENT_VOLUME_DB
+
+    mixed = voice.overlay(ambient)
+    mixed.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
+    console.print(f"[green]✓[/] mix voiceover+ambient: {output_path}")
+    return output_path
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def generate_italian_voiceover(
+    text: str,
+    output_path: str | Path,
+    provider: str = "edge",
+    voice: str | None = None,
+    mix_ambient: bool = True,
+) -> tuple[Path, float]:
+    """
+    Genera il voiceover italiano e opzionalmente lo mixa con un ambient track.
+
+    Args:
+        text: testo da sintetizzare
+        output_path: percorso del file audio finale (.mp3)
+        provider: "edge" (gratuito) | "elevenlabs" (premium)
+        voice: override della voce (solo per edge-tts)
+        mix_ambient: se True e c'è un file in assets/ambient/, viene mixato
+
+    Returns:
+        (path_audio_finale, durata_in_secondi)
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    raw_voice_path = output_path.parent / f"_raw_{output_path.name}"
+
+    # Generazione voiceover
+    if provider == "elevenlabs":
+        _generate_elevenlabs(text, raw_voice_path)
+    elif provider == "xtts":
+        _generate_xtts(text, raw_voice_path, speaker_wav=voice)
+    else:
+        _generate_edge(text, raw_voice_path, voice=voice)
+
+    # Mix ambient opzionale
+    if mix_ambient:
+        ambient = _find_ambient_track(text)
+        if ambient:
+            console.print(f"[yellow]ambient[/] → mixando con: {ambient.name}")
+            _mix_with_ambient(raw_voice_path, output_path, ambient)
+        else:
+            console.print("[dim]Nessuna traccia ambient trovata in assets/ambient/, uso solo voiceover[/]")
+            raw_voice_path.rename(output_path)
+    else:
+        raw_voice_path.rename(output_path)
+
+    duration = get_audio_duration(output_path)
+    console.print(f"[bold green]Audio finale:[/] {output_path} ({duration:.1f}s)")
+    return output_path, duration

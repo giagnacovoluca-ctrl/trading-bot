@@ -1,0 +1,14 @@
+  Che avvia in ordine:
+  1. LiveEngine — gestione posizioni, prezzi, HTML (thread principale)
+  2. PumpGraduationScanner — WebSocket pump.fun graduation (thread)
+  3. defi_optimized — gem hunter defi, ogni 5min (thread con auto-restart 60s)
+  4. gemmeV3 — gem hunter V3, ogni 3min (thread con auto-restart 60s)
+  5. solana_executor — acquisti/vendite Solana (thread con auto-restart 30s)
+
+  Opzioni utili:
+  python run.py --no-executor   # senza executor (solo simulazione)
+  python run.py --no-v3         # senza gemmeV3
+  python run.py --report-only   # rigenera solo HTML ed esce
+  
+  Auto-restart: se un componente crasha (es. DexScreener timeout), riparte da solo dopo il delay configurato — il resto continua a girare indisturbato.
+

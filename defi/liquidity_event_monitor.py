@@ -39,6 +39,65 @@ try:
 except ImportError:
     pass
 
+# ---------------------------------------------------------------------------
+# Honeypot symbol blacklist (condivisa con base_executor)
+# ---------------------------------------------------------------------------
+_HONEYPOT_BL_FILE = _EXEC / "base_honeypot_symbols.json"
+_honeypot_syms: set = set()
+_honeypot_bl_ts: float = 0.0   # ultimo reload
+
+def _reload_honeypot_bl() -> None:
+    """Ricarica la blacklist da disco (una volta per tick, max 1 reload/60s)."""
+    global _honeypot_bl_ts
+    if time.time() - _honeypot_bl_ts < 60:
+        return
+    try:
+        data = json.loads(_HONEYPOT_BL_FILE.read_text())
+        _honeypot_syms.clear()
+        _honeypot_syms.update(s.strip().lower() for s in data)
+        _honeypot_bl_ts = time.time()
+    except Exception:
+        pass
+
+def _is_honeypot_sym(symbol: str) -> bool:
+    return symbol.strip().lower() in _honeypot_syms
+
+# ---------------------------------------------------------------------------
+# Jupiter sell simulation per Solana (verifica vendibilità prima del segnale)
+# ---------------------------------------------------------------------------
+_JUPITER_QUOTE = "https://api.jup.ag/swap/v1/quote"
+_USDC_MINT     = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+_jup_sell_cache: dict = {}   # token_address → {"ok": bool, "ts": float}
+_JUP_CACHE_TTL = 300         # 5 min: se il token non è vendibile ora, riprova tra 5 min
+
+def _jupiter_sellable(token_address: str) -> bool:
+    """
+    Chiama Jupiter /quote per verificare che esista una route di vendita.
+    Fail-open: se l'API non risponde → True (non bloccare il segnale).
+    Risultato cachato 5 min per evitare chiamate ripetute sullo stesso token.
+    """
+    now = time.time()
+    cached = _jup_sell_cache.get(token_address)
+    if cached and now - cached["ts"] < _JUP_CACHE_TTL:
+        return cached["ok"]
+    try:
+        r = requests.get(
+            _JUPITER_QUOTE,
+            params={
+                "inputMint":      token_address,
+                "outputMint":     _USDC_MINT,
+                "amount":         "1000000",    # 1M unità base: funziona per la maggior parte dei token
+                "slippageBps":    "5000",
+                "onlyDirectRoutes": "true",     # più veloce, basta per validare la vendibilità
+            },
+            timeout=5,
+        )
+        ok = r.status_code == 200 and int((r.json() or {}).get("outAmount", 0)) > 0
+    except Exception:
+        ok = True  # fail-open: API down → non bloccare
+    _jup_sell_cache[token_address] = {"ok": ok, "ts": now}
+    return ok
+
 log = logging.getLogger("liq_monitor")
 
 POLL_SEC          = 30
@@ -234,6 +293,7 @@ def _write_shadow_queue(d: dict, chain: str):
 
 def _tick():
     _purge_seen()
+    _reload_honeypot_bl()
     now = time.time()
     for chain in _CHAINS:
         for pool in _fetch_new_pools(chain):
@@ -244,8 +304,31 @@ def _tick():
             d = _extract_pool_data(pool, chain)
             if d["liq"] < MIN_LIQ_ALERT or d["age_min"] > MAX_POOL_AGE_MIN:
                 continue
+
+            # Filtro alla radice: simbolo blacklistato → scarta prima di CSV/segnale
+            if _is_honeypot_sym(d["token_symbol"]):
+                log.info(f"[liq] skip {d['token_symbol']} ({chain}): honeypot_sym_blacklisted")
+                continue
+
             _append_log_csv(d, chain)
             if d["liq"] >= MIN_LIQ_SIGNAL:
+                # Pool major/stablecoin: liq enorme → non è un nuovo micro-cap.
+                # I token pump_grad legittimi entrano con liq $25k-$100k, non $500k+.
+                # (vol_h1=0 è normale per pool nuovissime, non usarlo come filtro)
+                if d["liq"] > 500_000:
+                    log.debug(
+                        f"[liq] skip {d['token_symbol']} ({chain}): "
+                        f"pool major (liq=${d['liq']:,.0f})"
+                    )
+                    continue
+                # Solana: verifica vendibilità via Jupiter prima di generare il segnale.
+                # Equivalente del sell simulato V2 su Base (liq_monitor riga ~418).
+                if chain == "solana" and not _jupiter_sellable(d["token_address"]):
+                    log.info(
+                        f"[liq] skip {d['token_symbol']} (solana): "
+                        f"Jupiter no route — probabile honeypot"
+                    )
+                    continue
                 _notify(d, chain)
                 try:
                     _write_pump_grad_signal(d, chain)
@@ -402,6 +485,12 @@ def _handle_pair_created(log_entry: dict) -> None:
 
         if liq_usd < MIN_LIQ_ALERT:
             log.debug(f"[liq/ws] {tok_sym} liq=${liq_usd:.0f} < ${MIN_LIQ_ALERT:,} — skip")
+            return
+
+        # Simbolo blacklistato: scarta prima del sell check on-chain
+        _reload_honeypot_bl()
+        if _is_honeypot_sym(tok_sym):
+            log.info(f"[liq/ws] {tok_sym}: honeypot_sym_blacklisted — skip")
             return
 
         # Honeypot check (view call, zero gas):

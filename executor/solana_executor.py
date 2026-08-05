@@ -1032,51 +1032,95 @@ def execute_sell(signal_id: str, sell_fraction: float, action_label: str,
             save_real_state(real_state)
             return False
 
+    _ps_result = None  # PumpSwap fallback result
     if not quote:
-        # No route (400) o token morto: conta come fallimento reale
-        prev_fail = pos.get("sell_fail_count", 0)
-        pos["sell_fail_count"] = prev_fail + 1
-        pos["sell_fail_last"]  = datetime.now().isoformat()
-        STUCK_THRESHOLD = 3
-        if pos["sell_fail_count"] >= STUCK_THRESHOLD and pos.get("status") != "stuck":
-            pos["status"] = "stuck"
-            log.error(
-                f"[SELL] ⚠ POSIZIONE BLOCCATA: {signal_id} ({token_symbol}) — "
-                f"{pos['sell_fail_count']} tentativi falliti anche con slippage 50%. "
-                f"Pool probabilmente morto. Tokens in wallet: {tokens_held:.4f} | "
-                f"Contratto: {token_address}"
-            )
-            log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
-                           "token_symbol": token_symbol, "action": f"{action_label}_stuck",
-                           "token_address": token_address, "status": "stuck",
-                           "note": f"no_quote x{pos['sell_fail_count']} (max slippage 50%)"})
-        elif prev_fail == 0:
-            log.error(f"[SELL] Nessun quote per {token_symbol} con slippage fino a 50% (tentativo 1/{STUCK_THRESHOLD})")
-            log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
-                           "token_symbol": token_symbol, "action": f"{action_label}_failed",
-                           "token_address": token_address, "status": "error", "note": "no_quote_50pct"})
-        else:
-            log.warning(f"[SELL] Nessun quote per {token_symbol} "
-                        f"(tentativo {pos['sell_fail_count']}/{STUCK_THRESHOLD})")
-        save_real_state(real_state)
-        return False
+        # Fallback PumpSwap (solo live, per token pump_grad/pre_grad dove la bonding curve è ancora viva)
+        if not dry and (pos.get("system") in ("pump_grad", "pre_grad") or signal_id.startswith("LIQ_")):
+            log.warning(f"[SELL] No route Raydium/Jupiter → PumpSwap fallback per {token_symbol}")
+            _ps_result = _pumpswap_sell(token_address, tokens_to_sell)
+            if _ps_result:
+                log.info(f"[SELL] PumpSwap ✓ {token_symbol}: {_ps_result['sol_received']:.4f} SOL recuperati")
+
+        if not _ps_result:
+            if action_label == "liq_collapse":
+                # Pool drenato: accetta -100% e chiudi immediatamente invece di restare stuck per ore
+                _dex_tried = "Raydium+Jupiter+PumpSwap" if (not dry) else "Raydium+Jupiter"
+                log.error(
+                    f"[SELL] {token_symbol}: liq_collapse irrecuperabile "
+                    f"({_dex_tried} no route) — accetto -100%, posizione chiusa"
+                )
+                pos["tokens_held"]   = 0
+                pos["status"]        = "closed"
+                pos["close_ts"]      = datetime.now().isoformat()
+                pos["real_pnl_usdc"] = pos.get("usdc_received", 0) - pos.get("usdc_spent", 0)
+                log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                               "token_symbol": token_symbol, "chain": "solana",
+                               "action": "liq_collapse_lost",
+                               "token_address": token_address,
+                               "tokens_amount": f"{tokens_to_sell:.6f}",
+                               "usdc_amount": "0.00", "price_actual": "0",
+                               "slippage_pct": "0", "price_impact_pct": "100",
+                               "tx_hash": "LOST", "status": "lost",
+                               "note": f"pool drained — no route {_dex_tried}"})
+                save_real_state(real_state)
+                return True
+            else:
+                # Stuck logic per altri tipi di exit (non liq_collapse)
+                prev_fail = pos.get("sell_fail_count", 0)
+                pos["sell_fail_count"] = prev_fail + 1
+                pos["sell_fail_last"]  = datetime.now().isoformat()
+                STUCK_THRESHOLD = 3
+                if pos["sell_fail_count"] >= STUCK_THRESHOLD and pos.get("status") != "stuck":
+                    pos["status"] = "stuck"
+                    log.error(
+                        f"[SELL] ⚠ POSIZIONE BLOCCATA: {signal_id} ({token_symbol}) — "
+                        f"{pos['sell_fail_count']} tentativi falliti anche con slippage 50%. "
+                        f"Pool probabilmente morto. Tokens in wallet: {tokens_held:.4f} | "
+                        f"Contratto: {token_address}"
+                    )
+                    log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                                   "token_symbol": token_symbol, "action": f"{action_label}_stuck",
+                                   "token_address": token_address, "status": "stuck",
+                                   "note": f"no_quote x{pos['sell_fail_count']} (max slippage 50%)"})
+                elif prev_fail == 0:
+                    log.error(f"[SELL] Nessun quote per {token_symbol} con slippage fino a 50% (tentativo 1/{STUCK_THRESHOLD})")
+                    log_execution({"ts": datetime.now().isoformat(), "signal_id": signal_id,
+                                   "token_symbol": token_symbol, "action": f"{action_label}_failed",
+                                   "token_address": token_address, "status": "error", "note": "no_quote_50pct"})
+                else:
+                    log.warning(f"[SELL] Nessun quote per {token_symbol} "
+                                f"(tentativo {pos['sell_fail_count']}/{STUCK_THRESHOLD})")
+                save_real_state(real_state)
+                return False
+
     slippage = used_slippage
 
-    # Estrai price_impact e usdc_received: Jupiter e Raydium hanno strutture diverse
-    if _raydium_resp:
+    # Estrai price_impact e usdc_received: PumpSwap, Raydium e Jupiter hanno strutture diverse
+    if _ps_result is not None:
+        _sol_px = _get_sol_price_usd()
+        usdc_received = _ps_result["sol_received"] * _sol_px if _sol_px > 0 else 0
+        price_actual  = usdc_received / tokens_to_sell if tokens_to_sell > 0 else 0
+        price_impact  = 99.0
+        tx_hash = _ps_result["tx_id"]
+        status  = "sent"
+        log.info(f"[SELL] PumpSwap ✓ {token_symbol}: ~{usdc_received:.2f} USDC recuperati")
+    elif _raydium_resp:
         _rd = _raydium_resp.get("data", {})
         price_impact  = float(_rd.get("priceImpactPct", 0) or 0)
         usdc_out_lam  = int(_rd.get("outputAmount", 0))
+        usdc_received = usdc_out_lam / (10 ** USDC_DECIMALS)
+        price_actual  = usdc_received / tokens_to_sell if tokens_to_sell > 0 else 0
+        tx_hash = "DRY_RUN"
+        status  = "dry_run"
     else:
         price_impact  = float(quote.get("priceImpactPct", 0) or 0)
         usdc_out_lam  = int(quote.get("outAmount", 0))
-    usdc_received = usdc_out_lam / (10 ** USDC_DECIMALS)
-    price_actual  = usdc_received / tokens_to_sell if tokens_to_sell > 0 else 0
+        usdc_received = usdc_out_lam / (10 ** USDC_DECIMALS)
+        price_actual  = usdc_received / tokens_to_sell if tokens_to_sell > 0 else 0
+        tx_hash = "DRY_RUN"
+        status  = "dry_run"
 
-    tx_hash = "DRY_RUN"
-    status  = "dry_run"
-
-    if not dry:
+    if _ps_result is None and not dry:
         if _raydium_resp:
             input_ata  = _get_token_ata(keypair_pubkey, token_address)
             output_ata = _get_token_ata(keypair_pubkey, USDC_MINT)
@@ -1137,7 +1181,7 @@ def execute_sell(signal_id: str, sell_fraction: float, action_label: str,
             return False
         status = "sent"
         log.info(f"[SELL] ✅ TX inviata via {provider}: {tx_hash}")
-    else:
+    elif _ps_result is None:
         log.info(f"[DRY SELL] {tokens_to_sell:.4f} {token_symbol} → ~{usdc_received:.2f} USDC "
                  f"| impact={price_impact:.2f}%")
 

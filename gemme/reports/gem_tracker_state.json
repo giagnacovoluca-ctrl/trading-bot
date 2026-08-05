@@ -1,0 +1,75 @@
+{
+  "YiIong Ma_20260524_030038": {
+    "gem_id": "YiIong Ma_20260524_030038",
+    "token_symbol": "YiIong Ma",
+    "chain": "solana",
+    "pair_address": "25H5ma8w65X6m117RyQV2NBy4fJCGQowRA2F4H7pBmQ1",
+    "token_address": "2Nknd8KeMJSc2VFxe4e3jr15Czyz5TVDPmQptR5iRpR6",
+    "price_entry_usd": 0.0002571,
+    "snapshots_done": 5,
+    "milestones_done": [
+      48,
+      36,
+      24,
+      12,
+      60
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 5725705.007657179,
+    "timestamp_entry": "2026-05-24T03:00:38.829215"
+  },
+  "OSOR_20260524_113100": {
+    "gem_id": "OSOR_20260524_113100",
+    "token_symbol": "OSOR",
+    "chain": "solana",
+    "pair_address": "8zwwi5RJGfFahotbMhprwosmUEq1dJ6yXJHTmUQ7wAmV",
+    "token_address": "Hyx1CgRcqbpGyzedXaKbxSNXBehupgihbvWvFmS1rXzk",
+    "price_entry_usd": 3.632e-06,
+    "snapshots_done": 5,
+    "milestones_done": [
+      24,
+      48,
+      12,
+      36
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 6207927.672817187,
+    "timestamp_entry": "2026-05-24T11:31:00.472595"
+  },
+  "YiIong Ma_20260525_101500": {
+    "gem_id": "YiIong Ma_20260525_101500",
+    "token_symbol": "YiIong Ma",
+    "chain": "solana",
+    "pair_address": "25H5ma8w65X6m117RyQV2NBy4fJCGQowRA2F4H7pBmQ1",
+    "token_address": "2Nknd8KeMJSc2VFxe4e3jr15Czyz5TVDPmQptR5iRpR6",
+    "price_entry_usd": 0.0002304,
+    "snapshots_done": 2,
+    "milestones_done": [
+      24,
+      12
+    ],
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 5725705.007657179,
+    "timestamp_entry": "2026-05-25T10:15:00.465990"
+  },
+  "YiIong Ma_20260525_215122": {
+    "gem_id": "YiIong Ma_20260525_215122",
+    "token_symbol": "YiIong Ma",
+    "chain": "solana",
+    "pair_address": "25H5ma8w65X6m117RyQV2NBy4fJCGQowRA2F4H7pBmQ1",
+    "token_address": "2Nknd8KeMJSc2VFxe4e3jr15Czyz5TVDPmQptR5iRpR6",
+    "price_entry_usd": 0.0002465,
+    "snapshots_done": 5,
+    "social_score": 25.0,
+    "tvl_usd": 0.0,
+    "inflow_usd": 5725705.007657179,
+    "last_price_usd": 0.0003072,
+    "milestones_done": [
+      12
+    ],
+    "timestamp_entry": "2026-05-25T21:51:22.048477"
+  }
+}

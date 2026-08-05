@@ -1,0 +1,37 @@
+# Environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Storage (local data — not committed)
+storage/db/
+storage/logs/
+storage/workspaces/
+storage/models/
+storage/datasets/
+
+# Keep gitkeep placeholders
+!storage/datasets/.gitkeep
+!storage/logs/.gitkeep
+!storage/db/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/

@@ -25,3 +25,7 @@
   python executor/wallet_mirror_bot.py
 
   Aggiungi MIRROR_DRY_RUN=false al .env solo dopo aver visto segnali DRY sensati per 2-3 giorni.
+
+defi:
+predump: brs recent shift, bsr trend per min 2: watchlist batchata (vedere se è migliorato cercando di anticipare entry)
+

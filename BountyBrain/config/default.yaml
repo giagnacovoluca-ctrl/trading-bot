@@ -1,0 +1,71 @@
+app:
+  name: BountyBrain
+  version: "0.1.0"
+  env: development
+  log_level: INFO
+  log_dir: storage/logs
+
+database:
+  url: "sqlite:///storage/db/bountybrain.db"
+  echo: false
+
+scout:
+  run_interval_minutes: 30
+  platforms:
+    github:
+      enabled: true
+      search_queries:
+        # Bounty fresche — alto rischio bot ma alto payout
+        - "label:bounty state:open language:python"
+        - "label:bounty state:open language:typescript"
+        - "label:bounty state:open language:javascript"
+        - "label:good-first-issue state:open language:python"
+        - "algora.io state:open label:bounty"
+        # Bounty stantie — bassa competizione, i bot si sono arresi
+        - "label:bounty state:open language:python created:<2026-05-26"
+        - "label:bounty state:open language:typescript created:<2026-05-26"
+        - "label:bounty state:open language:javascript created:<2026-05-26"
+      max_results_per_query: 50
+    algora:
+      enabled: false   # GraphQL endpoint dismesso, bounty Algora già in GitHub queries
+    upwork:
+      # Nota: punta a Freelancer.com (Upwork RSS rimosso nel 2024)
+      # Cattura solo job postati nelle ultime 6h con < 10 bid (finestra competitiva)
+      enabled: true
+      max_bid_count: 10       # salta se già > 10 offerte
+      max_age_hours: 6        # salta se postato > 6h fa
+      rss_queries:
+        - "python bug fix"
+        - "javascript bug fix"
+        - "react bug"
+        - "fastapi django"
+        - "nodejs error"
+        - "api integration python"
+        - "python automation script"
+
+ranking:
+  phase: 0   # 0=rules, 1=linear, 2=gradient_boosting
+  min_ephh_threshold: 10.0
+  min_payout_usd: 50
+  max_issue_age_days: 180        # alzato: includiamo bounty stantie abbandonate
+  claude_pro_monthly_cost: 100.0
+  claude_pro_hours_per_month: 160.0
+  # Filtri GitHub
+  max_attempt_comments: 5        # /attempt nella issue = bot farm
+  max_issue_prs_open: 2          # PR aperte = competitor attivi
+  max_issue_prs_closed: 4        # PR chiuse = issue bloccata o già risolta
+  # Filtri Upwork
+  upwork_max_age_hours: 48       # job più vecchi di 48h → già saturi di offerte
+
+environment:
+  base_dir: "storage/workspaces"
+  timeout_seconds: 300
+
+knowledge:
+  similarity_top_k: 5
+  min_similarity_score: 0.3
+
+learning:
+  min_samples_phase1: 80
+  min_samples_phase2: 300
+  retrain_every_n_tasks: 10

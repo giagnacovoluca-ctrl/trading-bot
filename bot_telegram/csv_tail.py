@@ -14,7 +14,7 @@ from typing import Iterator
 
 import store
 
-log = logging.getLogger("csv_tail")
+log = logging.getLogger("csv_tail") 
 
 _OFFSETS_FILE = "offsets.json"
 

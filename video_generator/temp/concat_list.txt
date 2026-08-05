@@ -1,0 +1,5 @@
+file '/home/magic/Scrivania/code/GIT/video_generator/temp/scene_clip_0.mp4'
+file '/home/magic/Scrivania/code/GIT/video_generator/temp/scene_clip_1.mp4'
+file '/home/magic/Scrivania/code/GIT/video_generator/temp/scene_clip_2.mp4'
+file '/home/magic/Scrivania/code/GIT/video_generator/temp/scene_clip_3.mp4'
+file '/home/magic/Scrivania/code/GIT/video_generator/temp/scene_clip_4.mp4'

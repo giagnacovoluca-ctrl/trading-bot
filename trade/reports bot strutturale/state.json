@@ -1,0 +1,17 @@
+{
+  "capital": 10.39729886,
+  "open_trade": null,
+  "consecutive_losses": 0,
+  "cooldown_remaining": 0,
+  "total_trades": 97,
+  "wins": 40,
+  "losses": 51,
+  "daily_pnl": 0.0,
+  "last_day": "2026-08-05",
+  "total_win_pnl": 112.36,
+  "total_loss_pnl": 74.82660000000001,
+  "best_trade": 8.46,
+  "worst_trade": -3.31,
+  "bars_since_close": 2,
+  "saved_at": "2026-08-05T08:32:18.214646+00:00"
+}

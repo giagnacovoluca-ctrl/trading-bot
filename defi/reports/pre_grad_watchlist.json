@@ -1,0 +1,1052 @@
+{
+  "6u5TfCC3MM2q5CxVoyGdf73kuQBUeL8kdeTKzXygVqjK": {
+    "symbol": "VIBE",
+    "v_sol": 37.0,
+    "ts_first": 1785318704.0692594,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "G76xBuGVnb2ewDtcqtHzt9cPJ6rhXzfU1q8RcVempump": {
+    "symbol": "LUNA",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785318704.4940398,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "3bCszDBuSjdjZw4f9aughXnqZpzVujQuDoLPWq6Zpump": {
+    "symbol": "KINDAN",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785318720.8351305,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Dpgrx7gbDnfVbdauGtn7LvRjD6N8xHDRMisfbMPMpump": {
+    "symbol": "DIHLAND",
+    "v_sol": 33.45679012099996,
+    "ts_first": 1785318811.1264458,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AjaLGqrifLqbDRWQ4Dd1m4oPdL67mT9ShjQcw4o4pump": {
+    "symbol": "DIHLAND",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785318833.1942346,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "E8AvHBib9AJ12QyyS3y9khAp2onQt3QiWwQWBKZApump": {
+    "symbol": "DAISY",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785318840.95848,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7tv237aYxZHzjUHds4xcZVZN5PCXsX8NKJEHgEGepump": {
+    "symbol": "PENISULA",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785318870.593052,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GnXZRUMY3YatpGc67GBsJSjV7LzFZgPTihLFF9Snpump": {
+    "symbol": "GTAAI",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785318888.446915,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7tqPgZdAqN8TYEfVnuTUbqpupGxvvJUKQLPi1KMcaa3p": {
+    "symbol": "TCD",
+    "v_sol": 34.444444442,
+    "ts_first": 1785318914.2031188,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2ot4Q8ZsgzQtDjYDUgP3JeU2fm2THBQFHdY4h2Qgpump": {
+    "symbol": "LUNA",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785318929.7331505,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "J46k9b3crM2ADwQLzj3rXJfQof2zw8sNXY8MeGv5pump": {
+    "symbol": "TOMATO",
+    "v_sol": 35.499999999999986,
+    "ts_first": 1785319014.1531348,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2tScPyjiHWh34qjLT6ZQDS3bTATHa6oBkb5aiqispump": {
+    "symbol": "KSI",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319074.8886197,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "gang4RZKt3jSz4mqGmehfhwSyfZjvTTTxHxUcvspump": {
+    "symbol": "\u30c8\u30de\u30c8",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785319091.5333729,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7R5bbQMDRouEWF8S353MUqYdn1cmYgHqrswzLoKqpump": {
+    "symbol": "RAGEBAIT",
+    "v_sol": 49.99999999999993,
+    "ts_first": 1785319167.3028274,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9wXVEtiHMQqrRALrMGRDZLRqZrpeUL8SNmfmcx8tpump": {
+    "symbol": "RAGEBAIT",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785319216.8229642,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7ftv1Ca5BbuZzbEdBQiQCSJAUhRWwkssLL8LYmDWpump": {
+    "symbol": "\u30cd\u30b3",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785319240.3430147,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "59nmFxoEVqX46xdAcQgXpR718WHQANLVCn5a8CUNpump": {
+    "symbol": "CASHDOGE",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785319266.446048,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BQ9KKz6sx3gg2bEJrTSe48wjfAehHGfasaz5FhcMpump": {
+    "symbol": "BERNHARD",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785319267.4744203,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "A5RXeyjpjCwFLSM1tMjXWkgZZRoCX9SRm9uExkufpump": {
+    "symbol": "FCC",
+    "v_sol": 33.111111109,
+    "ts_first": 1785319337.8120847,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BdnZ5ayVS1horzXV2eiN2oUBeWjwGpddxLU9LD5bpump": {
+    "symbol": "FCC",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319345.8401682,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FSMYsMSj84fVYzFTqKdJi8M7vqFheEXQSykNyxcNpump": {
+    "symbol": "SNAT",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319350.032665,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DYmToawSZuvdcrPhfFUgBwGxfXh7YE7YQirPRgmHpump": {
+    "symbol": "TAP",
+    "v_sol": 33.49999999999999,
+    "ts_first": 1785319350.9928334,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5GzdGxw18FUzRKcGbbmXFxTopddk3XhYaCLbXFE2pump": {
+    "symbol": "F",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319397.5605197,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6uZBTM4jbDCe9yqUqFogSxEW4ZiriXzz7HLuvRPXpump": {
+    "symbol": "GERRY",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319402.1536536,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "HgxLXTPoyJXKd5g7gLCt5Pn2tMdgtzgsaybKsvscpump": {
+    "symbol": "GERRY",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319437.0285165,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9AhoJb5rMLhBTFNd7i1BKymCwMqVnxvztJZAoRaapump": {
+    "symbol": "TAP",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785319453.9551985,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CiPe24oDFYBgKN35ay5LzNRPcC1LFNiLAQFfrcSrpump": {
+    "symbol": "TAP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319495.8991048,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "22ZJ1ZUKafSDdRgbSp57cKPzMBmaUzKgDP8XZNtVpump": {
+    "symbol": "MCKNUCKLE",
+    "v_sol": 33.45679012199998,
+    "ts_first": 1785319501.2140028,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AcyeBHDxWFAR3wDphYPQULk4YXpAdGsRMEMzbASpump": {
+    "symbol": "LAIN",
+    "v_sol": 33.85185184999999,
+    "ts_first": 1785319528.1895,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5FJm9HiHY2WrXgMJDc2mp9LoVjUESgv9xyNoEkwVpump": {
+    "symbol": "TAP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319533.5046096,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2ZZZ3wiBF1S3mQSteDB56GUxPig856nM9uHJhP5vpump": {
+    "symbol": "MCKNUCKLE",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319573.9163408,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "4fXAvdrvhNsiXkaW6KW2nhSiav43CZdxiSgPTiRJpump": {
+    "symbol": "TST",
+    "v_sol": 34.0,
+    "ts_first": 1785319643.22697,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "4yXELk2RcXSU8GbcDkAvduqtoJDtdKamSp9urJDPpump": {
+    "symbol": "TAP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319660.1454961,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FxWNi1QYFQnhZJ4hwoJ52Lw7J5ks4tj9wWk4KZhhpump": {
+    "symbol": "TAP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319730.7389765,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6bywYiX8Xkpc9uQso3nRHKhvP2NswJrwM7XrJmgCpump": {
+    "symbol": "TYQUAN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785319757.5650294,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AxLW5Te8uh2kTo2PrsjcugzwLj7Jhrkez3aj1j7xpump": {
+    "symbol": "TYQUAN",
+    "v_sol": 33.49999999999999,
+    "ts_first": 1785319783.939322,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9a6PsTmNAe6hZAxaNE86NzhoRyGyUcKVLHQm1jwTaxq4": {
+    "symbol": "WIN",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785319797.9795642,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CbwUBbcztBZu9nu8o4b1ZHFCqvt5do8MFQc22zU6pump": {
+    "symbol": "SNEK",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319801.0249226,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AGRkLCFK5f9AM1UdMDgxYbV2xMsj9nEk6azLK4cmpump": {
+    "symbol": "TYQUAN",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785319801.2760725,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CuEXM8ziF2U3Hh99SY2AzFBELYVGq7Y4Ds3n8uvAbnVt": {
+    "symbol": "PIPEFISH",
+    "v_sol": 37.0,
+    "ts_first": 1785319895.399132,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Ai9ERepgJVgNoA1f9eNEg71m34nAJhNnc41b4gDrpump": {
+    "symbol": "EMMA",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785319921.3014712,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9nViji5up8DYnddBC18vWyxBHjFQdKeYRvG2Bi8fcZ79": {
+    "symbol": "BILLION",
+    "v_sol": 34.0,
+    "ts_first": 1785319965.7681184,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2xyTvNGdWBNKKKG9kKsZZDPUo5m7WL3rkoEC2DY7pump": {
+    "symbol": "STARSHIP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785319979.6983662,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DZAQ56VbDA5zfD4Tw7wqKAGSvaGZo1CTxCVHUZKrpump": {
+    "symbol": "WULONG",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320003.6850762,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "x2x2fd6LnEJ619Sz6VY8UBGBiiUpySJcnG6xFpVpump": {
+    "symbol": "TORU",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785320022.7890418,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "HKzK5S1o9Mfro2yHJpvJNkBJphM37WjxqRTe7BPhpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320027.038648,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "A3NZiMvNG88EG3cwiKysfH3CbxijoFTaRRM8npzSpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 33.85185184999999,
+    "ts_first": 1785320027.839787,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7CBS8rbhvEscfz7aRTkuGK6etAsKXMouidgpWWrapump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785320028.4580073,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "3MDHwvhmtfXbKsoENhfJU7Zw5EKBeaX8Q9HfVXYktKXB": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.499999999999986,
+    "ts_first": 1785320038.8003817,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "ByUgNBkyh493qbiXSBoA2KUJT9SKeh9PCZ2FKcSnpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320039.6016612,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "J9hkbwzUommmf2ZkCKfCGR33kmZ6Sra2gF1P1szWpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320062.8107755,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "F8LZF1Rx1E95WffDe2kRBKPqfv7SXT4VbfPKvZtcsRfP": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320063.449821,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2wiknMY64PACiHQdfRdm6H3319CNhjmyu8DfDFefpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320066.216774,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7325cBXYDbEPeAhCvDivoWFVPDzA9ab1kyUpgtUtpump": {
+    "symbol": "FARTCOIN",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320080.7737136,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "4rASNqzohXzTC6XijPGX6PrWTVtkwnS3pZza8MW4GSFE": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.0,
+    "ts_first": 1785320091.049612,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AwpMFEaHjMtamiBjXYanhBRVzsNkC2f73g5vU8TU5xWr": {
+    "symbol": "SHITCOIN",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320111.9090085,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "76G5R86PfAubEJojruxybPjBdpDosw7cDZLzfAuppump": {
+    "symbol": "FARTCOIN",
+    "v_sol": 44.99999999999996,
+    "ts_first": 1785320152.3011305,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "EdfTqdtk1p7CvhACLQ1FjSdH92mziq2HzvbAn5xApump": {
+    "symbol": "FARTCOIN",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320165.4408538,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CtqcuMiAbESedC9D7tSHXiikJ7UzePQ7dtx4awEEpump": {
+    "symbol": "CRYSTAL",
+    "v_sol": 39.876543207999966,
+    "ts_first": 1785320222.7240016,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "67qvSQGZHhRJMPgCTxGsgrAHqVNHm72jAMcPFxc1pump": {
+    "symbol": "PONK",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320268.8478627,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "57pPjd6Pts5enjANBQkqFMS24JKF7bSNzebZDTLrpump": {
+    "symbol": "ETHEL",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320317.317678,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BzkLoy1EAdc8hwdCwUAnUBLTQriQNQhCUs47SXVqpump": {
+    "symbol": "PETCAT",
+    "v_sol": 35.92592592399996,
+    "ts_first": 1785320334.0763664,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "A6QyokHLHntGeBVqUJNodhXBRWa1oxHMeBJodQNqpump": {
+    "symbol": "SHITCOIN",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320368.5839097,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FRc6WEUtmtxnQHrASeEjnR3VdsyHgwv9wBY5GeFrpump": {
+    "symbol": "TICTAC",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320418.291859,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "B3uhi4fp9HrguzLJ2eq8roFdMXWNJQLaLYy2Wi2Wpump": {
+    "symbol": "CASHCATE",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320430.1748734,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Eo2k6RFm9eJAD936JxbYr14b5pMc1rvdEjKykvNzpump": {
+    "symbol": "\u305f\u308d",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785320443.1519244,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FWZoDTXWj6tgY6sLn6hjtj84sf47fhCsZWwgwc6Gpump": {
+    "symbol": "FU",
+    "v_sol": 49.77283950499999,
+    "ts_first": 1785320451.5336733,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DDNWa5QFU6WPrx1QoLUvYKYnzwqSfL1x3f7TnqnVpump": {
+    "symbol": "SHITPOST",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320462.285406,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "73T7n3b4LhcDzm5FTHhDJsHseUCosnf3b8e6ZTDHpump": {
+    "symbol": "SHITPOST",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785320468.6522613,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5RMDvSv2Wx6eU9McsH4Sad8fmobHePjHKxszzqHnpump": {
+    "symbol": "DAEGI",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320531.836072,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "B8vozHeFnh2r1WqaQcW9wDfJCii3eNVwczdhyU6Kpump": {
+    "symbol": "FRANCIS",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785320594.9172623,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6oT1pycHNX9LK3WgFT6mMkeqhPx2th3ijqVdwSmBpump": {
+    "symbol": "COPYCAT",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320602.4332056,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BTVrtpo9R5gsLbFJdZBJhm4eSiVXNMBKJnqZ5uZV6KC9": {
+    "symbol": "NICO",
+    "v_sol": 34.0,
+    "ts_first": 1785320625.4967823,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Fw4AqapX13uH2aj5yH8Hx98HRwVwVuJehK1ux5Ripump": {
+    "symbol": "ABUNDANCE",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320746.071715,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7rmYK5VJSWX5mu3DXCbBpWgzEiUShohFTDKTX31ET67T": {
+    "symbol": "WIN",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320772.027188,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9BfxLvrmXb8VJhA5nC49FGiMNgXVR7pZnK43xWNsSEmE": {
+    "symbol": "AA",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320835.8088603,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "cqbjMNaMuL3ey7vzR1YNZDWzMhgw4pSYQ2FtqwtPZqD": {
+    "symbol": "STROKE",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320846.718087,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "yNyMtcjZuW5rHKze6qgBss2QoZP82TV4pcpgSCppump": {
+    "symbol": "WIN",
+    "v_sol": 33.08324768756423,
+    "ts_first": 1785320864.8788526,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5exGpveFdn2Dcr9o7Pyj35DoYj588rEfkNLcZqHxpump": {
+    "symbol": "DEER",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785320867.6547973,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FnBD3yHUTNAwKCz8xdLVSHqBmKEfAtbqXfuvAgZmpump": {
+    "symbol": "QIE",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320886.2704692,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2sAzV6y7UwYGRtjZdufoqGD3durQuRtbL7CfG8K9pump": {
+    "symbol": "DIP",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785320903.3434844,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CZUMJzpMrBV87dUiLhZw87TvjZ9Y2CPdBWxbaDuipump": {
+    "symbol": "WORTHLESS",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785320915.8638477,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "8tH2eEEEqWJxr8zhPzpxBjScyNKpvLKyncohBiCvpump": {
+    "symbol": "TIMELAPSE",
+    "v_sol": 33.45679012099996,
+    "ts_first": 1785320942.126966,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "sKv3wq1Ex6qWtDLs8KJDSTMabksW9PJ11694U2Lpump": {
+    "symbol": "DIP",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785320957.1683292,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GWqPH8WvZ5RJsAQ3Gp3DaJR3AygbzB1sDVwXtzb9pump": {
+    "symbol": "RIDE",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785320987.5832517,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6nzPT8q7bRPjWikCjhLRe9Q4kAu2Pxed88xbJLDYpump": {
+    "symbol": "\u0413\u041e\u041b\u0414\u0418",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785321030.7953928,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5XBecYHakTkG4ibFR8oaSJtsWEnnpQYPURbrQ56ppump": {
+    "symbol": "BABY",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321031.3518927,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5Uqxv6cgfrdDg9gPFCNnovbtk7LHxRmXtwqzMgmrpump": {
+    "symbol": "PLEX",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321040.5182176,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FKXSiFWYNsK48dpcY49vgvKuftCz8pnfz33Dbybhpump": {
+    "symbol": "GERALD",
+    "v_sol": 32.999999999999986,
+    "ts_first": 1785321069.1836846,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Hk2J5r8Ra5L4md2KFUNG7jvHq2QG49C7WvwG4bqXpump": {
+    "symbol": "\u0413\u041e\u041b\u0414\u0418",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785321096.2074764,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "247EeNypRaBQJk4wum7xFb4FM5nS8ezdiWK5xNWRpump": {
+    "symbol": "\u0413\u041e\u041b\u0414\u0418",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321107.6666017,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "ChuxkTRtyntX4WCzfxbmgCB39sknPxQXnW2a3Wa4pump": {
+    "symbol": "ACKCHYUALLY",
+    "v_sol": 37.99999999999999,
+    "ts_first": 1785321116.3240643,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "EYPF4MVwNMy5M65Lxvqx7xKpLZ134xwLWuHLwizcpump": {
+    "symbol": "ACKCHYUALLY",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321116.4002736,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "CSzsyzLPk4t8AnxtYyibDdAWpuqD29F8fyK4ozQGpump": {
+    "symbol": "ACKCHYUALLY",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785321116.5921676,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5eehcD2ZP15SAqX5uCirY1kMg4qbAZ1eUkyLvWVssuKS": {
+    "symbol": "ACKCHYUALLY",
+    "v_sol": 37.0,
+    "ts_first": 1785321116.828097,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "F47tJJ4nFUHsSdPwVtDRMCKRFaqfgPBfdANFFaaXpump": {
+    "symbol": "RETAILINU",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321154.9750428,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AhHjikuBsBSqRt5xkZsFdwTGKXxyyQhr7Faf8Xpxpump": {
+    "symbol": "INUVESTOR",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785321175.0596418,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6xEuozBEXUNneRhWdK4WGPwsqDDkvs2HRfw9RALDpump": {
+    "symbol": "QIE",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321205.392101,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6vWyXQ1vji9zbeLd65dXaCBFHcmh266oyYJh11BCpump": {
+    "symbol": "\ud83d\udd95",
+    "v_sol": 56.666666664999944,
+    "ts_first": 1785321205.7198045,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2sb1iZVR7kzziqDXQ6RsAU8n5fzk1KNX9jNiaBUwnVva": {
+    "symbol": "BEBKO",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321253.5343819,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Bkkm515jUqCHJuhCCR5o4xtU6z26hoW8rBdvoXHtpump": {
+    "symbol": "YOLO",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321255.288252,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AM6ATXdA2EnCiNrfCRtFdTXt6BwB96LKmQ1GEt2jpump": {
+    "symbol": "KOSPI",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321270.8408277,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DNSS3MQrPj4FwKKxyMpUFG49jyoLHLpig7VV2EWepump": {
+    "symbol": "BURRITO",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321277.7088552,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Gk29vNznh8pnkqo5aEuqZXaeFTKdxYbGboScMsrspump": {
+    "symbol": "\u306e\u308a\u4e38",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785321291.6108062,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "EdaYzTnHn36y73WeFonLo6ZrJktzWq4hqnWos31opump": {
+    "symbol": "GLADIATOR",
+    "v_sol": 33.49999999999999,
+    "ts_first": 1785321312.1199155,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BE5pWxBhV9aEqby5LdbRJLDxutN69t5h3hGDLwtiypF": {
+    "symbol": "BEBKO",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321373.440516,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2Fsf3QpHBr9sH9uvZacnWKen7YA71t7z2XNCTzPSpump": {
+    "symbol": "GLADIATOR",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785321386.036926,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "8FFPnCaLWd6XkmaeE9SLNPiW6Xzc7Yr4f47bowuepump": {
+    "symbol": "CLOWN",
+    "v_sol": 39.876543207999966,
+    "ts_first": 1785321412.7897623,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5NYDdMES5dBnRSW9pawRmu8zTRAjDXcpdGhCEUPgpump": {
+    "symbol": "LUFFY",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321439.0283046,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2Skiik676fNvspaeTXW729r6maAUfYfrx21Ghve2pump": {
+    "symbol": "LUFFY",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321462.35785,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "JB2RQpDorPLeoBVTsAefC28qCdgeGyXyVZfWhubPpump": {
+    "symbol": "KOSPI",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321597.897495,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BuyWup2oB23W6mo36RRS3UFviXMuphcLoNCbAstmpump": {
+    "symbol": "K\u00d6FTE",
+    "v_sol": 34.0,
+    "ts_first": 1785321612.3814585,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DHSpBqPBf837EjcyLGN6MGfESyytrdkcgZvBYvgMpump": {
+    "symbol": "KS11",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321647.9511976,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FcBrizhwVKycmZ5phHjUe4AnD6HSoS4AthB2whiepump": {
+    "symbol": "GLADIATRICES",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785321660.7852244,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "E9yR3P6v93PRoztm28hRWbJ3cWkQvSFrnNjC1Lfppump": {
+    "symbol": "GLADIATRIX",
+    "v_sol": 33.19999999999997,
+    "ts_first": 1785321717.761645,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "HVxwKFJzJ2GQs7cHnh3mwtqWmC4rQgiSPvTX7Hkapump": {
+    "symbol": "GLADIATOR",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321729.9839563,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "EjhFsx7tMC11dFQ7dpJDsRqXpbVHqzCmcUGj8oexpump": {
+    "symbol": "DWOGE",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321743.8098729,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "DWjte95y26zUNTPp5RxFdHESKcrWk744Lmno8fHjpump": {
+    "symbol": "GLADIATRIX",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321765.1913197,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7eQjLJuqXqwA2bEWN5Gf2WyqcbbvbuxvHexb3DNZpump": {
+    "symbol": "GLADIATRIX",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321789.371655,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2kXrA6YuuBPcP8TeBrNFULv7RJwpmPHR3z6K3ebepump": {
+    "symbol": "JIMOTHEA",
+    "v_sol": 39.876543207999966,
+    "ts_first": 1785321812.8775935,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GPq58v6srfjL8mPAVGyFpjPxhEG2BqVhjSKg69PJpump": {
+    "symbol": "WIN",
+    "v_sol": 33.08324768756423,
+    "ts_first": 1785321819.2620833,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2Sb5sDkPrQpLtG8QszhPEJwBpv1WmJDGUWdrU83Fgrrq": {
+    "symbol": "DOGBALLS",
+    "v_sol": 34.0,
+    "ts_first": 1785321885.7123463,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7Lob7rg43kWwmreuxfSTuohun2atBHCXBUkW6KSfpump": {
+    "symbol": "KOSPI",
+    "v_sol": 35.999999999999986,
+    "ts_first": 1785321890.5130196,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9dPJAQ8RpHXpqrFBadLAi1CVVUnTRnJ7yd2u8Ufvpump": {
+    "symbol": "KOSPI",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785321919.2876592,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "HJZgx7ppsmG6Ti3VEm1xo76HSJ4X6apuPq4YVGvSpump": {
+    "symbol": "KOSPI",
+    "v_sol": 33.45679012099996,
+    "ts_first": 1785321921.7543721,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7tLjhMnLuGaK67zjDCwQMWr8MiQVrEUawhQrPcHVpump": {
+    "symbol": "\u0411\u041e\u0413\u0410",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785321935.3479443,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5dSz8fyEkB8tkkjGKsfFMkPw9mhgGW7KuDzobzChpump": {
+    "symbol": "CATTIDES",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785321972.742568,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GCGNi8BSGXaFfrVPjLLSieNVYpHeHfJ5pqJz2hkxpump": {
+    "symbol": "CAMI",
+    "v_sol": 33.45679012099996,
+    "ts_first": 1785321993.0822682,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "HpnRuUpUmLLkV7uqn8vsCpeCdccgAfGVRZpaupu3pump": {
+    "symbol": "THUNDER",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785322043.6725447,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "9QTypvJfcbVPSoCbRf8Y7j8RWEm8FetmodENtHdJUfsB": {
+    "symbol": "STOCKFISH",
+    "v_sol": 35.92592592399996,
+    "ts_first": 1785322082.2550666,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "FZ3usSzePaFDqMAG15FJzpeS9XEVBVWVrEXhZd6cpump": {
+    "symbol": "KOSPI",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785322087.1568437,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "G14p4pcUC6CNeA44cxNjxot93UzjUp52HoFrfCkgpump": {
+    "symbol": "ZOL",
+    "v_sol": 36.99999999999996,
+    "ts_first": 1785322122.1463122,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AGqFqjdGkqmAoLUnUuQ7UypDfPeXZovHCAqKqzGypump": {
+    "symbol": "ZOLANA",
+    "v_sol": 37.99999999999999,
+    "ts_first": 1785322122.2200463,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GJNE61eXmvEuVQoHBNVkpLSfjtKzNUPk1uUvd5N2pump": {
+    "symbol": "ZOLANA",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785322122.3033793,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6LhXKMcHvSfURDTamYKAgzLywPHSG2mZjvtWaaWLpump": {
+    "symbol": "CLUB",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785322152.8729722,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2FDZbxebrbbKn952RdnHKaRH2ndafraQBqYzfttfT27d": {
+    "symbol": "ANTS",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785322197.0399232,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Cpb41cJe2MaBG8QafvDXmhC4pmWoyN9yHPzsCjn7pump": {
+    "symbol": "ANT\u2060",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785322203.662665,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "8mvwbY77X7s3KQAxn9ULUwW6zHVsaJWqL2Fu29nGpump": {
+    "symbol": "TATSUMI",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785322213.330483,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BiPh5VjBE3MvH4edJKandARvYf3asvkBb89BissYpump": {
+    "symbol": "PUPTIDES",
+    "v_sol": 35.432098762999985,
+    "ts_first": 1785322275.4916892,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "AzxuiGygCuJ79Y1BSj7zHG4UhwAiLnTBZQgRonrRpump": {
+    "symbol": "MACIKA",
+    "v_sol": 33.45679012099996,
+    "ts_first": 1785322295.9356692,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "5cFyzVrDDHdWtzhMMCvKvzdKP1pj8hjasbvDc2d8Pmhk": {
+    "symbol": "POD",
+    "v_sol": 34.0,
+    "ts_first": 1785322330.9103084,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "2ZiyH9US86tJGgobt6s2vn6mPZxknzNuLsSowwHopump": {
+    "symbol": "TRUMPSTER",
+    "v_sol": 34.0,
+    "ts_first": 1785322339.7150202,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Acft4P2BpEWPMRMegwit8Qz8AXJmd2rtZ5r6RgyvXMwy": {
+    "symbol": "\uac1c\ubbf8",
+    "v_sol": 33.950617281999975,
+    "ts_first": 1785322347.0295336,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "Gf9UApeddDjpRCceEjWSVkMyGdtEqxkdmssk5eSopump": {
+    "symbol": "KINDAN",
+    "v_sol": 33.90123456599998,
+    "ts_first": 1785322386.7904863,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "urFn7LnMZNETQWrpDMcvmuWXuBFnreWxytmQGkFpump": {
+    "symbol": "SZN",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785322396.08143,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "GLgGqgWYn6SA4h9GSZkCeP8RaKhSvKzmmcrZGhg8nyrf": {
+    "symbol": "\uc870\ub9ac\ub41c",
+    "v_sol": 34.0,
+    "ts_first": 1785322397.4989197,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "6Ng8aSCfjXn1pDgiqZSPWfqRigqDWqKVpFajNb2Lpump": {
+    "symbol": "ERM",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785322407.1333814,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "BGT4GX1ToeJKLPGWUeNpKQYpF5wuaAufVECaoMyZpump": {
+    "symbol": "FRANK",
+    "v_sol": 34.93827160299997,
+    "ts_first": 1785322407.2748542,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7emNqHUvosjEBq4HDziRMQWFCuQnNo8KznQVcURZpump": {
+    "symbol": "\u3086\u308a",
+    "v_sol": 34.99999999999999,
+    "ts_first": 1785322413.0970862,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  },
+  "7CZdfGw1baULUchWpHWXBzL2tcwJuDSrsdLfSfeBpump": {
+    "symbol": "CATALYST",
+    "v_sol": 32.962962961,
+    "ts_first": 1785322559.5080457,
+    "ts_hot": null,
+    "rugcheck_ok": null
+  }
+}

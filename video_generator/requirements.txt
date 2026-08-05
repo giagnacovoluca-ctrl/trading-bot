@@ -1,0 +1,38 @@
+# ── Core Video Engine ──────────────────────────────────────────────
+moviepy==1.0.3
+ffmpeg-python==0.2.0
+
+# ── TTS Engines ────────────────────────────────────────────────────
+edge-tts>=7.2.8           # gratuito, voci neurali Microsoft (it-IT-ElsaNeural)
+elevenlabs==1.3.0          # premium, opzionale
+
+# ── Audio Processing ───────────────────────────────────────────────
+pydub==0.25.1             # mix voiceover + ambient track
+numpy==1.26.4
+mutagen==1.47.0           # lettura durata audio senza ffprobe
+
+# ── CLI & UX ───────────────────────────────────────────────────────
+typer==0.12.3
+rich==13.9.4
+
+# ── HTTP / API (Pexels stock video) ────────────────────────────────
+requests==2.32.3
+httpx==0.27.0             # edge-tts async HTTP
+
+# ── Env & Config ───────────────────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Caption / Subtitle parsing ─────────────────────────────────────
+pysrt==1.1.2
+
+# ── Async support for edge-tts ─────────────────────────────────────
+anyio==4.4.0
+
+# ── API Server (n8n Integration) ───────────────────────────────────
+fastapi>=0.110.0
+uvicorn>=0.29.0
+pydantic>=2.7.0
+
+# ── Dynamic Captions (Hormozi style) ───────────────────────────────
+openai-whisper>=20250625
+whisper-timestamped>=1.15.9

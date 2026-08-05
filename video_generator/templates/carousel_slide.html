@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carousel Slide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1080px;
+            height: 1920px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+        }
+        /* DEFAULT THEME (0) - Indigo/Blue */
+        body.theme-0 { background: linear-gradient(135deg, #0f172a, #1e1b4b, #312e81); }
+        body.theme-0 .orb1 { background: rgba(99, 102, 241, 0.4); }
+        body.theme-0 .orb2 { background: rgba(236, 72, 153, 0.3); }
+        body.theme-0.is-hook .glass-card { border: 2px solid rgba(236, 72, 153, 0.5); }
+        body.theme-0.is-hook #slide-content { color: #fbcfe8; }
+
+        /* THEME 1 - Emerald/Teal */
+        body.theme-1 { background: linear-gradient(135deg, #022c22, #064e3b, #0f766e); }
+        body.theme-1 .orb1 { background: rgba(16, 185, 129, 0.4); }
+        body.theme-1 .orb2 { background: rgba(6, 182, 212, 0.3); }
+        body.theme-1.is-hook .glass-card { border: 2px solid rgba(52, 211, 153, 0.5); }
+        body.theme-1.is-hook #slide-content { color: #a7f3d0; }
+
+        /* THEME 2 - Crimson/Orange */
+        body.theme-2 { background: linear-gradient(135deg, #450a0a, #7f1d1d, #b45309); }
+        body.theme-2 .orb1 { background: rgba(239, 68, 68, 0.4); }
+        body.theme-2 .orb2 { background: rgba(245, 158, 11, 0.3); }
+        body.theme-2.is-hook .glass-card { border: 2px solid rgba(251, 146, 60, 0.5); }
+        body.theme-2.is-hook #slide-content { color: #fed7aa; }
+
+        /* THEME 3 - Noir/Gold */
+        body.theme-3 { background: linear-gradient(135deg, #000000, #171717, #262626); }
+        body.theme-3 .orb1 { background: rgba(250, 204, 21, 0.25); }
+        body.theme-3 .orb2 { background: rgba(255, 255, 255, 0.1); }
+        body.theme-3.is-hook .glass-card { border: 2px solid rgba(250, 204, 21, 0.5); }
+        body.theme-3.is-hook #slide-content { color: #fef08a; }
+
+        /* THEME 4 - Cyberpunk (Purple/Pink) */
+        body.theme-4 { background: linear-gradient(135deg, #2e1065, #4c1d95, #831843); }
+        body.theme-4 .orb1 { background: rgba(217, 70, 239, 0.4); }
+        body.theme-4 .orb2 { background: rgba(244, 63, 94, 0.3); }
+        body.theme-4.is-hook .glass-card { border: 2px solid rgba(244, 114, 182, 0.5); }
+        body.theme-4.is-hook #slide-content { color: #fbcfe8; }
+
+        .orb1 { position: absolute; width: 600px; height: 600px; filter: blur(150px); top: -100px; left: -100px; border-radius: 50%; transition: background 0.5s; }
+        .orb2 { position: absolute; width: 500px; height: 500px; filter: blur(150px); bottom: -100px; right: -100px; border-radius: 50%; transition: background 0.5s; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            width: 850px;
+            min-height: 900px;
+            padding: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        #slide-content {
+            font-size: 65px;
+            font-weight: 700;
+            line-height: 1.4;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        #slide-number {
+            position: absolute;
+            bottom: 60px;
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            opacity: 0.5;
+            z-index: 10;
+        }
+
+        .is-hook #slide-content {
+            font-size: 85px;
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+    <div class="orb1"></div>
+    <div class="orb2"></div>
+    <div class="glass-card">
+        <div id="slide-content">TESTO DI ESEMPIO</div>
+    </div>
+    <div id="slide-number">1 / 5</div>
+
+    <script>
+        // Funzione chiamata da Playwright per iniettare il testo
+        function setSlideData(testo, current, total, themeIndex = 0) {
+            document.getElementById('slide-content').innerText = testo;
+            document.getElementById('slide-number').innerText = current + " / " + total;
+            
+            // Imposta il tema
+            document.body.className = `theme-${themeIndex}`;
+            
+            if (current === 1) {
+                document.body.classList.add('is-hook');
+            }
+        }
+    </script>
+</body>
+</html>

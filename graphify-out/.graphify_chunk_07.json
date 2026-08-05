@@ -1,0 +1,170 @@
+{
+  "nodes": [
+    {"id": "memory_manager_sparc_mode", "label": "SPARC Memory Manager Mode", "file_type": "document", "source_file": ".claude/commands/sparc/memory-manager.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "optimizer_sparc_mode", "label": "SPARC Optimizer Mode", "file_type": "document", "source_file": ".claude/commands/sparc/optimizer.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "orchestrator_sparc_mode", "label": "SPARC Orchestrator Mode", "file_type": "document", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "post_deployment_monitoring_mode_sparc_mode", "label": "Deployment Monitor (SPARC Mode)", "file_type": "document", "source_file": ".claude/commands/sparc/post-deployment-monitoring-mode.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "refinement_optimization_mode_sparc_mode", "label": "Optimizer / Refinement-Optimization Mode (SPARC)", "file_type": "document", "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "researcher_sparc_mode", "label": "SPARC Researcher Mode", "file_type": "document", "source_file": ".claude/commands/sparc/researcher.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "reviewer_sparc_mode", "label": "SPARC Reviewer Mode", "file_type": "document", "source_file": ".claude/commands/sparc/reviewer.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "security_review_sparc_mode", "label": "Security Reviewer (SPARC Mode)", "file_type": "document", "source_file": ".claude/commands/sparc/security-review.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "sparc_modes_overview", "label": "SPARC Modes Overview", "file_type": "document", "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "sparc_sparc_orchestrator", "label": "SPARC Orchestrator (Main SPARC Mode)", "file_type": "document", "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "spec_pseudocode_sparc_mode", "label": "Specification Writer (SPARC Mode)", "file_type": "document", "source_file": ".claude/commands/sparc/spec-pseudocode.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "supabase_admin_sparc_mode", "label": "Supabase Admin (SPARC Mode)", "file_type": "document", "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "swarm_coordinator_sparc_mode", "label": "SPARC Swarm Coordinator Mode", "file_type": "document", "source_file": ".claude/commands/sparc/swarm-coordinator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "tdd_sparc_mode", "label": "SPARC TDD Mode", "file_type": "document", "source_file": ".claude/commands/sparc/tdd.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "tester_sparc_mode", "label": "SPARC Tester Mode", "file_type": "document", "source_file": ".claude/commands/sparc/tester.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "tutorial_sparc_mode", "label": "SPARC Tutorial Mode", "file_type": "document", "source_file": ".claude/commands/sparc/tutorial.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "workflow_manager_sparc_mode", "label": "SPARC Workflow Manager Mode", "file_type": "document", "source_file": ".claude/commands/sparc/workflow-manager.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "swarm_readme", "label": "Swarm Commands README", "file_type": "document", "source_file": ".claude/commands/swarm/README.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "swarm_analysis_strategy", "label": "Analysis Swarm Strategy", "file_type": "document", "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "swarm_development_strategy", "label": "Development Swarm Strategy", "file_type": "document", "source_file": ".claude/commands/swarm/development.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "swarm_examples", "label": "Examples Swarm Strategy", "file_type": "document", "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+
+    {"id": "concept_sparc_methodology", "label": "SPARC Methodology (Specification, Pseudocode, Architecture, Refinement, Completion)", "file_type": "concept", "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_mcp_sparc_mode_tool", "label": "mcp__claude-flow__sparc_mode tool", "file_type": "concept", "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_swarm_init", "label": "mcp__claude-flow__swarm_init tool", "file_type": "concept", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_agent_spawn", "label": "mcp__claude-flow__agent_spawn tool", "file_type": "concept", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_task_orchestrate", "label": "mcp__claude-flow__task_orchestrate tool", "file_type": "concept", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_swarm_monitor", "label": "mcp__claude-flow__swarm_monitor tool", "file_type": "concept", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_memory_usage", "label": "mcp__claude-flow__memory_usage tool", "file_type": "concept", "source_file": ".claude/commands/sparc/memory-manager.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_memory_search", "label": "mcp__claude-flow__memory_search tool", "file_type": "concept", "source_file": ".claude/commands/sparc/memory-manager.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_workflow_create", "label": "mcp__claude-flow__workflow_create tool", "file_type": "concept", "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_supabase_mcp", "label": "Supabase MCP Tools Suite", "file_type": "concept", "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_attempt_completion", "label": "attempt_completion tool", "file_type": "concept", "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_new_task", "label": "new_task tool", "file_type": "concept", "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_bottleneck_analyze", "label": "mcp__claude-flow__bottleneck_analyze tool", "file_type": "concept", "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_performance_report", "label": "mcp__claude-flow__performance_report tool", "file_type": "concept", "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_pattern_recognize", "label": "mcp__claude-flow__pattern_recognize tool", "file_type": "concept", "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_daa_fault_tolerance", "label": "mcp__claude-flow__daa_fault_tolerance tool", "file_type": "concept", "source_file": ".claude/commands/swarm/development.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null},
+    {"id": "concept_parallel_execute", "label": "mcp__claude-flow__parallel_execute tool", "file_type": "concept", "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}
+  ],
+  "edges": [
+    {"source": "sparc_modes_overview", "target": "memory_manager_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "optimizer_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "orchestrator_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "researcher_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "reviewer_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "tdd_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "swarm_coordinator_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "workflow_manager_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "concept_sparc_methodology", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_modes_overview", "target": "concept_mcp_sparc_mode_tool", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc-modes.md", "source_location": null, "weight": 1.0},
+
+    {"source": "sparc_sparc_orchestrator", "target": "concept_sparc_methodology", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "spec_pseudocode_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "tdd_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "security_review_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "post_deployment_monitoring_mode_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "refinement_optimization_mode_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "supabase_admin_sparc_mode", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "concept_new_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+    {"source": "sparc_sparc_orchestrator", "target": "concept_attempt_completion", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/sparc.md", "source_location": null, "weight": 1.0},
+
+    {"source": "orchestrator_sparc_mode", "target": "concept_swarm_init", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+    {"source": "orchestrator_sparc_mode", "target": "concept_agent_spawn", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+    {"source": "orchestrator_sparc_mode", "target": "concept_task_orchestrate", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+    {"source": "orchestrator_sparc_mode", "target": "concept_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+    {"source": "orchestrator_sparc_mode", "target": "concept_workflow_create", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+    {"source": "orchestrator_sparc_mode", "target": "swarm_coordinator_sparc_mode", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/sparc/orchestrator.md", "source_location": null, "weight": 1.0},
+
+    {"source": "memory_manager_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/memory-manager.md", "source_location": null, "weight": 1.0},
+    {"source": "memory_manager_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/memory-manager.md", "source_location": null, "weight": 1.0},
+
+    {"source": "post_deployment_monitoring_mode_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/post-deployment-monitoring-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "post_deployment_monitoring_mode_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/post-deployment-monitoring-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "post_deployment_monitoring_mode_sparc_mode", "target": "concept_new_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/post-deployment-monitoring-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "post_deployment_monitoring_mode_sparc_mode", "target": "concept_attempt_completion", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/post-deployment-monitoring-mode.md", "source_location": null, "weight": 1.0},
+
+    {"source": "refinement_optimization_mode_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "refinement_optimization_mode_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "refinement_optimization_mode_sparc_mode", "target": "concept_new_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "refinement_optimization_mode_sparc_mode", "target": "concept_attempt_completion", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "weight": 1.0},
+    {"source": "refinement_optimization_mode_sparc_mode", "target": "optimizer_sparc_mode", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": ".claude/commands/sparc/refinement-optimization-mode.md", "source_location": null, "weight": 1.0},
+
+    {"source": "researcher_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "INFERRED", "confidence_score": 0.65, "source_file": ".claude/commands/sparc/researcher.md", "source_location": null, "weight": 1.0},
+
+    {"source": "security_review_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/security-review.md", "source_location": null, "weight": 1.0},
+    {"source": "security_review_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/security-review.md", "source_location": null, "weight": 1.0},
+    {"source": "security_review_sparc_mode", "target": "concept_new_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/security-review.md", "source_location": null, "weight": 1.0},
+    {"source": "security_review_sparc_mode", "target": "concept_attempt_completion", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/security-review.md", "source_location": null, "weight": 1.0},
+
+    {"source": "spec_pseudocode_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/spec-pseudocode.md", "source_location": null, "weight": 1.0},
+    {"source": "spec_pseudocode_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/spec-pseudocode.md", "source_location": null, "weight": 1.0},
+
+    {"source": "supabase_admin_sparc_mode", "target": "concept_supabase_mcp", "relation": "implements", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "weight": 1.0},
+    {"source": "supabase_admin_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "weight": 1.0},
+    {"source": "supabase_admin_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "weight": 1.0},
+    {"source": "supabase_admin_sparc_mode", "target": "concept_attempt_completion", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/supabase-admin.md", "source_location": null, "weight": 1.0},
+
+    {"source": "swarm_coordinator_sparc_mode", "target": "concept_swarm_init", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/sparc/swarm-coordinator.md", "source_location": null, "weight": 1.0},
+
+    {"source": "tdd_sparc_mode", "target": "concept_sparc_methodology", "relation": "implements", "confidence": "INFERRED", "confidence_score": 0.85, "source_file": ".claude/commands/sparc/tdd.md", "source_location": null, "weight": 1.0},
+    {"source": "tdd_sparc_mode", "target": "tester_sparc_mode", "relation": "conceptually_related_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/sparc/tdd.md", "source_location": null, "weight": 1.0},
+
+    {"source": "tutorial_sparc_mode", "target": "concept_sparc_methodology", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/tutorial.md", "source_location": null, "weight": 1.0},
+    {"source": "tutorial_sparc_mode", "target": "concept_memory_usage", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/tutorial.md", "source_location": null, "weight": 1.0},
+    {"source": "tutorial_sparc_mode", "target": "concept_memory_search", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/tutorial.md", "source_location": null, "weight": 1.0},
+    {"source": "tutorial_sparc_mode", "target": "concept_new_task", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/sparc/tutorial.md", "source_location": null, "weight": 1.0},
+
+    {"source": "workflow_manager_sparc_mode", "target": "swarm_coordinator_sparc_mode", "relation": "conceptually_related_to", "confidence": "AMBIGUOUS", "confidence_score": 0.2, "source_file": ".claude/commands/sparc/workflow-manager.md", "source_location": null, "weight": 1.0},
+
+    {"source": "swarm_readme", "target": "swarm_analysis_strategy", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/README.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_readme", "target": "swarm_development_strategy", "relation": "references", "confidence": "AMBIGUOUS", "confidence_score": 0.2, "source_file": ".claude/commands/swarm/README.md", "source_location": null, "weight": 1.0},
+
+    {"source": "swarm_analysis_strategy", "target": "concept_swarm_init", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_analysis_strategy", "target": "concept_task_orchestrate", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_analysis_strategy", "target": "concept_agent_spawn", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_analysis_strategy", "target": "concept_bottleneck_analyze", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_analysis_strategy", "target": "concept_performance_report", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_analysis_strategy", "target": "concept_pattern_recognize", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/analysis.md", "source_location": null, "weight": 1.0},
+
+    {"source": "swarm_development_strategy", "target": "concept_swarm_init", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/development.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_development_strategy", "target": "concept_task_orchestrate", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/development.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_development_strategy", "target": "concept_agent_spawn", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/development.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_development_strategy", "target": "concept_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/development.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_development_strategy", "target": "concept_daa_fault_tolerance", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/development.md", "source_location": null, "weight": 1.0},
+
+    {"source": "swarm_examples", "target": "concept_swarm_init", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_agent_spawn", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_task_orchestrate", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_swarm_monitor", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_parallel_execute", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_performance_report", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "concept_daa_fault_tolerance", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "swarm_development_strategy", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0},
+    {"source": "swarm_examples", "target": "swarm_analysis_strategy", "relation": "semantically_similar_to", "confidence": "INFERRED", "confidence_score": 0.75, "source_file": ".claude/commands/swarm/examples.md", "source_location": null, "weight": 1.0}
+  ],
+  "hyperedges": [
+    {
+      "id": "sparc_full_dev_cycle_workflow",
+      "label": "Full SPARC Development Cycle (architect -> coder -> tdd -> reviewer)",
+      "nodes": ["sparc_modes_overview", "tdd_sparc_mode", "reviewer_sparc_mode"],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/commands/sparc/sparc-modes.md"
+    },
+    {
+      "id": "sparc_orchestrator_delegation_set",
+      "label": "SPARC Orchestrator delegates to specialist modes via new_task",
+      "nodes": ["sparc_sparc_orchestrator", "spec_pseudocode_sparc_mode", "security_review_sparc_mode", "post_deployment_monitoring_mode_sparc_mode", "refinement_optimization_mode_sparc_mode"],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".claude/commands/sparc/sparc.md"
+    },
+    {
+      "id": "memory_integration_pattern",
+      "label": "Common Memory Integration pattern (memory_usage/memory_search) across SPARC modes",
+      "nodes": ["memory_manager_sparc_mode", "post_deployment_monitoring_mode_sparc_mode", "refinement_optimization_mode_sparc_mode", "security_review_sparc_mode"],
+      "relation": "implement",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": ".claude/commands/sparc/memory-manager.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

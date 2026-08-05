@@ -1,0 +1,24 @@
+Caricamento del modello OCR in corso (potrebbe richiedere un minuto)...
+Neither CUDA nor MPS are available - defaulting to CPU. Note: This module is muc
+h faster with a GPU.
+/home/magic/Scrivania/code/GIT/FraDodo/venv/lib/python3.14/site-packages/torch/a
+o/nn/quantized/dynamic/modules/rnn.py:162: UserWarning: torch.quantize_per_tenso
+r, torch.quantize_per_channel and other quantized tensor creation functions that
+ produce tensors with dtype torch.quint8, torch.qint8, and torch.qint32 are depr
+ecated and will be removed in a future PyTorch release. Please see https://githu
+b.com/pytorch/pytorch/issues/184982 for more information. (Triggered internally
+at /__w/pytorch/pytorch/aten/src/ATen/quantized/Quantizer.cpp:111.)
+  w_ih = torch.quantize_per_tensor(
+Modello OCR caricato con successo!
+INFO:     Started server process [1597034]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+Bot is ready. Logged in as FraDodo Bot#1464
+Errore durante l'auto-tracking per 12345: ACT_SSO_COOKIE mancante nel file .env
+Forzata sync di 7 comandi per [KSD] KASH!DO ELITE
+Forzata sync di 7 comandi per Server di Fradodo
+
+
+
+

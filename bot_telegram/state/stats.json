@@ -1,0 +1,105 @@
+{
+  "available": true,
+  "weekly": {
+    "trades": 122,
+    "wins": 41,
+    "losses": 81,
+    "win_rate": 33.6,
+    "pnl_eur": 166.94,
+    "best": {
+      "symbol": "CASHCAT",
+      "pnl_eur": 50.0
+    },
+    "by_system": {
+      "midcap": {
+        "pnl_eur": 85.81,
+        "n": 18,
+        "win_rate": 94.4
+      },
+      "pump_grad": {
+        "pnl_eur": 83.47,
+        "n": 75,
+        "win_rate": 13.3
+      },
+      "v3": {
+        "pnl_eur": -15.3,
+        "n": 13,
+        "win_rate": 46.2
+      },
+      "defi": {
+        "pnl_eur": 16.02,
+        "n": 15,
+        "win_rate": 53.3
+      },
+      "v3_large": {
+        "pnl_eur": -3.06,
+        "n": 1,
+        "win_rate": 0.0
+      }
+    }
+  },
+  "updated_at": 1785918467.0291157,
+  "updated_iso": "2026-08-05 08:27 UTC",
+  "trades_closed": 4561,
+  "wins": 2075,
+  "losses": 2486,
+  "win_rate": 45.5,
+  "total_pnl_eur": 7590.89,
+  "pnl_24h_eur": 123.6,
+  "avg_pnl_eur": 1.66,
+  "best": {
+    "symbol": "Steve",
+    "pnl_eur": 1760.0
+  },
+  "worst": {
+    "symbol": "CUTIEPATOOTIE",
+    "pnl_eur": -100.0
+  },
+  "by_system": {
+    "defi": {
+      "pnl_eur": -511.71,
+      "n": 713,
+      "win_rate": 40.3
+    },
+    "v2": {
+      "pnl_eur": -612.97,
+      "n": 25,
+      "win_rate": 16.0
+    },
+    "v3": {
+      "pnl_eur": -14.17,
+      "n": 200,
+      "win_rate": 43.0
+    },
+    "v3_large": {
+      "pnl_eur": 233.72,
+      "n": 46,
+      "win_rate": 58.7
+    },
+    "bnf": {
+      "pnl_eur": 5.97,
+      "n": 1,
+      "win_rate": 100.0
+    },
+    "v3_midcap": {
+      "pnl_eur": -9.49,
+      "n": 32,
+      "win_rate": 37.5
+    },
+    "pump_grad": {
+      "pnl_eur": 8793.87,
+      "n": 3021,
+      "win_rate": 46.0
+    },
+    "midcap": {
+      "pnl_eur": -191.42,
+      "n": 518,
+      "win_rate": 51.5
+    },
+    "pre_grad": {
+      "pnl_eur": -102.91,
+      "n": 5,
+      "win_rate": 20.0
+    }
+  }
+}

@@ -1,0 +1,9 @@
+discord.py
+fastapi
+uvicorn
+easyocr
+Pillow
+python-dotenv
+aiohttp
+jinja2
+python-multipart

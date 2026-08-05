@@ -1,0 +1,21 @@
+# Task: {{ bounty.title }}
+
+**Issue URL**: {{ bounty.url }}
+**Task Type**: {{ bounty.features.task_type if bounty.features else "unknown" }}
+**Language**: {{ bounty.features.repo_language if bounty.features else "unknown" }}
+
+## Scoring Summary
+| Metric | Value |
+|--------|-------|
+| P(correct) | {{ "%.0f"|format(ranking.p_correct * 100) }}% |
+| P(maintainer accepts) | {{ "%.0f"|format(ranking.p_maintainer_accepts * 100) }}% |
+| Predicted human hours | {{ ranking.human_hours_predicted }}h |
+| Expected profit | ${{ "%.0f"|format(ranking.expected_profit_usd) }} |
+| EPHH | ${{ "%.1f"|format(ranking.ephh) }}/human-hour |
+
+## Full Issue Description
+
+{{ bounty.body }}
+
+---
+*BountyBrain {{ ranking.scorer_phase }}-phase scorer — generated {{ generated_at }}*

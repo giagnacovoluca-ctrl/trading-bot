@@ -1,0 +1,78 @@
+# First Steps for {{ bounty.id }}
+
+Follow these steps in order before writing any code.
+
+## 1. Read the task
+```
+cat TASK.md
+```
+
+## 2. Understand the repo structure
+```bash
+find . -maxdepth 3 -not -path '*/.git/*' -not -path '*/.venv/*' -not -path '*/node_modules/*' | head -60
+cat README.md 2>/dev/null || echo "No README found"
+```
+
+## 3. Run existing tests (establish baseline)
+```bash
+{% if bounty.features and bounty.features.repo_has_tests %}
+# Python
+python -m pytest -x -q 2>/dev/null \
+  || python -m unittest discover -q 2>/dev/null \
+  || echo "No pytest/unittest found"
+
+# Node / TypeScript
+npm test 2>/dev/null \
+  || yarn test 2>/dev/null \
+  || echo "No npm/yarn test found"
+{% else %}
+# No test suite detected automatically — check README for test instructions
+grep -i test README.md 2>/dev/null | head -10 || true
+{% endif %}
+```
+
+## 4. Reproduce the issue
+{% if bounty.features and bounty.features.issue_has_reproduction_steps %}
+Reproduction steps are provided in TASK.md — follow them exactly.
+{% else %}
+No reproduction steps were found. Explore the codebase to understand the problem:
+```bash
+# Search for relevant code
+grep -rn "{{ bounty.title[:30] }}" --include="*.py" --include="*.ts" --include="*.js" . 2>/dev/null | head -20
+```
+{% endif %}
+
+## 5. Make the fix
+
+Apply the minimal change that satisfies the requirements.
+
+## 6. Verify fix
+```bash
+# Run full test suite
+{% if bounty.features and bounty.features.repo_has_tests %}
+python -m pytest -x -q 2>/dev/null || npm test 2>/dev/null || yarn test 2>/dev/null
+{% else %}
+echo "Run tests as appropriate for this project"
+{% endif %}
+```
+
+## 7. Open PR
+Follow CONTRIBUTING.md (if present) for PR format. Reference the issue URL in the PR description:
+```
+Fixes {{ bounty.url }}
+```
+
+## 8. Log outcome in BountyBrain
+After the PR outcome is known, record it:
+```bash
+curl -s -X POST http://localhost:8080/api/outcome \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bounty_id": "{{ bounty.id }}",
+    "status": "merged",
+    "payout_received": {{ bounty.features.payout_usd if bounty.features else 0 }},
+    "human_hours_actual": 0.0,
+    "n_prompts": 0,
+    "ephh_actual": 0.0
+  }'
+```

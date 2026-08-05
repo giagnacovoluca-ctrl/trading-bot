@@ -1,0 +1,46 @@
+╭───────────────────────────────────────────────────────────╮
+│ Italian Video Generator                                   │
+│ Voiceover neurali + background ipnotici + caption animate │
+╰───────────────────────────────────────────────────────────╯
+/home/magic/Scrivania/code/GIT/video_generator/venv_video/lib/python3.12/site-packages/requests/__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+
+1/4 — Parsing script: scripts/video1_cibo_nuovo.txt
+→ 134 parole | 8 segmenti | durata stimata: 55.4s
+
+2/4 — Generazione voiceover (xtts)
+XTTS v2 (Clonazione Vocale) → speaker: mia_voce.wav
+[transformers] Model config: bos_token_id must be `None` or an integer within the vocabulary (between 0 and 255), got 50256. This may result in unexpected behavior.
+[transformers] Model config: eos_token_id must be `None` or an integer within the vocabulary (between 0 and 255), got 50256. This may result in unexpected behavior.
+[transformers] Model config: bos_token_id must be `None` or an integer within the vocabulary (between 0 and 607), got 50256. This may result in unexpected behavior.
+[transformers] Model config: eos_token_id must be `None` or an integer within the vocabulary (between 0 and 607), got 50256. This may result in unexpected behavior.
+✓ Voce clonata XTTS salvata: 
+/home/magic/Scrivania/code/GIT/video_generator/temp/_raw_voiceover.mp3
+Nessuna traccia ambient trovata in assets/ambient/, uso solo voiceover
+Audio finale: /home/magic/Scrivania/code/GIT/video_generator/temp/voiceover.mp3 
+(60.8s)
+→ durata audio reale: 60.8s
+
+3/4 — Composizione video (ratio=916)
+Composizione video 1080×1920 @ 30fps
+Cerco 18 clip video dinamiche...
+Download Pexels: pexels_29282683.mp4 (15s)…
+✓ scaricato: 
+/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/pexels_2928268
+3.mp4
+Download Pexels: pexels_7292445.mp4 (12s)…
+✓ scaricato: 
+/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/pexels_7292445
+.mp4
+Download Pexels: pexels_11280494.mp4 (58s)…
+✓ scaricato: 
+/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/pexels_1128049
+4.mp4
+Download Pexels: pexels_29717425.mp4 (20s)…
+✓ scaricato: 
+/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/pexels_2971742
+5.mp4
+Download Pexels: pexels_34645692.mp4 (20s)…
+✓ scaricato: 
+/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/pexels_3464569
+2.mp4

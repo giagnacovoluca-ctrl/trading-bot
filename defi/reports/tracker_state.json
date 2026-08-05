@@ -1,0 +1,23 @@
+{
+  "SPCX69 / SOL_20260613_181208": {
+    "signal_id": "SPCX69 / SOL_20260613_181208",
+    "token_symbol": "SPCX69 / SOL",
+    "token_name": "",
+    "chain": "solana",
+    "pair_address": "5QPHhqpAw3CZ5aNbnHQGzjXjM7eNnrkA6hwtzhmXJ2dR",
+    "token_address": "",
+    "price_entry_usd": 0.00048654,
+    "volume_1h_usd": 0,
+    "liquidity_usd": 0,
+    "buy_sell_ratio_1h": 0,
+    "change_1h_pct": 0,
+    "pump_probability": 0,
+    "buy_tax": 0,
+    "sell_tax": 0,
+    "lp_locked": "0",
+    "is_honeypot": "0",
+    "top_features": "",
+    "timestamp_entry": "2026-06-13T18:12:08.147350",
+    "snapshots_done": 10
+  }
+}

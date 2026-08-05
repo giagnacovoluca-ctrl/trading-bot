@@ -1,0 +1,35 @@
+{
+  "saved_at": "2026-06-07T16:09:10.751846",
+  "n_positions": 1,
+  "positions": {
+    "MC_CCUSDT_20260607_131920": {
+      "signal_id": "MC_CCUSDT_20260607_131920",
+      "system": "midcap",
+      "token_symbol": "",
+      "chain": "cex_spot",
+      "pair_address": "CC/USDT",
+      "token_address": "nan",
+      "entry_price": 0.17003,
+      "entry_vol": 16273.368571250001,
+      "entry_liq": Infinity,
+      "entry_ts": "2026-06-07T13:19:20.222811+00:00",
+      "position_open_ts": "2026-06-07T16:03:47.722283",
+      "peak_pct": -0.5469623007704443,
+      "neg_streak": 0,
+      "remaining": 1.0,
+      "pnl_eur": 0.0,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "exit_reason": "open",
+      "current_pct": -0.5646062459565893,
+      "current_vol": 16204.779516249999,
+      "current_bsr": 1.0,
+      "last_update": "2026-06-07 16:09:10.619236",
+      "capital": 100.0,
+      "prev_liq": Infinity,
+      "last_fetch": "2026-06-07T16:09:10.619210",
+      "bsr_consec": 0,
+      "bsr_warning": false
+    }
+  }
+}

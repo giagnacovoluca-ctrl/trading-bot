@@ -1,0 +1,23 @@
+#!/bin/bash
+export DISPLAY=:0
+export XAUTHORITY=/home/magic/.Xauthority
+export PATH=$PATH:/home/magic/.local/bin
+cd /home/magic/Scrivania/code/GIT/video_generator
+source venv_video/bin/activate
+
+HISTORY=$(tail -n 20 used_news_history.txt 2>/dev/null || echo "Nessuna notizia usata finora")
+
+/home/magic/.local/bin/agy --add-dir /home/magic/Scrivania/code/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un maestro dello storytelling visivo. Genera un carosello TikTok ipnotico (5 o 6 slide).
+
+TEMA OBBLIGATORIO: Mente, psicologia, salute, neuroscienze, crescita personale o nutrizione.
+NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):
+$HISTORY
+
+STEP 1: Usa il tool search_web per cercare su internet una notizia VERA, recentissima (ultime 24 ore) e altamente virale sul tema obbligatorio. Non ripetere le notizie già trattate.
+STEP 2: Genera il carosello. Deve essere ESTREMAMENTE ORIGINALE E SENSATO. Trova l'angolo nascosto, spiega in modo logico e affascinante perché questo stravolge tutto. Usa un hook visivo. Nell'ultima slide fai una Call To Action forte per chiedere commenti. (Nessun accenno ad Amazon). 
+STEP 3: DEVI usare il tool 'write_to_file' per salvare esattamente un array JSON in scripts/slides_carosello.json. 
+STEP 4: Usa 'write_to_file' per scrivere una description con hashtag in scripts/tiktok_caption.txt.
+STEP 5: Usa run_command o write_to_file per aggiungere in append il titolo o l'argomento della notizia a 'used_news_history.txt'." > cron_carousel.log 2>&1
+
+set -e
+python crea_carosello.py >> cron_carousel.log 2>&1
