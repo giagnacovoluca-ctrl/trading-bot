@@ -1,13 +1,13 @@
 #!/bin/bash
 export DISPLAY=:0
-export XAUTHORITY=/home/magic/.Xauthority
-export PATH=$PATH:/home/magic/.local/bin
-cd /home/magic/Scrivania/code/GIT/video_generator
+export XAUTHORITY=/home/ubuntu/.Xauthority
+export PATH=$PATH:/home/ubuntu/.local/bin
+cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
 HISTORY=$(tail -n 20 used_news_history.txt 2>/dev/null || echo "Nessuna notizia usata finora")
 
-/home/magic/.local/bin/agy --add-dir /home/magic/Scrivania/code/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un maestro dello storytelling visivo. Genera un carosello TikTok ipnotico (5 o 6 slide).
+/home/ubuntu/.local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un maestro dello storytelling visivo. Genera un carosello TikTok ipnotico (5 o 6 slide).
 
 TEMA OBBLIGATORIO: Mente, psicologia, salute, neuroscienze, crescita personale o nutrizione.
 NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):

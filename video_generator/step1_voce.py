@@ -12,8 +12,8 @@ def main():
     parser = argparse.ArgumentParser(description="Step 1: Generazione Voce")
     parser.add_argument("--script", required=True, help="Percorso script txt")
     parser.add_argument("--output", default="temp/voiceover.mp3", help="Output audio file")
-    parser.add_argument("--provider", default="xtts", choices=["edge", "elevenlabs", "xtts"])
-    parser.add_argument("--voice", default="mia_voce.wav", help="Speaker wav per xtts o nome per edge")
+    parser.add_argument("--provider", default="edge", choices=["edge", "elevenlabs", "xtts"])
+    parser.add_argument("--voice", default=None, help="Speaker wav per xtts o nome per edge")
     
     args = parser.parse_args()
     

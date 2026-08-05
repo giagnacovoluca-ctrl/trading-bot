@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/magic/Scrivania/code/GIT/video_generator
+cd /home/ubuntu/GIT/video_generator
 
 # FFmpeg script to concatenate 4 images with zoompan for 12 seconds each (total 48 seconds)
 # Frame rate 30fps

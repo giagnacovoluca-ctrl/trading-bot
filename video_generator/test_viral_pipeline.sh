@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
-export PATH=$PATH:/home/magic/.local/bin
+export PATH=$PATH:/home/ubuntu/.local/bin
 
-cd /home/magic/Scrivania/code/GIT/video_generator
+cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
 echo "Inizio step 1"

@@ -3,7 +3,7 @@ import sys
 import os
 from pathlib import Path
 from rich.console import Console
-from google import genai
+
 from tiktok_uploader.upload import upload_video
 from dotenv import load_dotenv
 

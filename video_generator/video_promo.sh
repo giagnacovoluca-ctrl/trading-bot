@@ -1,11 +1,11 @@
 #!/bin/bash
 export DISPLAY=:0
-export XAUTHORITY=/home/magic/.Xauthority
-export PATH=$PATH:/home/magic/.local/bin
-cd /home/magic/Scrivania/code/GIT/video_generator
+export XAUTHORITY=/home/ubuntu/.Xauthority
+export PATH=$PATH:/home/ubuntu/.local/bin
+cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
-/home/magic/.local/bin/agy --add-dir /home/magic/Scrivania/code/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un genio del copywriting e sceneggiatore per TikTok. Scrivi un copione persuasivo (max 130 parole) per promuovere uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
+/home/ubuntu/.local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un genio del copywriting e sceneggiatore per TikTok. Scrivi un copione persuasivo (max 130 parole) per promuovere uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
 REGOLE:
 - RIGA 1: scrivi esattamente 'TITOLO: ' seguito da un titolo/hook shock (max 5 parole).
 - RIGA 2 in poi: lo script di massimo 130 parole, che deve essere ESTREMAMENTE ORIGINALE E SENSATO (nessuna banalità, rivela un segreto nascosto nel libro o una verità controintuitiva ma logica).

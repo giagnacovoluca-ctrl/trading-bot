@@ -2,14 +2,14 @@
 # Script automatico per avviare la generazione e caricamento del video tramite Antigravity in background
 
 export DISPLAY=:0
-export XAUTHORITY=/home/magic/.Xauthority
-export PATH=$PATH:/home/magic/.local/bin
+export XAUTHORITY=/home/ubuntu/.Xauthority
+export PATH=$PATH:/home/ubuntu/.local/bin
 
-cd /home/magic/Scrivania/code/GIT/video_generator
+cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
 # Invoca Antigravity (me) dall'esterno specificando il workspace.
-/home/magic/.local/bin/agy --add-dir /home/magic/Scrivania/code/GIT/video_generator --dangerously-skip-permissions --print "Sei il Direttore Creativo TikTok. Scrivi un copione persuasivo (max 130 parole) per uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
+/home/ubuntu/.local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "Sei il Direttore Creativo TikTok. Scrivi un copione persuasivo (max 130 parole) per uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
 REGOLE:
 - RIGA 1: scrivi esattamente 'TITOLO: ' seguito da un titolo/hook fortissimo di massimo 5 parole.
 - RIGA 2 in poi: lo script vero e proprio. Fai un hook verbale, dai valore e finisci con la call to action 'Trovi il libro su Amazon al link in bio!'
