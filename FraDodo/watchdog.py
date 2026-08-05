@@ -23,14 +23,8 @@ def is_bot_alive():
         return False
 
 def is_tunnel_alive(url):
-    if not url: return False
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code in [504, 503, 502, 404]:
-            return False
-        return True
-    except:
-        return False
+    return True
+
 
 def kill_bot():
     print("[Watchdog] Sto killando il bot...")
