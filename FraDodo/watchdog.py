@@ -39,10 +39,9 @@ def start_bot():
 
 def _read_tunnel_output(process):
     global TUNNEL_URL
-    # cloudflared prints to stderr
-    for line in process.stderr:
+    for line in iter(process.stdout.readline, ''):
         print("[Tunnel]", line.strip())
-        match = re.search(r'(https://[a-zA-Z0-9-]+\.trycloudflare\.com)', line)
+        match = re.search(r'(https://[a-zA-Z0-9-]+\.lhr\.life)', line)
         if match:
             TUNNEL_URL = match.group(1)
             print(f"[Watchdog] Nuovo URL Tunnel rilevato: {TUNNEL_URL}")
@@ -54,11 +53,11 @@ def start_tunnel():
     if tunnel_process:
         tunnel_process.terminate()
         tunnel_process = None
-    subprocess.run(["pkill", "-f", "cloudflared tunnel"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "nokey@localhost.run"], stderr=subprocess.DEVNULL)
     
-    print("[Watchdog] Avvio il Tunnel tramite cloudflared...")
-    cmd = "/home/ubuntu/.local/bin/cloudflared tunnel --url http://localhost:8000"
-    tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+    print("[Watchdog] Avvio il Tunnel tramite localhost.run...")
+    cmd = "ssh -o StrictHostKeyChecking=no -R 80:localhost:8000 nokey@localhost.run"
+    tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     
     # Leggi la prima riga per ottenere l'URL in un thread separato
     threading.Thread(target=_read_tunnel_output, args=(tunnel_process,), daemon=True).start()
@@ -69,7 +68,9 @@ def tunnel_monitor():
             # Il processo è crashato
             print("[Watchdog] Il processo Tunnel è crashato!")
             start_tunnel()
-        time.sleep(5)
+            time.sleep(60)
+        else:
+            time.sleep(5)
 
 # Avvio iniziale
 start_tunnel()
