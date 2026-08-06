@@ -48,6 +48,14 @@ async def web_upload(request: Request, discord_id: str = Form(...), screenshot: 
     if not player:
         return RedirectResponse(url="/?error=Discord+ID+non+trovato.+Iscriviti+prima.", status_code=status.HTTP_303_SEE_OTHER)
         
+    if database.get_user_match_count(discord_id) >= 5:
+        return RedirectResponse(url="/?error=Hai+gia+inserito+il+limite+massimo+di+5+match+al+giorno!", status_code=status.HTTP_303_SEE_OTHER)
+        
+    safe_filename = screenshot.filename.replace(" ", "_")
+    file_path = f"web/static/uploads/{safe_filename}"
+    if os.path.exists(file_path):
+        return RedirectResponse(url="/?error=screen+gia+caricsto", status_code=status.HTTP_303_SEE_OTHER)
+        
     img_bytes = await screenshot.read()
     try:
         result = reader.readtext(img_bytes, detail=1) 
@@ -117,8 +125,6 @@ async def web_upload(request: Request, discord_id: str = Form(...), screenshot: 
         # Save locally for admin review if needed
         import shutil
         os.makedirs("web/static/uploads", exist_ok=True)
-        safe_filename = screenshot.filename.replace(" ", "_")
-        file_path = f"web/static/uploads/{safe_filename}"
         with open(file_path, "wb") as buffer:
             buffer.write(img_bytes)
 
@@ -154,10 +160,16 @@ async def web_upload_contest(request: Request, player_name: str = Form(...), kil
     else:
         discord_id = player['discord_id']
         
+    if database.get_user_match_count(discord_id) >= 5:
+        return RedirectResponse(url="/?error=Hai+gia+inserito+il+limite+massimo+di+5+match+al+giorno!", status_code=status.HTTP_303_SEE_OTHER)
+        
     import shutil
     os.makedirs("web/static/uploads", exist_ok=True)
     safe_filename = screenshot.filename.replace(" ", "_")
     file_path = f"web/static/uploads/{safe_filename}"
+    
+    if os.path.exists(file_path):
+        return RedirectResponse(url="/?error=screen+gia+caricsto", status_code=status.HTTP_303_SEE_OTHER)
     
     img_bytes = await screenshot.read()
     with open(file_path, "wb") as buffer:

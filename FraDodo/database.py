@@ -77,6 +77,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass
         
+    try:
+        cursor.execute("ALTER TABLE matches ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
+        
     conn.commit()
     conn.close()
 
@@ -283,6 +288,14 @@ def get_player_matches(discord_id: str, limit: int = 10):
     matches = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return matches[::-1] # return chronological order
+
+def get_user_match_count(discord_id: str) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM matches WHERE discord_id = ? AND date(created_at, 'localtime') = date('now', 'localtime')", (discord_id,))
+    count = cursor.fetchone()['count']
+    conn.close()
+    return count
 
 def get_active_bounties():
     conn = get_connection()

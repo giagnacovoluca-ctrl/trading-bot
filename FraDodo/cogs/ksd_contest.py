@@ -37,6 +37,11 @@ class InviaRisultatoModal(discord.ui.Modal, title='Invia Risultato Contest'):
 
     async def on_submit(self, interaction: discord.Interaction):
         discord_id = str(interaction.user.id)
+        # Check limit of 5 matches
+        if database.get_user_match_count(discord_id) >= 5:
+            await interaction.response.send_message("❌ Hai già inserito il limite massimo di 5 match al giorno!", ephemeral=True)
+            return
+
         player = database.get_player(discord_id)
         
         nome_inserito = self.nome_player.value.strip() if self.nome_player.value else interaction.user.display_name
@@ -344,6 +349,12 @@ class KSDContest(commands.Cog):
     )
     async def invia_risultato_cmd(self, interaction: discord.Interaction, kills: int, posizione: int, screenshot: discord.Attachment, nome_player: str = None):
         discord_id = str(interaction.user.id)
+        
+        # Check limit of 5 matches
+        if database.get_user_match_count(discord_id) >= 5:
+            await interaction.response.send_message("❌ Hai già inserito il limite massimo di 5 match al giorno!", ephemeral=True)
+            return
+
         player = database.get_player(discord_id)
         
         nome_inserito = nome_player or (player['activision_id'] if player else interaction.user.display_name)
@@ -359,8 +370,13 @@ class KSDContest(commands.Cog):
         await interaction.response.send_message("⏳ Salvataggio del risultato in corso...", ephemeral=True)
         
         # Download the attachment
-        safe_filename = f"discord_{discord_id}_{int(time.time())}.jpg"
+        safe_filename = screenshot.filename.replace(" ", "_")
         file_path = f"web/static/uploads/{safe_filename}"
+        
+        if os.path.exists(file_path):
+            await interaction.edit_original_response(content="❌ screen gia caricato")
+            return
+            
         os.makedirs("web/static/uploads", exist_ok=True)
         await screenshot.save(file_path)
         
