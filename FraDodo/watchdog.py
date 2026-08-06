@@ -13,8 +13,9 @@ BOT_URL_LOCAL = "http://localhost:8000/"
 CHECK_INTERVAL = 30  
 TUNNEL_URL = ""
 
-SERVICES = ["localhost.run", "serveo.net"]
+SERVICES = ["direct", "localhost.run", "serveo.net"]
 current_service_index = 0
+DIRECT_URL = "https://fradodo.duckdns.org"
 
 tunnel_process = None
 
@@ -26,7 +27,13 @@ def is_bot_alive():
         return False
 
 def is_tunnel_alive(url):
-    return True
+    try:
+        # Avoid caching/redirects, just check if it connects
+        resp = requests.get(url, timeout=5, verify=False)
+        # Even a 404 or 405 means the server is reachable
+        return True
+    except:
+        return False
 
 
 def kill_bot():
@@ -60,6 +67,16 @@ def start_tunnel():
     subprocess.run(["pkill", "-f", "localhost.run"], stderr=subprocess.DEVNULL)
     
     service = SERVICES[current_service_index]
+    
+    if service == "direct":
+        print("[Watchdog] Avvio connessione diretta tramite dominio DuckDNS...")
+        TUNNEL_URL = DIRECT_URL
+        with open("current_url.txt", "w") as f:
+            f.write(TUNNEL_URL)
+        print(f"[Watchdog] Nuovo URL Tunnel rilevato: {TUNNEL_URL}")
+        # No process to start for direct
+        return
+        
     print(f"[Watchdog] Avvio il Tunnel tramite {service}...")
     cmd = f"ssh -o ServerAliveInterval=60 -o StrictHostKeyChecking=no -R 80:localhost:8000 {service}"
     tunnel_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
