@@ -111,6 +111,13 @@ def delete_player(discord_id: str):
     conn.commit()
     conn.close()
 
+def edit_player(discord_id: str, points: float, contest_points: float):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE players SET points = ?, contest_points = ? WHERE discord_id = ?', (int(points), float(contest_points), discord_id))
+    conn.commit()
+    conn.close()
+
 def match_exists(api_match_id: str) -> bool:
     if not api_match_id:
         return False
@@ -284,10 +291,75 @@ def reset_leaderboard():
 def get_player_matches(discord_id: str, limit: int = 10):
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT kills, damage, placement FROM matches WHERE discord_id = ? AND status IN ("approved", "contest") ORDER BY id DESC LIMIT ?', (discord_id, limit))
+    cursor.execute('SELECT id, kills, damage, placement, status, screenshot_url FROM matches WHERE discord_id = ? AND status IN ("approved", "contest") ORDER BY id DESC LIMIT ?', (discord_id, limit))
     matches = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return matches[::-1] # return chronological order
+
+def get_all_player_matches(discord_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, kills, damage, placement, status, screenshot_url FROM matches WHERE discord_id = ? ORDER BY id DESC', (discord_id,))
+    matches = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return matches
+
+def update_match(match_id: int, kills: int, placement: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE matches SET kills = ?, placement = ? WHERE id = ?', (kills, placement, match_id))
+    conn.commit()
+    conn.close()
+
+def recalculate_player_stats(discord_id: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM matches WHERE discord_id = ?', (discord_id,))
+    matches = cursor.fetchall()
+    
+    points = 0
+    contest_points = 0
+    matches_played = 0
+    total_kills = 0
+    total_damage = 0
+    wins = 0
+    
+    for m in matches:
+        if m['status'] == 'approved':
+            points += m['kills'] * 10 + (50 if m['placement'] == 1 else (20 if m['placement'] <= 5 else 0))
+            matches_played += 1
+            total_kills += m['kills']
+            total_damage += m['damage']
+            if m['placement'] == 1:
+                wins += 1
+        elif m['status'] in ('contest', 'pending_review_contest'): # Contest is added when uploaded? Wait, contest match is saved as pending_review_contest then resolved?
+            # Looking at save_contest_match, it saves with 'pending_review_contest'.
+            base_points = m['kills'] * 10
+            multiplier = 1.0
+            p = m['placement']
+            if p == 1: multiplier = 1.8
+            elif 2 <= p <= 5: multiplier = 1.6
+            elif 6 <= p <= 10: multiplier = 1.4
+            elif 11 <= p <= 21: multiplier = 1.2
+            
+            contest_points += base_points * multiplier
+            
+            # They also count towards total_kills and matches_played in save_contest_match
+            # wait, it adds it directly there. Let's recalculate it as well.
+            matches_played += 1
+            total_kills += m['kills']
+            if m['placement'] == 1:
+                wins += 1
+                
+    cursor.execute('''
+        UPDATE players 
+        SET points = ?, contest_points = ?, matches_played = ?, total_kills = ?, total_damage = ?, wins = ?
+        WHERE discord_id = ?
+    ''', (points, contest_points, matches_played, total_kills, total_damage, wins, discord_id))
+    
+    conn.commit()
+    conn.close()
 
 def get_user_match_count(discord_id: str) -> int:
     conn = get_connection()

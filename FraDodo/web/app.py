@@ -187,6 +187,28 @@ async def api_delete_player(request: Request, discord_id: str = Form(...), passw
     database.delete_player(discord_id)
     return RedirectResponse(url="/?success=Giocatore+eliminato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
 
+@app.post("/api/edit_player")
+async def api_edit_player(request: Request, discord_id: str = Form(...), password: str = Form(...), points: float = Form(...), contest_points: float = Form(...)):
+    if password != "dodo2026":
+        return RedirectResponse(url="/?error=Password+errata", status_code=status.HTTP_303_SEE_OTHER)
+        
+    database.edit_player(discord_id, points, contest_points)
+    return RedirectResponse(url="/?success=Giocatore+modificato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/api/player_matches/{discord_id}")
+async def api_player_matches(discord_id: str):
+    matches = database.get_all_player_matches(discord_id)
+    return {"matches": matches}
+
+@app.post("/api/edit_match")
+async def api_edit_match(request: Request, discord_id: str = Form(...), match_id: int = Form(...), kills: int = Form(...), placement: int = Form(...), password: str = Form(...)):
+    if password != "dodo2026":
+        return RedirectResponse(url="/?error=Password+errata", status_code=status.HTTP_303_SEE_OTHER)
+        
+    database.update_match(match_id, kills, placement)
+    database.recalculate_player_stats(discord_id)
+    return RedirectResponse(url="/?success=Match+modificato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
+
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
     pending = database.get_pending_reviews()

@@ -176,7 +176,10 @@
                   <td style="padding: 16px; color: #4ade80;">{{ p.kd_ratio }}</td>
                   <td style="padding: 16px; color: #f87171;">{{ p.avg_damage }}</td>
                   <td style="padding: 16px; color: #60a5fa;">{{ p.win_rate }}</td>
-                  <td style="padding: 16px;" onclick="event.stopPropagation()">
+                  <td style="padding: 16px; display: flex; gap: 8px; justify-content: flex-start;" onclick="event.stopPropagation()">
+                    <button onclick="promptEditPlayer('{{ p.discord_id }}', '{{ p.activision_id }}')" style="background: rgba(35, 165, 89, 0.2); border: 1px solid var(--accent-green); color: #4ade80; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;">
+                      <i class="fa-solid fa-pen"></i>
+                    </button>
                     <button onclick="promptDeletePlayer('{{ p.discord_id }}', '{{ p.activision_id }}')" style="background: rgba(218, 55, 60, 0.2); border: 1px solid var(--accent-red); color: #FA777C; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;">
                       <i class="fa-solid fa-trash"></i>
                     </button>
@@ -191,16 +194,30 @@
             </table>
           </div>
 
-          <div class="chart-container" id="sec-stats" style="margin-top: 32px; padding: 24px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-            <h3 style="color: white; margin-bottom: 16px;" id="chartTitle">Seleziona un giocatore dalla classifica per vedere il grafico</h3>
-            <canvas id="progressChart" style="height: 300px; display: none;"></canvas>
-          </div>
-          
-        </div>
+      <div class="chart-container" id="sec-stats" style="margin-top: 32px; padding: 24px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+        <h3 style="color: white; margin-bottom: 16px;" id="chartTitle">Seleziona un giocatore dalla classifica per vedere il grafico</h3>
+        <canvas id="progressChart" style="height: 300px; display: none;"></canvas>
       </div>
-    </main>
+      
+    </div>
   </div>
-  <script>
+</main>
+</div>
+
+<!-- Modal Modifica Partite -->
+<div id="matchesModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: #1a1a1a; padding: 24px; border-radius: 12px; max-width: 800px; width: 90%; max-height: 90%; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="color: white; margin: 0;">Partite di <span id="modalPlayerName"></span></h2>
+      <button onclick="document.getElementById('matchesModal').style.display='none'" style="background: none; border: none; color: white; cursor: pointer; font-size: 24px;">&times;</button>
+    </div>
+    <div id="modalMatchesContent" style="color: white;">
+      Caricamento...
+    </div>
+  </div>
+</div>
+
+<script>
     const playersData = {{ players | tojson | safe }};
     // Inject players data into the chart logically (example simple mapping)
     window.playersData = playersData;
@@ -225,6 +242,93 @@
             
             form.appendChild(idInput);
             form.appendChild(pwdInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    async function promptEditPlayer(discordId, playerName) {
+        document.getElementById('modalPlayerName').innerText = playerName;
+        const modal = document.getElementById('matchesModal');
+        modal.style.display = 'flex';
+        
+        const content = document.getElementById('modalMatchesContent');
+        content.innerHTML = 'Caricamento...';
+        
+        try {
+            const res = await fetch(`/api/player_matches/${discordId}`);
+            const data = await res.json();
+            
+            if (data.matches && data.matches.length > 0) {
+                let html = '<table style="width: 100%; border-collapse: collapse; text-align: left;">';
+                html += '<tr style="border-bottom: 1px solid rgba(255,255,255,0.1);"><th>ID</th><th>Stato</th><th>Kills</th><th>Posizione</th><th>Screen</th><th>Azione</th></tr>';
+                
+                data.matches.forEach(m => {
+                    html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                      <td style="padding: 8px;">${m.id}</td>
+                      <td style="padding: 8px;">${m.status}</td>
+                      <td style="padding: 8px;"><input type="number" id="kills_${m.id}" value="${m.kills}" style="width: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px; border-radius: 4px;"></td>
+                      <td style="padding: 8px;"><input type="number" id="placement_${m.id}" value="${m.placement}" style="width: 60px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 4px; border-radius: 4px;"></td>
+                      <td style="padding: 8px;">${m.screenshot_url ? `<a href="${m.screenshot_url}" target="_blank" style="color: var(--accent-blue);">Vedi</a>` : '-'}</td>
+                      <td style="padding: 8px;">
+                        <button onclick="saveMatchEdit('${discordId}', ${m.id})" style="background: rgba(35, 165, 89, 0.2); border: 1px solid var(--accent-green); color: #4ade80; padding: 4px 8px; border-radius: 4px; cursor: pointer;">Salva</button>
+                      </td>
+                    </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<p>Nessuna partita trovata.</p>';
+            }
+        } catch (e) {
+            content.innerHTML = '<p>Errore nel caricamento.</p>';
+        }
+    }
+
+    function saveMatchEdit(discordId, matchId) {
+        const pwd = prompt("Inserisci la password di amministratore per salvare la modifica:");
+        if (pwd) {
+            const kills = document.getElementById('kills_' + matchId).value;
+            const placement = document.getElementById('placement_' + matchId).value;
+            
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/edit_match';
+            
+            const idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'discord_id';
+            idInput.value = discordId;
+            
+            const mIdInput = document.createElement('input');
+            mIdInput.type = 'hidden';
+            mIdInput.name = 'match_id';
+            mIdInput.value = matchId;
+            
+            const pwdInput = document.createElement('input');
+            pwdInput.type = 'hidden';
+            pwdInput.name = 'password';
+            pwdInput.value = pwd;
+            
+            const kInput = document.createElement('input');
+            kInput.type = 'hidden';
+            kInput.name = 'kills';
+            kInput.value = kills;
+            
+            const pInput = document.createElement('input');
+            pInput.type = 'hidden';
+            pInput.name = 'placement';
+            pInput.value = placement;
+            
+            form.appendChild(idInput);
+            form.appendChild(mIdInput);
+            form.appendChild(pwdInput);
+            form.appendChild(kInput);
+            form.appendChild(pInput);
+            
             document.body.appendChild(form);
             form.submit();
         }
