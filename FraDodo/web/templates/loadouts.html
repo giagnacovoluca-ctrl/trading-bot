@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FraDodo - Meta Loadouts</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #121212; color: #ffffff; }
+        .navbar { background-color: #1f1f1f !important; }
+        .loadout-card {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .loadout-card:hover { transform: translateY(-5px); border-color: #ff4757; }
+        .weapon-title { color: #ff4757; font-weight: bold; }
+        .category-badge { background-color: #333; color: #ccc; font-size: 0.8rem; padding: 4px 8px; border-radius: 4px; }
+        .vote-btn { background-color: transparent; border: 1px solid #ff4757; color: #ff4757; }
+        .vote-btn:hover { background-color: #ff4757; color: white; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand text-danger fw-bold" href="/">FRADODO</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/loadouts">Meta Loadouts</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/news">Notizie</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/trofei" style="color:#ffd700;">Trofei</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>🔫 Armeria <span class="text-danger">Meta</span></h2>
+            <p class="text-light mb-0">I migliori setup scelti dalla community</p>
+        </div>
+
+        <div class="row g-4">
+            {% if loadouts %}
+                {% for loadout in loadouts %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="loadout-card p-4 h-100 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h4 class="weapon-title mb-1">{{ loadout.weapon_name }}</h4>
+                                <span class="category-badge">{{ loadout.category }}</span>
+                            </div>
+                            <div class="text-center">
+                                <h5 class="mb-0 text-success" id="votes-{{ loadout.id }}">{{ loadout.votes }}</h5>
+                                <small class="text-light">Voti</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4 flex-grow-1">
+                            <h6 class="text-light mb-2">Accessori:</h6>
+                            <p class="mb-0 fs-6">{{ loadout.attachments }}</p>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top border-secondary">
+                            <small class="text-light"><i class="bi bi-person"></i> {{ loadout.author_name }}</small>
+                            <button class="btn vote-btn btn-sm" onclick="voteLoadout({{ loadout.id }})">
+                                <i class="bi bi-heart-fill"></i> Vota
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-inbox fs-1 text-light"></i>
+                    <h4 class="text-light mt-3">L'armeria è vuota!</h4>
+                    <p class="text-light">Proponi il primo loadout dal canale Discord dedicato usando il bottone "Proponi un Loadout".</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        async function voteLoadout(id) {
+            try {
+                const response = await fetch(`/api/loadouts/${id}/vote`, { method: 'POST' });
+                if(response.ok) {
+                    const voteElement = document.getElementById(`votes-${id}`);
+                    voteElement.innerText = parseInt(voteElement.innerText) + 1;
+                    voteElement.classList.add('text-danger');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>

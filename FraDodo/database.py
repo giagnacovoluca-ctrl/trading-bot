@@ -403,3 +403,115 @@ def mark_highlight_sent(highlight_id: int):
     cursor.execute('UPDATE highlights SET sent = 1 WHERE id = ?', (highlight_id,))
     conn.commit()
     conn.close()
+
+def add_loadout(weapon_name, category, attachments, author_id, author_name):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO loadouts (weapon_name, category, attachments, author_id, author_name)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (weapon_name, category, attachments, author_id, author_name))
+    conn.commit()
+    conn.close()
+
+def get_all_loadouts():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT id, weapon_name, category, attachments, author_name, votes FROM loadouts ORDER BY votes DESC, id DESC')
+    rows = c.fetchall()
+    conn.close()
+    
+    loadouts = []
+    for r in rows:
+        loadouts.append({
+            "id": r[0],
+            "weapon_name": r[1],
+            "category": r[2],
+            "attachments": r[3],
+            "author_name": r[4],
+            "votes": r[5]
+        })
+    return loadouts
+
+def vote_loadout(loadout_id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('UPDATE loadouts SET votes = votes + 1 WHERE id = ?', (loadout_id,))
+    conn.commit()
+    conn.close()
+
+def decay_loadout_votes():
+    """Diminuisce i voti di tutti i loadout del 10% o minimo di 1, per far invecchiare i meta vecchi."""
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT id, votes FROM loadouts WHERE votes > 0')
+    rows = c.fetchall()
+    for r in rows:
+        loadout_id = r[0]
+        votes = r[1]
+        decay_amount = max(1, int(votes * 0.10))
+        new_votes = max(0, votes - decay_amount)
+        c.execute('UPDATE loadouts SET votes = ? WHERE id = ?', (new_votes, loadout_id))
+    conn.commit()
+    conn.close()
+
+def get_hall_of_fame():
+    """Restituisce le statistiche avanzate (trofei) per la community."""
+    conn = get_connection()
+    c = conn.cursor()
+    
+    hof = {}
+    
+    # Miglior Killer (Max kills singola partita)
+    c.execute('''
+        SELECT m.discord_id, m.kills, p.activision_id as name
+        FROM matches m 
+        JOIN players p ON m.discord_id = p.discord_id 
+        WHERE m.status='approved' AND m.kills IS NOT NULL 
+        ORDER BY m.kills DESC LIMIT 1
+    ''')
+    row = c.fetchone()
+    if row:
+        hof['top_killer'] = {"name": row['name'], "value": row['kills'], "title": "Mietitore"}
+        
+    # Maggior Danno (Max danni singola partita)
+    c.execute('''
+        SELECT m.discord_id, m.damage, p.activision_id as name
+        FROM matches m 
+        JOIN players p ON m.discord_id = p.discord_id 
+        WHERE m.status='approved' AND m.damage IS NOT NULL 
+        ORDER BY m.damage DESC LIMIT 1
+    ''')
+    row = c.fetchone()
+    if row:
+        hof['top_damage'] = {"name": row['name'], "value": row['damage'], "title": "Demolitore"}
+        
+    # Più Partite Giocate
+    c.execute('''
+        SELECT m.discord_id, COUNT(m.id) as total_games, p.activision_id as name
+        FROM matches m 
+        JOIN players p ON m.discord_id = p.discord_id 
+        WHERE m.status='approved' 
+        GROUP BY m.discord_id 
+        ORDER BY total_games DESC LIMIT 1
+    ''')
+    row = c.fetchone()
+    if row:
+        hof['most_dedicated'] = {"name": row['name'], "value": row['total_games'], "title": "Veterano"}
+        
+    # Vittorie Totali (Partite con placement = 1)
+    c.execute('''
+        SELECT m.discord_id, COUNT(m.id) as wins, p.activision_id as name
+        FROM matches m 
+        JOIN players p ON m.discord_id = p.discord_id 
+        WHERE m.status='approved' AND m.placement = 1
+        GROUP BY m.discord_id
+        ORDER BY wins DESC LIMIT 1
+    ''')
+    row = c.fetchone()
+    if row:
+        hof['top_score'] = {"name": row['name'], "value": row['wins'], "title": "Campione"}
+        
+    conn.close()
+    return hof
+

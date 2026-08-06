@@ -21,6 +21,11 @@ async def load_cogs():
     await bot.load_extension("cogs.tournament")
     await bot.load_extension("cogs.ocr_verification")
     await bot.load_extension("cogs.ksd_contest")
+    await bot.load_extension("cogs.news")
+    await bot.load_extension("cogs.fun")
+    await bot.load_extension("cogs.lfg")
+    await bot.load_extension("cogs.loadouts")
+    await bot.load_extension("cogs.trophies")
 
 @bot.event
 async def on_ready():

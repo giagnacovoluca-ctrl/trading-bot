@@ -248,3 +248,55 @@ async def admin_reset(request: Request, password: str = Form(...)):
         
     database.reset_leaderboard()
     return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/trofei", response_class=HTMLResponse)
+async def trofei(request: Request):
+    hof_data = database.get_hall_of_fame()
+    return templates.TemplateResponse(request=request, name="trofei.html", context={"hof": hof_data})
+
+@app.get("/loadouts", response_class=HTMLResponse)
+async def loadouts(request: Request):
+    loadouts_data = database.get_all_loadouts()
+    return templates.TemplateResponse(request=request, name="loadouts.html", context={"loadouts": loadouts_data})
+
+@app.post("/api/loadouts/{loadout_id}/vote")
+async def vote_loadout_api(loadout_id: int):
+    database.vote_loadout(loadout_id)
+    return {"status": "success", "message": "Voto registrato!"}
+
+import feedparser
+import requests
+import html
+import re
+
+@app.get("/news", response_class=HTMLResponse)
+async def news_page(request: Request):
+    news_list = []
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get("https://charlieintel.com/feed/", headers=headers, timeout=5)
+        feed = feedparser.parse(r.content)
+        
+        for entry in feed.entries[:12]:
+            title = html.unescape(entry.title)
+            desc = html.unescape(entry.description)
+            desc = re.sub(r'<[^>]+>', '', desc)
+            link = entry.link.replace("editors.charlieintel.com", "www.charlieintel.com")
+            
+            image_url = ""
+            if 'media_thumbnail' in entry:
+                image_url = entry.media_thumbnail[0]['url']
+            elif 'media_content' in entry:
+                image_url = entry.media_content[0]['url']
+                
+            news_list.append({
+                "title": title,
+                "description": desc[:150] + "...",
+                "link": link,
+                "image": image_url,
+                "date": entry.published
+            })
+    except Exception as e:
+        print("Errore fetch news webapp:", e)
+        
+    return templates.TemplateResponse(request=request, name="news.html", context={"news": news_list})
