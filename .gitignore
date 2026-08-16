@@ -26,3 +26,4 @@ FraDodo_backup.zip
 node_modules/
 __pycache__/
 *.pyc
+video_generator/chrome_profile/
