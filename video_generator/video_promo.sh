@@ -5,7 +5,7 @@ export PATH=$PATH:/home/ubuntu/.local/bin
 cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
-/home/ubuntu/.local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un genio del copywriting e sceneggiatore per TikTok. Scrivi un copione persuasivo (max 130 parole) per promuovere uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
+/usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un genio del copywriting e sceneggiatore per TikTok. Scrivi un copione persuasivo (max 130 parole) per promuovere uno dei miei Ebook su Amazon: 1) 'Come usare il cibo per correggere energia, umore e digestione' 2) 'Meditazione per chiunque' 3) 'Tra Scienza e Intuizione'. 
 REGOLE:
 - RIGA 1: scrivi esattamente 'TITOLO: ' seguito da un titolo/hook shock (max 5 parole).
 - RIGA 2 in poi: lo script di massimo 130 parole, che deve essere ESTREMAMENTE ORIGINALE E SENSATO (nessuna banalità, rivela un segreto nascosto nel libro o una verità controintuitiva ma logica).
@@ -22,7 +22,7 @@ if [ -z "$HOOK_TITLE" ]; then HOOK_TITLE="IL MIO EBOOK"; fi
 python -c "lines=[l for l in open('scripts/script_generato.txt').readlines() if not l.startswith('TITOLO:')]; open('scripts/script_generato.txt','w').writelines(lines)"
 
 set -e
-python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav >> cron_agy.log 2>&1
+python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav --provider xtts >> cron_agy.log 2>&1
 
 # Trova le immagini appena generate (ultimi 10 min) per passarle allo step 2
 IMAGES=$(find assets/backgrounds -type f -mmin -10 | tr '\n' ' ')

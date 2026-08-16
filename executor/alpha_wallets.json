@@ -1,2131 +1,1531 @@
 [
   {
-    "wallet": "DHsR5aTdHiFjv42pXDfxGAHNqjMStNggMeY15AfQNRk5",
-    "score": 201.0,
-    "tokens_early_count": 67,
-    "avg_rank": 97.8,
-    "total_usd_deployed": 10691.06,
+    "wallet": "ErAviSUUJ96jbW7ZNDZVMbu8TU4gYneCpcQs6cTCBZkP",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 30.9,
+    "total_usd_deployed": 169572.3,
     "days_since_last_trade": 999,
     "unique_tokens_traded": 0,
     "tokens_detail": [
       {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 40.04881309708,
-        "rank": 58,
-        "block_time": 1781736750
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 32.3671670668,
-        "rank": 52,
-        "block_time": 1781740283
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 18.35130138836,
-        "rank": 92,
-        "block_time": 1781742251
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 73.04526007952,
-        "rank": 159,
-        "block_time": 1781754725
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 54.476545468320005,
-        "rank": 94,
-        "block_time": 1781760721
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 10.77365784352,
-        "rank": 82,
-        "block_time": 1781766629
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 278.13829269304,
-        "rank": 180,
-        "block_time": 1781775921
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 820.96763932638,
-        "rank": 53,
-        "block_time": 1781803460
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 9.50334189446,
-        "rank": 188,
-        "block_time": 1781812278
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 93.77711256986,
-        "rank": 106,
-        "block_time": 1781852482
-      }
-    ]
-  },
-  {
-    "wallet": "HsccwcDN6Pa2NJY1Qhpdqe98rqiL5paGg7Q9vNc2cznE",
-    "score": 195.0,
-    "tokens_early_count": 65,
-    "avg_rank": 90.5,
-    "total_usd_deployed": 8404.21,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 11.260519773040002,
-        "rank": 167,
-        "block_time": 1781740566
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 88.36342902816001,
-        "rank": 188,
-        "block_time": 1781766892
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 7.5180148763200005,
-        "rank": 44,
-        "block_time": 1781769285
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 750.1942188241198,
-        "rank": 84,
-        "block_time": 1781784742
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 6.983162920439999,
-        "rank": 76,
-        "block_time": 1781803524
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 8.48952237068,
-        "rank": 100,
-        "block_time": 1781847467
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 13.05900758272,
-        "rank": 128,
-        "block_time": 1781849174
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 190.90539342594,
-        "rank": 93,
-        "block_time": 1781859065
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 26.461358641820002,
-        "rank": 128,
-        "block_time": 1781862091
-      },
-      {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 43.768170845280004,
-        "rank": 24,
-        "block_time": 1781864683
-      }
-    ]
-  },
-  {
-    "wallet": "E7wMdQuw7HajmZMWUEqkzv1BAWUokYREWBaGRyPU7M1N",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 99.9,
-    "total_usd_deployed": 8895.63,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 14.61948046084,
-        "rank": 68,
-        "block_time": 1781734836
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 48.33839553584,
-        "rank": 159,
-        "block_time": 1781745517
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 8.765117691119999,
-        "rank": 148,
-        "block_time": 1781783396
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 501.86812839029994,
-        "rank": 145,
-        "block_time": 1781784897
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 18.5314576356,
-        "rank": 139,
-        "block_time": 1781803693
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 15.038091798600002,
-        "rank": 93,
-        "block_time": 1781811980
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 390.8933267335,
-        "rank": 7,
-        "block_time": 1781848874
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 255.69017781852,
-        "rank": 78,
-        "block_time": 1781855551
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 5.35585405332,
-        "rank": 144,
-        "block_time": 1781862140
-      },
-      {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 8.760281850179998,
-        "rank": 187,
-        "block_time": 1781865141
-      }
-    ]
-  },
-  {
-    "wallet": "HuML5TeaSc8FdCVVXnxxUW18ooWveJPwyuvjqSFhZ34M",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 96.6,
-    "total_usd_deployed": 7339.58,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 36.12857074496,
-        "rank": 91,
-        "block_time": 1781734895
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 12.3516319472,
-        "rank": 184,
-        "block_time": 1781737147
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 2.81795650888,
-        "rank": 102,
-        "block_time": 1781742291
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 19.491352364479997,
-        "rank": 104,
-        "block_time": 1781745376
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 13.63770744736,
-        "rank": 135,
-        "block_time": 1781754641
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 190.0558749576,
-        "rank": 52,
-        "block_time": 1781760621
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 47.85614741856,
-        "rank": 121,
-        "block_time": 1781766717
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 182.25147555056,
-        "rank": 10,
-        "block_time": 1781769199
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 4.82955727592,
-        "rank": 21,
-        "block_time": 1781775501
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 27.48089676024,
-        "rank": 4,
-        "block_time": 1781782985
-      }
-    ]
-  },
-  {
-    "wallet": "3LQqFoWLVBZDBkm5A9bcbHoL5n9u4GFWXo6NQpVyFEVN",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 96.4,
-    "total_usd_deployed": 8283.51,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 83.47181356684001,
-        "rank": 70,
-        "block_time": 1781736784
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 7.4871746247200015,
-        "rank": 141,
-        "block_time": 1781740501
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 26.566495661320005,
-        "rank": 82,
-        "block_time": 1781742221
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 13.50740544816,
-        "rank": 61,
-        "block_time": 1781775598
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 501.32163146953997,
-        "rank": 20,
-        "block_time": 1781847273
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 60.163024748640005,
-        "rank": 45,
-        "block_time": 1781855471
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 471.46665562969997,
-        "rank": 136,
-        "block_time": 1781862118
-      },
-      {
-        "mint": "61JhZQisgojoLyxytBFWHzo3H1uZNhztoWJDBfnVpump",
-        "amount_usd": 1018.91112472044,
-        "rank": 80,
-        "block_time": 1781864395
-      },
-      {
-        "mint": "DsPQ5JeRC1shwkHLByfUCYhqjiKR84PJPS9PZpTnpump",
-        "amount_usd": 9.1082148948,
-        "rank": 50,
-        "block_time": 1781870356
-      },
-      {
-        "mint": "EggioXuS2Uw7jTvPNCkLaWwLLTipgPWtr1P7LKESpump",
-        "amount_usd": 16.8397052544,
-        "rank": 203,
-        "block_time": 1781882354
-      }
-    ]
-  },
-  {
-    "wallet": "DnCgX92k4Cy3tGSfWR3qh8PLd4CDLBgfeBJtz1NSCNRT",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 98.7,
-    "total_usd_deployed": 7215.78,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 234.58549462052002,
-        "rank": 108,
-        "block_time": 1781736889
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 18.31573921816,
-        "rank": 172,
-        "block_time": 1781740576
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 842.04351951008,
-        "rank": 78,
-        "block_time": 1781745314
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 126.60823466824002,
-        "rank": 189,
-        "block_time": 1781766895
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 6.61181886872,
-        "rank": 46,
-        "block_time": 1781775564
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 22.05492158142,
-        "rank": 38,
-        "block_time": 1781784632
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 39.99499098268,
-        "rank": 17,
-        "block_time": 1781847267
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 12.02346345874,
-        "rank": 12,
-        "block_time": 1781848890
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 226.51228606012,
-        "rank": 138,
-        "block_time": 1781852594
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 6.85849997868,
-        "rank": 19,
-        "block_time": 1781855417
-      }
-    ]
-  },
-  {
-    "wallet": "5FNw14KURRgysYgXkE2gG1zBdydUeH8om4JN1mvg7Ax7",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 93.7,
-    "total_usd_deployed": 5924.86,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 30.085505112320003,
-        "rank": 30,
-        "block_time": 1781740235
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 26.012774767320003,
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2841.73818907584,
         "rank": 1,
-        "block_time": 1781742038
+        "block_time": 1782091717
       },
       {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 43.85604372608,
-        "rank": 154,
-        "block_time": 1781754706
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 7.74405379488,
-        "rank": 90,
-        "block_time": 1781760710
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 22.39407244776,
-        "rank": 57,
-        "block_time": 1781769316
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 300.25383058424,
-        "rank": 22,
-        "block_time": 1781775504
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 28.735031030579997,
-        "rank": 171,
-        "block_time": 1781783466
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 171.41213032649998,
-        "rank": 151,
-        "block_time": 1781803726
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 9.1827770751,
-        "rank": 121,
-        "block_time": 1781847534
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 12.93855660696,
-        "rank": 121,
-        "block_time": 1781849159
-      }
-    ]
-  },
-  {
-    "wallet": "HMfAaigSLX4GuedZHdpmvdjqjFLexC7dV9aGuVtdUQSy",
-    "score": 189.0,
-    "tokens_early_count": 63,
-    "avg_rank": 96.6,
-    "total_usd_deployed": 5604.55,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 6.2356891049200005,
-        "rank": 55,
-        "block_time": 1781742152
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 2.77395987216,
-        "rank": 194,
-        "block_time": 1781745608
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 14.07813958816,
-        "rank": 155,
-        "block_time": 1781760901
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 33.67050746384,
-        "rank": 151,
-        "block_time": 1781769623
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 36.45475544776,
-        "rank": 120,
-        "block_time": 1781775749
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 173.01342904324,
-        "rank": 59,
-        "block_time": 1781811896
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 32.60781852566,
-        "rank": 150,
-        "block_time": 1781847637
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 670.62657594254,
-        "rank": 21,
-        "block_time": 1781848907
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 56.541968025820005,
-        "rank": 46,
-        "block_time": 1781852344
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 29.235208557660002,
-        "rank": 201,
-        "block_time": 1781859367
-      }
-    ]
-  },
-  {
-    "wallet": "BffgJefZnPUaKJN4Yeczc5b9YwHEPfvRao7hSgJAUVGY",
-    "score": 186.0,
-    "tokens_early_count": 62,
-    "avg_rank": 98.7,
-    "total_usd_deployed": 7806.46,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 33.67008657448,
-        "rank": 83,
-        "block_time": 1781734874
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 49.54971858060001,
-        "rank": 34,
-        "block_time": 1781736698
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 316.27617949436,
-        "rank": 169,
-        "block_time": 1781740570
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 2.6109516928,
-        "rank": 42,
-        "block_time": 1781742122
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 46.91314413792,
-        "rank": 140,
-        "block_time": 1781760853
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 108.71151438888002,
-        "rank": 131,
-        "block_time": 1781766741
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 319.0846977812,
-        "rank": 34,
-        "block_time": 1781775536
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 99.26804082257999,
-        "rank": 183,
-        "block_time": 1781783508
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 429.74429244768,
-        "rank": 31,
-        "block_time": 1781784619
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 72.6623334279,
-        "rank": 184,
-        "block_time": 1781849352
-      }
-    ]
-  },
-  {
-    "wallet": "7u1kfZFehUDm55J8jf6F1HV3yoLVysUbSgfKAZ5HttKm",
-    "score": 186.0,
-    "tokens_early_count": 62,
-    "avg_rank": 94.5,
-    "total_usd_deployed": 8537.43,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 109.0970609382,
-        "rank": 145,
-        "block_time": 1781735026
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 155.42077651392,
-        "rank": 43,
-        "block_time": 1781742125
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 28.23001594336,
-        "rank": 103,
-        "block_time": 1781745374
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 45.69564938536001,
-        "rank": 15,
-        "block_time": 1781769207
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 16.16471422904,
-        "rank": 98,
-        "block_time": 1781775702
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 20.705842378619998,
-        "rank": 151,
-        "block_time": 1781783405
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 415.32823115798,
-        "rank": 98,
-        "block_time": 1781847464
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 50.08994508026,
-        "rank": 16,
-        "block_time": 1781848898
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 36.12596239614,
-        "rank": 2,
-        "block_time": 1781861815
-      },
-      {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 7.89729741738,
-        "rank": 79,
-        "block_time": 1781864816
-      }
-    ]
-  },
-  {
-    "wallet": "DCBzhRnAwQ9S9DdeXWioeqsMjP6UQef2drcuCxK1aN6F",
-    "score": 186.0,
-    "tokens_early_count": 62,
-    "avg_rank": 93.5,
-    "total_usd_deployed": 12088.12,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 1020.1109137774,
-        "rank": 19,
-        "block_time": 1781736663
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 379.39616603112006,
-        "rank": 19,
-        "block_time": 1781740209
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 70.12988586792001,
-        "rank": 87,
-        "block_time": 1781742242
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 10.0784754984,
-        "rank": 188,
-        "block_time": 1781745591
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 600.8161736668001,
-        "rank": 32,
-        "block_time": 1781766524
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 17.73663296288,
-        "rank": 153,
-        "block_time": 1781769629
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 529.88573348152,
-        "rank": 16,
-        "block_time": 1781775490
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 8.3923111314,
-        "rank": 70,
-        "block_time": 1781784709
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 28.562627069780003,
-        "rank": 196,
-        "block_time": 1781812300
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 67.26945584182,
-        "rank": 159,
-        "block_time": 1781847675
-      }
-    ]
-  },
-  {
-    "wallet": "HDX1UU2ZYCM5TXtJYiE268JKLKHDBJKwA3upeEY9q6Bv",
-    "score": 186.0,
-    "tokens_early_count": 62,
-    "avg_rank": 95.7,
-    "total_usd_deployed": 11070.03,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 33.701039767080005,
-        "rank": 114,
-        "block_time": 1781740440
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 80.73262327552001,
-        "rank": 5,
-        "block_time": 1781742047
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 56.0657053776,
-        "rank": 121,
-        "block_time": 1781745419
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 2.6563512830400002,
-        "rank": 57,
-        "block_time": 1781775588
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 50.682087926819996,
-        "rank": 124,
-        "block_time": 1781803654
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 255.34870542422,
-        "rank": 193,
-        "block_time": 1781812296
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 42.605417158819996,
-        "rank": 137,
-        "block_time": 1781847599
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 64.85923616138,
-        "rank": 19,
-        "block_time": 1781852322
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 6.3347536627,
-        "rank": 129,
-        "block_time": 1781855666
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 115.27042794991999,
-        "rank": 15,
-        "block_time": 1781858893
-      }
-    ]
-  },
-  {
-    "wallet": "FrAx9QH9z5BzNGjhRn4qWZMkii4Yp11AucV2nNm3WC9b",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 99.8,
-    "total_usd_deployed": 7970.79,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 48.35150443652,
-        "rank": 47,
-        "block_time": 1781734785
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 433.49871875440004,
-        "rank": 15,
-        "block_time": 1781740197
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 268.86900952976,
-        "rank": 95,
-        "block_time": 1781745357
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 29.707877556480003,
-        "rank": 104,
-        "block_time": 1781754514
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 69.6968862712,
-        "rank": 127,
-        "block_time": 1781760809
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 20.711763619040003,
-        "rank": 12,
-        "block_time": 1781769201
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 149.44817704572,
-        "rank": 66,
-        "block_time": 1781783144
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 84.51647270136,
-        "rank": 150,
-        "block_time": 1781784909
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 16.321418489939997,
-        "rank": 7,
-        "block_time": 1781847238
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 10.149439368340001,
-        "rank": 126,
-        "block_time": 1781849170
-      }
-    ]
-  },
-  {
-    "wallet": "Hw6krLfpSCp82i3DXuTfdrZ6Yvf6AspxXBrVop655zAn",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 95.7,
-    "total_usd_deployed": 10845.99,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 26.35139628956,
-        "rank": 134,
-        "block_time": 1781734997
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 17.853776678880003,
-        "rank": 74,
-        "block_time": 1781736788
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 26.442235936,
-        "rank": 9,
-        "block_time": 1781760518
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 898.05018406064,
-        "rank": 119,
-        "block_time": 1781766714
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 55.91898595584,
-        "rank": 113,
-        "block_time": 1781783262
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 88.10843408765999,
-        "rank": 61,
-        "block_time": 1781803482
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 6.93076771324,
-        "rank": 124,
-        "block_time": 1781849165
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 510.96979097684,
-        "rank": 153,
-        "block_time": 1781852635
-      },
-      {
-        "mint": "61JhZQisgojoLyxytBFWHzo3H1uZNhztoWJDBfnVpump",
-        "amount_usd": 29.602059201539998,
-        "rank": 77,
-        "block_time": 1781864388
-      },
-      {
-        "mint": "ENSto5KtfMQUTSvqrWGmEuWydJRZo8cVBi4JaxQppump",
-        "amount_usd": 10.389484613339999,
-        "rank": 144,
-        "block_time": 1781866572
-      }
-    ]
-  },
-  {
-    "wallet": "8rLUxjsCFgURDVPknBBmzN7BE4dAtPk2x4Fk3x4EXqQi",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 90.4,
-    "total_usd_deployed": 7491.59,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 3.02344960512,
-        "rank": 191,
-        "block_time": 1781735151
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 11.96635600268,
-        "rank": 137,
-        "block_time": 1781736979
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 415.72549326388,
-        "rank": 49,
-        "block_time": 1781740279
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 18.658573023360002,
-        "rank": 112,
-        "block_time": 1781742319
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 6.58085166232,
-        "rank": 110,
-        "block_time": 1781769477
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 56.544372875339995,
-        "rank": 149,
-        "block_time": 1781783398
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 7.612760646539999,
-        "rank": 175,
-        "block_time": 1781784969
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 24.458630540399998,
-        "rank": 158,
-        "block_time": 1781803763
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 7.594279430600001,
-        "rank": 152,
-        "block_time": 1781812143
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 11.42380645892,
-        "rank": 19,
-        "block_time": 1781847271
-      }
-    ]
-  },
-  {
-    "wallet": "J3ELec45W3HyBGnYa5MJjvGVEEAxNAJEBzN6a4GBZgqq",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 75.9,
-    "total_usd_deployed": 5965.81,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 3.0516411330800004,
-        "rank": 21,
-        "block_time": 1781736671
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 84.28277790816,
-        "rank": 144,
-        "block_time": 1781740508
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 6.3471075715600005,
-        "rank": 9,
-        "block_time": 1781742057
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 29.839453853040002,
-        "rank": 163,
-        "block_time": 1781769650
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 51.543820260400004,
-        "rank": 99,
-        "block_time": 1781775704
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 33.83878031729999,
-        "rank": 81,
-        "block_time": 1781783174
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 67.55930035595999,
-        "rank": 71,
-        "block_time": 1781784713
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 232.08297170562003,
-        "rank": 18,
-        "block_time": 1781847269
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 58.83463364368,
-        "rank": 30,
-        "block_time": 1781858928
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 53.64542763146,
-        "rank": 20,
-        "block_time": 1781861821
-      }
-    ]
-  },
-  {
-    "wallet": "96ExnYHxDKXfK4K6WdkZG9by4KXHP6giHxYs33RDnynz",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 94.8,
-    "total_usd_deployed": 10265.25,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 36.2045573086,
-        "rank": 78,
-        "block_time": 1781736802
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 553.74837634712,
-        "rank": 18,
-        "block_time": 1781740206
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 2.6392316163600005,
-        "rank": 54,
-        "block_time": 1781742151
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 5.91996904896,
-        "rank": 100,
-        "block_time": 1781745368
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 98.59964824632,
-        "rank": 37,
-        "block_time": 1781769272
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 20.63068188376,
-        "rank": 127,
-        "block_time": 1781775764
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 19.50620194456,
-        "rank": 189,
-        "block_time": 1781812285
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 22.07228231204,
-        "rank": 100,
-        "block_time": 1781855599
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 9.4178737347,
-        "rank": 33,
-        "block_time": 1781858938
-      },
-      {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 28.45394643924,
-        "rank": 152,
-        "block_time": 1781865044
-      }
-    ]
-  },
-  {
-    "wallet": "3WA2Aq9rpnHuJSRnZxXPBiThkvVx8DkdvNawee5mb2kS",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 97.1,
-    "total_usd_deployed": 8630.84,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 227.64122390472002,
-        "rank": 98,
-        "block_time": 1781740405
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 236.43210774016,
-        "rank": 128,
-        "block_time": 1781760812
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 448.47410804144,
-        "rank": 23,
-        "block_time": 1781766504
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 26.812160871600003,
-        "rank": 177,
-        "block_time": 1781775913
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 26.82106166124,
-        "rank": 17,
-        "block_time": 1781784589
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 26.620568908960003,
-        "rank": 71,
-        "block_time": 1781811922
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 2.61619924054,
-        "rank": 41,
-        "block_time": 1781848951
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 862.12830244048,
-        "rank": 68,
-        "block_time": 1781852358
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 31.56923943696,
-        "rank": 80,
-        "block_time": 1781855554
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 22.81628250044,
-        "rank": 196,
-        "block_time": 1781859342
-      }
-    ]
-  },
-  {
-    "wallet": "QVQr6dDxR9qehGccy5fVmjL1ceRFDSJVPMAuGfxj7hK",
-    "score": 183.0,
-    "tokens_early_count": 61,
-    "avg_rank": 98.8,
-    "total_usd_deployed": 11567.2,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 109.45850232736001,
-        "rank": 158,
-        "block_time": 1781740541
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 14.45610368368,
-        "rank": 137,
-        "block_time": 1781745461
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 744.06138643296,
-        "rank": 127,
-        "block_time": 1781754600
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 51.10842598416,
-        "rank": 5,
-        "block_time": 1781760505
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 23.990291234,
-        "rank": 181,
-        "block_time": 1781766873
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 94.72067031128,
-        "rank": 5,
-        "block_time": 1781769183
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 158.26302152232,
-        "rank": 68,
-        "block_time": 1781775615
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 227.02854262913996,
-        "rank": 60,
-        "block_time": 1781783129
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 174.97478886929997,
-        "rank": 82,
-        "block_time": 1781803543
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 253.55331401070003,
-        "rank": 34,
-        "block_time": 1781811833
-      }
-    ]
-  },
-  {
-    "wallet": "29ctVtSeGxDQEubEahLMkVKwdVgKsx35o2tZBjMchM8C",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 90.7,
-    "total_usd_deployed": 8175.11,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 125.23811145540002,
-        "rank": 32,
-        "block_time": 1781734744
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 8.30467233136,
-        "rank": 89,
-        "block_time": 1781736835
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 56.34612423832001,
-        "rank": 3,
-        "block_time": 1781742044
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 200.05950233520002,
-        "rank": 13,
-        "block_time": 1781745130
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 333.6117176152,
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18170.151154564646,
         "rank": 26,
-        "block_time": 1781760559
+        "block_time": 1782107795
       },
       {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 467.42261048808,
-        "rank": 21,
-        "block_time": 1781766500
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 5.677104952480001,
-        "rank": 171,
-        "block_time": 1781769682
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 5.181728558580001,
-        "rank": 193,
-        "block_time": 1781785018
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 101.26996258176,
-        "rank": 164,
-        "block_time": 1781803783
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 5.9868490626,
-        "rank": 116,
-        "block_time": 1781849143
-      }
-    ]
-  },
-  {
-    "wallet": "3Pr9SCTgStLoaXML4MH8ktNKxkZTrmhqEhMgHMpjB2Nj",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 97.8,
-    "total_usd_deployed": 9026.61,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 242.78926027288,
-        "rank": 43,
-        "block_time": 1781734774
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 60.83902073640001,
-        "rank": 105,
-        "block_time": 1781740421
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 267.21325083056,
-        "rank": 98,
-        "block_time": 1781742278
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 6.94385247584,
-        "rank": 48,
-        "block_time": 1781745224
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 741.51908847432,
-        "rank": 83,
-        "block_time": 1781775661
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 23.707389632219996,
-        "rank": 173,
-        "block_time": 1781784965
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 102.38941449786,
-        "rank": 132,
-        "block_time": 1781812088
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 16.557379404859997,
-        "rank": 117,
-        "block_time": 1781849144
-      },
-      {
-        "mint": "ERDiVBa3KwLJRuGEiyke5DPeiMh91oFjuuAxzUqbpump",
-        "amount_usd": 14.653390228340001,
-        "rank": 194,
-        "block_time": 1781859338
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 185.81285494454,
-        "rank": 119,
-        "block_time": 1781862070
-      }
-    ]
-  },
-  {
-    "wallet": "AeeMjVZJ2mYHGpNvxjkpSs94KVjH9xc999EwVYWBKP8m",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 93.0,
-    "total_usd_deployed": 7299.98,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 37.31656821864,
-        "rank": 61,
-        "block_time": 1781734818
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 30.352803481600006,
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 12751.80615049696,
         "rank": 71,
-        "block_time": 1781740343
+        "block_time": 1782173141
       },
       {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 53.93477864988,
-        "rank": 29,
-        "block_time": 1781742099
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 22680.77657990636,
+        "rank": 4,
+        "block_time": 1782216400
       },
       {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 234.72910206992,
-        "rank": 190,
-        "block_time": 1781745595
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 6.75339447664,
-        "rank": 11,
-        "block_time": 1781754283
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 158.57408340016,
-        "rank": 84,
-        "block_time": 1781760699
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 32.58237257452,
-        "rank": 123,
-        "block_time": 1781847541
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 11.1304077366,
-        "rank": 176,
-        "block_time": 1781852683
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 168.98327028525998,
-        "rank": 14,
-        "block_time": 1781855403
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 228.65557169988,
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 50799.26621667397,
         "rank": 8,
-        "block_time": 1781861817
+        "block_time": 1782277223
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 18120.914747080322,
+        "rank": 73,
+        "block_time": 1782310400
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 44207.64954179088,
+        "rank": 33,
+        "block_time": 1782369587
       }
     ]
   },
   {
-    "wallet": "6p1PeUsPnkEVTzSATFeZ4NccWAWtciNeBoHbD8cezevD",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 99.5,
-    "total_usd_deployed": 15100.58,
+    "wallet": "FxV8Xho1eWyfEjhS7tnEPkaboGH7UwkNSFKo7daM9d4B",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 47.0,
+    "total_usd_deployed": 98311.73,
     "days_since_last_trade": 999,
     "unique_tokens_traded": 0,
     "tokens_detail": [
       {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 60.82607869008001,
-        "rank": 102,
-        "block_time": 1781734925
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 1758.5988441198401,
+        "rank": 2,
+        "block_time": 1782091717
       },
       {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 24.58011765784,
-        "rank": 150,
-        "block_time": 1781737022
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 619.97448749796,
-        "rank": 34,
-        "block_time": 1781740246
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 1378.6717476363199,
-        "rank": 172,
-        "block_time": 1781754769
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 3376.0764798717596,
-        "rank": 177,
-        "block_time": 1781783491
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 76.36416158322,
-        "rank": 169,
-        "block_time": 1781784957
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 11.866069519019998,
-        "rank": 50,
-        "block_time": 1781847343
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 606.87942705406,
-        "rank": 34,
-        "block_time": 1781848941
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 62.643531565619995,
-        "rank": 52,
-        "block_time": 1781852347
-      },
-      {
-        "mint": "61JhZQisgojoLyxytBFWHzo3H1uZNhztoWJDBfnVpump",
-        "amount_usd": 17.9746106211,
-        "rank": 29,
-        "block_time": 1781864269
-      }
-    ]
-  },
-  {
-    "wallet": "Co1WxY5p9zFTJcna1NDjgNG3ecijqBBRF2TUmUV5fsWb",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 99.8,
-    "total_usd_deployed": 7551.98,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4CvJE8grv41GvB8FzTTD4gyGK8MVuE9MFiexi8Fnpump",
-        "amount_usd": 765.9650292597601,
-        "rank": 155,
-        "block_time": 1781735052
-      },
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 7.282164602680001,
-        "rank": 136,
-        "block_time": 1781736977
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 54.14005375936,
-        "rank": 158,
-        "block_time": 1781745514
-      },
-      {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 39.912404212480006,
-        "rank": 29,
-        "block_time": 1781754324
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 34.64917903824,
-        "rank": 12,
-        "block_time": 1781775480
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 186.91709683247998,
-        "rank": 127,
-        "block_time": 1781784860
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 14.005309355099998,
-        "rank": 180,
-        "block_time": 1781803826
-      },
-      {
-        "mint": "FG6GMmUNo5CtpjvgsdQE5LZ7L8icd2re7BeB1Ekdpump",
-        "amount_usd": 88.76308906416,
-        "rank": 49,
-        "block_time": 1781811867
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 845.9466043492799,
-        "rank": 35,
-        "block_time": 1781852338
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 5.33580063394,
-        "rank": 9,
-        "block_time": 1781861817
-      }
-    ]
-  },
-  {
-    "wallet": "HbfpW8Fnc5SRSUSVotuGdfNrskg2YoA2JPNNvuKnPEej",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 84.2,
-    "total_usd_deployed": 8258.02,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 51.44777030484,
-        "rank": 123,
-        "block_time": 1781736939
-      },
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 33.32326225072,
-        "rank": 107,
-        "block_time": 1781740427
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 6.258693361960001,
-        "rank": 14,
-        "block_time": 1781742070
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 144.36355534224,
-        "rank": 77,
-        "block_time": 1781766621
-      },
-      {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 6.5525045196,
-        "rank": 84,
-        "block_time": 1781769392
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 244.92953720664,
-        "rank": 14,
-        "block_time": 1781775485
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 19.91126952738,
-        "rank": 50,
-        "block_time": 1781783101
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 12.59143502904,
-        "rank": 156,
-        "block_time": 1781784924
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 22.861095460559998,
-        "rank": 101,
-        "block_time": 1781803597
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 181.56502036936,
-        "rank": 24,
-        "block_time": 1781855427
-      }
-    ]
-  },
-  {
-    "wallet": "Fa9Tir59uM9SanrBCd33QsCsqN1ZMAnxFyk44R3Ye7vq",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 96.8,
-    "total_usd_deployed": 6150.94,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 7.19369797604,
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 5877.851307950401,
         "rank": 129,
-        "block_time": 1781736955
+        "block_time": 1782107979
       },
       {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 21.734363058960003,
-        "rank": 58,
-        "block_time": 1781742167
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 4043.8394337211203,
+        "rank": 108,
+        "block_time": 1782173202
       },
       {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 12.99797629712,
-        "rank": 89,
-        "block_time": 1781754476
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 12040.18006693238,
+        "rank": 33,
+        "block_time": 1782216422
       },
       {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 13.440137743360001,
-        "rank": 55,
-        "block_time": 1781760626
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 30391.355361933824,
+        "rank": 10,
+        "block_time": 1782277224
       },
       {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 60.75304533272,
-        "rank": 60,
-        "block_time": 1781766584
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 20718.4291965496,
+        "rank": 27,
+        "block_time": 1782310299
       },
       {
-        "mint": "3bNy2YLep1cGtrDbUS8PxLwDMupzsisFXu8Lm7d8pump",
-        "amount_usd": 2.8805514400000005,
-        "rank": 118,
-        "block_time": 1781769501
-      },
-      {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 45.35556580152,
-        "rank": 152,
-        "block_time": 1781775827
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 9.72854435196,
-        "rank": 135,
-        "block_time": 1781783346
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 2.53871203698,
-        "rank": 159,
-        "block_time": 1781784931
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 214.6850941977,
-        "rank": 18,
-        "block_time": 1781803376
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 23481.477414748162,
+        "rank": 20,
+        "block_time": 1782369569
       }
     ]
   },
   {
-    "wallet": "6q9rF4BPD6MSdvQpLYybxZZFPre9WMFsSgVB8HEMFKMT",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 91.5,
-    "total_usd_deployed": 9213.73,
+    "wallet": "7zCuVQAmR9m6XPbSkVRX4YtBShoRXA9Gk521PsktNwr2",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 28.1,
+    "total_usd_deployed": 196425.25,
     "days_since_last_trade": 999,
     "unique_tokens_traded": 0,
     "tokens_detail": [
       {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 39.063864969,
-        "rank": 167,
-        "block_time": 1781737088
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 5468.560660008161,
+        "rank": 3,
+        "block_time": 1782091718
       },
       {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 624.09954167988,
-        "rank": 121,
-        "block_time": 1781740456
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 12845.842599718562,
+        "rank": 51,
+        "block_time": 1782107828
       },
       {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 11.0852106888,
-        "rank": 15,
-        "block_time": 1781745141
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 19816.737571068163,
+        "rank": 14,
+        "block_time": 1782173065
       },
       {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 176.46055216816,
-        "rank": 57,
-        "block_time": 1781766578
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 21728.74728823938,
+        "rank": 19,
+        "block_time": 1782216408
       },
       {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 27.8937041916,
-        "rank": 28,
-        "block_time": 1781775520
-      },
-      {
-        "mint": "94o5cwEuCUoEB39zwqtuesEbXSgDTMd2pqHuSfuYpump",
-        "amount_usd": 59.74924753476,
-        "rank": 49,
-        "block_time": 1781783099
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 118.68453685494,
-        "rank": 61,
-        "block_time": 1781784692
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 86.11572048348,
-        "rank": 120,
-        "block_time": 1781852532
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 20.41275034028,
-        "rank": 112,
-        "block_time": 1781862058
-      },
-      {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 8.22335131548,
-        "rank": 16,
-        "block_time": 1781864669
-      }
-    ]
-  },
-  {
-    "wallet": "B1owTQK3qvaBx3czU7av5acxVYBXHkpuSXvU6B1tM1ZZ",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 92.9,
-    "total_usd_deployed": 10308.27,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "4tEujfUeqnUNUZLt4vfbW7vJPqPF4dRhD4hc4QwUpump",
-        "amount_usd": 48.938692369920005,
-        "rank": 170,
-        "block_time": 1781737096
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 160.9248597456,
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 50800.5534553727,
         "rank": 23,
-        "block_time": 1781742086
+        "block_time": 1782277250
       },
       {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 9.813262716400002,
-        "rank": 179,
-        "block_time": 1781766867
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 51986.9078513032,
+        "rank": 10,
+        "block_time": 1782310284
       },
       {
-        "mint": "EaPZH93b8ksT2SNeDS1ZAL4Hqy3fbGLnkRJK57Wkpump",
-        "amount_usd": 446.01869586976,
-        "rank": 105,
-        "block_time": 1781775719
-      },
-      {
-        "mint": "2WDsVPzMJ3s7ckamd4pq3Jfi83u5R9MWHjy8bXgZpump",
-        "amount_usd": 200.61085872744,
-        "rank": 123,
-        "block_time": 1781803653
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 85.53762756804,
-        "rank": 12,
-        "block_time": 1781847250
-      },
-      {
-        "mint": "ENSto5KtfMQUTSvqrWGmEuWydJRZo8cVBi4JaxQppump",
-        "amount_usd": 137.32183730664,
-        "rank": 67,
-        "block_time": 1781866374
-      },
-      {
-        "mint": "DsPQ5JeRC1shwkHLByfUCYhqjiKR84PJPS9PZpTnpump",
-        "amount_usd": 8.86263947604,
-        "rank": 153,
-        "block_time": 1781870595
-      },
-      {
-        "mint": "72LEXDBTLe2rBMzTo1oiJfMG8mssgqhtQ7cEfamopump",
-        "amount_usd": 2.86134955596,
-        "rank": 131,
-        "block_time": 1781880584
-      },
-      {
-        "mint": "9jogmQqRbhhPADvxgLE6rPPrWnnFEjAo6VTEkUhqpump",
-        "amount_usd": 354.6541979230079,
-        "rank": 29,
-        "block_time": 1781913145
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 33777.89600929696,
+        "rank": 77,
+        "block_time": 1782369647
       }
     ]
   },
   {
-    "wallet": "23M5BQfJnqrXW49k8SaExtpQJfFzzzTKzbwV5vJ2oLRh",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 93.3,
-    "total_usd_deployed": 6922.28,
+    "wallet": "HnaR3YYtyGmvDui2WYMWctWxRMpQeqaxdGfiVnQyUwWW",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 11.0,
+    "total_usd_deployed": 213669.86,
     "days_since_last_trade": 999,
     "unique_tokens_traded": 0,
     "tokens_detail": [
       {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 159.69953063892,
-        "rank": 66,
-        "block_time": 1781740331
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2982.95123987008,
+        "rank": 4,
+        "block_time": 1782091718
       },
       {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 43.42674631952,
-        "rank": 196,
-        "block_time": 1781745613
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 17524.295783460162,
+        "rank": 17,
+        "block_time": 1782107788
       },
       {
-        "mint": "74aVtYRNcgqFKBLxs3PQqbMrsFPFMMpAirdySqPtpump",
-        "amount_usd": 14.83626604096,
-        "rank": 75,
-        "block_time": 1781754443
-      },
-      {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 7.47868191888,
-        "rank": 8,
-        "block_time": 1781760516
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 697.82352067064,
-        "rank": 66,
-        "block_time": 1781766597
-      },
-      {
-        "mint": "76p6fEMBq3JUC8g8b5QrLcV2ezvPP4U6ZbYQXXLKpump",
-        "amount_usd": 18.179242028639997,
-        "rank": 132,
-        "block_time": 1781784867
-      },
-      {
-        "mint": "8mHygaxqHDP1tRW9JbxNsQEjXUF25Kwi5WpM7Z57pump",
-        "amount_usd": 21.04402408662,
-        "rank": 38,
-        "block_time": 1781847316
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 2.6291068271199998,
-        "rank": 23,
-        "block_time": 1781848914
-      },
-      {
-        "mint": "9Vg5bMaoP57GKesEBJjUY1MDgitLiRDb6QTA6iChpump",
-        "amount_usd": 29.193635521679997,
-        "rank": 145,
-        "block_time": 1781852615
-      },
-      {
-        "mint": "4saCK3YJtjHsgepQ1FeQRUsLYZNs7vQyNUcNsyEKpump",
-        "amount_usd": 115.07449624882001,
-        "rank": 31,
-        "block_time": 1781855443
-      }
-    ]
-  },
-  {
-    "wallet": "7K1gtUPmvANSseTq97MDRx7P9idACywbmJiS8NfCuQPh",
-    "score": 180.0,
-    "tokens_early_count": 60,
-    "avg_rank": 95.9,
-    "total_usd_deployed": 9877.28,
-    "days_since_last_trade": 999,
-    "unique_tokens_traded": 0,
-    "tokens_detail": [
-      {
-        "mint": "GGjQtWEgEHPoeAjv9iVhVQgVscKD96fV5GrsEUCxpump",
-        "amount_usd": 396.18666258836004,
-        "rank": 163,
-        "block_time": 1781740556
-      },
-      {
-        "mint": "4HJvBDHFQfgr2SmXcW1bkNyEyS9rNN1sRF2mRPy7pump",
-        "amount_usd": 93.4715265816,
-        "rank": 161,
-        "block_time": 1781742483
-      },
-      {
-        "mint": "7wM4dJzX9QpN94ggX5twVA9LuHt1wSFZsbnHmSXYpump",
-        "amount_usd": 333.18696526336,
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 13973.011619488163,
         "rank": 6,
-        "block_time": 1781745110
+        "block_time": 1782173056
       },
       {
-        "mint": "CprmdvdMcx9mxD2tbcTGRthSKnJk93vw8vxagm4epump",
-        "amount_usd": 14.998168143360001,
-        "rank": 117,
-        "block_time": 1781760776
-      },
-      {
-        "mint": "nRb1MdKL7AwJU8NX96eNamtKMJXkDhzLt2iesSSpump",
-        "amount_usd": 31.004357440160003,
-        "rank": 115,
-        "block_time": 1781766702
-      },
-      {
-        "mint": "CjQ3ULx3gSJSUs5pvpZji3U5MyZM7ELwhs9MQRMFpump",
-        "amount_usd": 88.86140044804,
-        "rank": 97,
-        "block_time": 1781849096
-      },
-      {
-        "mint": "8FCkUUa4vxkqQGinBbzjK5GUubfPdNWJ14dnHsDGpump",
-        "amount_usd": 610.82184173208,
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 29879.08489537306,
         "rank": 13,
-        "block_time": 1781861818
+        "block_time": 1782216406
       },
       {
-        "mint": "61JhZQisgojoLyxytBFWHzo3H1uZNhztoWJDBfnVpump",
-        "amount_usd": 760.0758849658799,
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 68659.90379136294,
+        "rank": 12,
+        "block_time": 1782277225
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 41562.95646129007,
         "rank": 1,
-        "block_time": 1781864207
+        "block_time": 1782310271
       },
       {
-        "mint": "G5QSpqEUhPfYwA1pHA8RWkRX65tXFwj9tU35PeGKpump",
-        "amount_usd": 8.17073498556,
-        "rank": 84,
-        "block_time": 1781864826
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 39087.66020904159,
+        "rank": 24,
+        "block_time": 1782369572
+      }
+    ]
+  },
+  {
+    "wallet": "4SAWmhvqyzcrnmxoKJ66tzPSsXoAXYbKEhyxTfkWjcm4",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 15.7,
+    "total_usd_deployed": 189570.57,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 4164.9341342336,
+        "rank": 5,
+        "block_time": 1782091719
       },
       {
-        "mint": "EqWgNJRc2jNMQR4UocE1NonYB6vjgTc3f5b82vqHpump",
-        "amount_usd": 30.551593610159998,
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18110.384640127682,
+        "rank": 8,
+        "block_time": 1782107778
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 7879.825658625121,
+        "rank": 56,
+        "block_time": 1782173119
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 28769.061462696438,
+        "rank": 5,
+        "block_time": 1782216401
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 49865.11337030843,
+        "rank": 19,
+        "block_time": 1782277237
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 33910.869765987685,
+        "rank": 11,
+        "block_time": 1782310286
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 46870.379277931046,
+        "rank": 6,
+        "block_time": 1782369557
+      }
+    ]
+  },
+  {
+    "wallet": "Ej8Rym1JttpFkL1BTohPt733T3Wqq2MmyTeUVMLXZ4Yv",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 20.4,
+    "total_usd_deployed": 228772.06,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3288.52840954176,
+        "rank": 6,
+        "block_time": 1782091719
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 20408.153645019363,
+        "rank": 28,
+        "block_time": 1782107798
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15002.314587947361,
+        "rank": 36,
+        "block_time": 1782173082
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 28425.248201596984,
+        "rank": 24,
+        "block_time": 1782216412
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 49777.25024337481,
+        "rank": 20,
+        "block_time": 1782277239
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 59930.195184424796,
+        "rank": 2,
+        "block_time": 1782310272
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 51940.37117793488,
+        "rank": 27,
+        "block_time": 1782369578
+      }
+    ]
+  },
+  {
+    "wallet": "86MrJojoNz9Rk2Tnbs4W4SM8UCndJDzBZ8S9WPEzBA4B",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 21.0,
+    "total_usd_deployed": 162661.21,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 1699.4490707816,
+        "rank": 7,
+        "block_time": 1782091720
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 6639.548735124481,
+        "rank": 6,
+        "block_time": 1782107776
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 13318.835946536481,
+        "rank": 3,
+        "block_time": 1782173053
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 14342.638987010823,
+        "rank": 28,
+        "block_time": 1782216413
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 45976.92960788767,
+        "rank": 14,
+        "block_time": 1782277232
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 36388.187683684955,
+        "rank": 23,
+        "block_time": 1782310298
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 44295.62423037567,
+        "rank": 66,
+        "block_time": 1782369617
+      }
+    ]
+  },
+  {
+    "wallet": "EnwszJp7RDmqvDbmxzwFcit2omEMiCyPqva4QxBuQEnT",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 21.0,
+    "total_usd_deployed": 158955.6,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2888.8093601536,
+        "rank": 8,
+        "block_time": 1782091720
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 12881.63005639568,
+        "rank": 30,
+        "block_time": 1782107803
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 14668.88616873088,
+        "rank": 5,
+        "block_time": 1782173055
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 21567.34015213354,
         "rank": 32,
-        "block_time": 1781871474
+        "block_time": 1782216420
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 44627.98995359482,
+        "rank": 15,
+        "block_time": 1782277233
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 36393.70105616784,
+        "rank": 55,
+        "block_time": 1782310346
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 25927.23884145792,
+        "rank": 2,
+        "block_time": 1782369554
+      }
+    ]
+  },
+  {
+    "wallet": "AgTtQ7YxSea2DGEn4S2pNukBZpDobzHU7v4G6AT8C2ji",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 22.7,
+    "total_usd_deployed": 195114.72,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2665.54282145904,
+        "rank": 9,
+        "block_time": 1782091721
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 19656.8411245456,
+        "rank": 11,
+        "block_time": 1782107780
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15275.246653918239,
+        "rank": 64,
+        "block_time": 1782173131
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 17535.831502302022,
+        "rank": 20,
+        "block_time": 1782216408
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 59324.811098628015,
+        "rank": 21,
+        "block_time": 1782277244
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 28450.054862926718,
+        "rank": 8,
+        "block_time": 1782310280
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 52206.39404206079,
+        "rank": 26,
+        "block_time": 1782369575
+      }
+    ]
+  },
+  {
+    "wallet": "J3qYP8kXqwK4QzBDy6BBby4dubvFVXj6Aen3stdJS52m",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 21.3,
+    "total_usd_deployed": 195591.91,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3698.8762643438404,
+        "rank": 10,
+        "block_time": 1782091721
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 24480.280967863364,
+        "rank": 18,
+        "block_time": 1782107789
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15731.863953840642,
+        "rank": 27,
+        "block_time": 1782173076
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 19021.03380983736,
+        "rank": 23,
+        "block_time": 1782216411
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 46751.307442474135,
+        "rank": 16,
+        "block_time": 1782277233
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 46829.80414911392,
+        "rank": 48,
+        "block_time": 1782310343
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 39078.73891553904,
+        "rank": 7,
+        "block_time": 1782369560
+      }
+    ]
+  },
+  {
+    "wallet": "985D83NCmofzh2uBAHrhK4sXvUyb7PXVAjNwqi6GjxEo",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 22.4,
+    "total_usd_deployed": 229780.03,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3558.2118901976005,
+        "rank": 11,
+        "block_time": 1782091722
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 28871.3786394016,
+        "rank": 22,
+        "block_time": 1782107793
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 14854.70996990224,
+        "rank": 16,
+        "block_time": 1782173066
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 32067.049969568725,
+        "rank": 35,
+        "block_time": 1782216426
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 56761.300758140234,
+        "rank": 17,
+        "block_time": 1782277234
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 44277.368602426395,
+        "rank": 28,
+        "block_time": 1782310301
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 49390.00840348304,
+        "rank": 28,
+        "block_time": 1782369581
+      }
+    ]
+  },
+  {
+    "wallet": "7hjStynpvsJ4sUjtGdodnLVem2QPLnH2Ha5W9HJ2Ryxt",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 23.4,
+    "total_usd_deployed": 190465.03,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2584.23475710848,
+        "rank": 12,
+        "block_time": 1782091723
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 11227.992251982241,
+        "rank": 31,
+        "block_time": 1782107807
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 13545.513052850562,
+        "rank": 25,
+        "block_time": 1782173074
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 22668.114624021422,
+        "rank": 18,
+        "block_time": 1782216407
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 46842.562976243265,
+        "rank": 22,
+        "block_time": 1782277247
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 44236.00111931536,
+        "rank": 17,
+        "block_time": 1782310287
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 49360.61458003201,
+        "rank": 39,
+        "block_time": 1782369599
+      }
+    ]
+  },
+  {
+    "wallet": "HsGb3LCcaqJnDqPTgvod1bN3vFscMbQruk2FetgdXgLX",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 20.7,
+    "total_usd_deployed": 221185.81,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 5174.24757926064,
+        "rank": 13,
+        "block_time": 1782091723
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 20699.368577235364,
+        "rank": 62,
+        "block_time": 1782107850
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15393.588805897441,
+        "rank": 1,
+        "block_time": 1782173051
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 21813.64800388336,
+        "rank": 31,
+        "block_time": 1782216418
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 64412.2983965102,
+        "rank": 3,
+        "block_time": 1782277221
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 31262.89794178256,
+        "rank": 20,
+        "block_time": 1782310292
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 62429.76106342799,
+        "rank": 15,
+        "block_time": 1782369566
+      }
+    ]
+  },
+  {
+    "wallet": "2jHeXhKMuFwGhnFbh5BE4rwkRcqQcfTpPaFenxPp55ZM",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 19.4,
+    "total_usd_deployed": 178505.16,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2816.6270087256,
+        "rank": 14,
+        "block_time": 1782091725
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18392.68300338624,
+        "rank": 1,
+        "block_time": 1782107770
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 16035.753322080162,
+        "rank": 33,
+        "block_time": 1782173078
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 20762.39094245846,
+        "rank": 34,
+        "block_time": 1782216425
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 42306.35924534596,
+        "rank": 18,
+        "block_time": 1782277235
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 46972.0872185416,
+        "rank": 6,
+        "block_time": 1782310278
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 31219.258053532638,
+        "rank": 30,
+        "block_time": 1782369584
+      }
+    ]
+  },
+  {
+    "wallet": "48b4EFMxiS3Wu5TcQnt713sTu8YkqLReF82JMTueK9kW",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 28.3,
+    "total_usd_deployed": 164267.61,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 1644.83727674496,
+        "rank": 15,
+        "block_time": 1782091725
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 13174.897251100161,
+        "rank": 29,
+        "block_time": 1782107802
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15426.25495951424,
+        "rank": 19,
+        "block_time": 1782173069
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 22869.973563793923,
+        "rank": 1,
+        "block_time": 1782216399
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 48697.78234700877,
+        "rank": 5,
+        "block_time": 1782277221
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 33869.21894138576,
+        "rank": 82,
+        "block_time": 1782310406
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 28584.64934663056,
+        "rank": 47,
+        "block_time": 1782369602
+      }
+    ]
+  },
+  {
+    "wallet": "D1yBjWNu5EGKahyXynaCZDN9FxYektqb48hBbL9apyyD",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 16.1,
+    "total_usd_deployed": 203794.03,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3166.6945288611205,
+        "rank": 16,
+        "block_time": 1782091727
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 17215.418349244,
+        "rank": 27,
+        "block_time": 1782107797
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 16277.4552005352,
+        "rank": 7,
+        "block_time": 1782173059
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 23955.2929989697,
+        "rank": 9,
+        "block_time": 1782216405
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 57434.731947503606,
+        "rank": 11,
+        "block_time": 1782277225
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 38971.75314074016,
+        "rank": 18,
+        "block_time": 1782310289
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 46772.684205425125,
+        "rank": 25,
+        "block_time": 1782369572
+      }
+    ]
+  },
+  {
+    "wallet": "BpRDwmEg6ZnxQhFhaQtczK48RzpgD1PvogAeWpEQDaGx",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 26.3,
+    "total_usd_deployed": 188749.07,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3889.3543033854403,
+        "rank": 17,
+        "block_time": 1782091728
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18153.79425479696,
+        "rank": 12,
+        "block_time": 1782107781
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 14464.044176875683,
+        "rank": 2,
+        "block_time": 1782173052
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 25092.47058014926,
+        "rank": 2,
+        "block_time": 1782216399
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 44065.316062228056,
+        "rank": 13,
+        "block_time": 1782277229
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 38974.489327689276,
+        "rank": 62,
+        "block_time": 1782310359
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 44109.598768508964,
+        "rank": 76,
+        "block_time": 1782369641
+      }
+    ]
+  },
+  {
+    "wallet": "6bhvYxud1BjNc42ngPredccdvdECZpp5CAfz9yj2USGo",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 12.1,
+    "total_usd_deployed": 202648.27,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2907.61017069968,
+        "rank": 18,
+        "block_time": 1782091730
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18140.845152257123,
+        "rank": 13,
+        "block_time": 1782107783
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 9945.435499964322,
+        "rank": 4,
+        "block_time": 1782173054
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 16165.588652771601,
+        "rank": 27,
+        "block_time": 1782216413
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 59265.9660208844,
+        "rank": 6,
+        "block_time": 1782277222
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 46846.812479726716,
+        "rank": 9,
+        "block_time": 1782310281
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 49376.00728046144,
+        "rank": 8,
+        "block_time": 1782369560
+      }
+    ]
+  },
+  {
+    "wallet": "924SjGLW16XeAHRpcB4TNc5dgDiRkEtmE52ktKk3yVAp",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 18.3,
+    "total_usd_deployed": 208028.68,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 3362.52288925904,
+        "rank": 19,
+        "block_time": 1782091734
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18304.50888902608,
+        "rank": 36,
+        "block_time": 1782107812
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 12357.80638412,
+        "rank": 20,
+        "block_time": 1782173070
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 28885.661078769463,
+        "rank": 6,
+        "block_time": 1782216404
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 56540.018752453274,
+        "rank": 1,
+        "block_time": 1782277220
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 60051.00344304416,
+        "rank": 43,
+        "block_time": 1782310319
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 28527.15525021168,
+        "rank": 3,
+        "block_time": 1782369554
+      }
+    ]
+  },
+  {
+    "wallet": "2Hv7Dg6mM8KgwhiFTU7GQMspLZ7FmWuGRp3wQFN9tcFt",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 10.4,
+    "total_usd_deployed": 198618.05,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 1560.0799788406403,
+        "rank": 20,
+        "block_time": 1782091738
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 21003.489174237606,
+        "rank": 16,
+        "block_time": 1782107786
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 12873.88537402832,
+        "rank": 9,
+        "block_time": 1782173062
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 25125.84692204,
+        "rank": 8,
+        "block_time": 1782216405
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 54576.42492193127,
+        "rank": 2,
+        "block_time": 1782277220
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 41684.695243018556,
+        "rank": 4,
+        "block_time": 1782310278
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 41793.626933266554,
+        "rank": 14,
+        "block_time": 1782369564
+      }
+    ]
+  },
+  {
+    "wallet": "B9GTnEmZTSq8vdT1cQ4wLxEeCL9Sc3imwYBVGmytuYVi",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 40.6,
+    "total_usd_deployed": 200485.26,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 6347.9664337287995,
+        "rank": 21,
+        "block_time": 1782091738
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 19604.066275956004,
+        "rank": 43,
+        "block_time": 1782107823
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 9255.06494472256,
+        "rank": 28,
+        "block_time": 1782173077
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 21685.06288848434,
+        "rank": 47,
+        "block_time": 1782216448
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 41992.98493891734,
+        "rank": 25,
+        "block_time": 1782277251
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 41745.47497321073,
+        "rank": 63,
+        "block_time": 1782310362
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 59854.63724740576,
+        "rank": 57,
+        "block_time": 1782369614
+      }
+    ]
+  },
+  {
+    "wallet": "FAt2UQQpuUgY849tX2YKjbZoUBrAxid3icT3RoMEoA6S",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 50.7,
+    "total_usd_deployed": 102774.4,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2039.2600599913603,
+        "rank": 26,
+        "block_time": 1782091744
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 9669.34669267792,
+        "rank": 32,
+        "block_time": 1782107811
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 7274.272285628162,
+        "rank": 88,
+        "block_time": 1782173171
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 7696.94004500214,
+        "rank": 7,
+        "block_time": 1782216404
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 24082.77367819654,
+        "rank": 24,
+        "block_time": 1782277251
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 39042.131460198565,
+        "rank": 35,
+        "block_time": 1782310310
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 12969.679077056,
+        "rank": 143,
+        "block_time": 1782369773
+      }
+    ]
+  },
+  {
+    "wallet": "HJfdHLZBP3HYLEoez84pkfBfXWsKEaTBW2xTrm54wbid",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 15.1,
+    "total_usd_deployed": 175753.55,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 2603.98845253984,
+        "rank": 29,
+        "block_time": 1782091745
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 18868.190830058884,
+        "rank": 3,
+        "block_time": 1782107772
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 19624.37590493424,
+        "rank": 38,
+        "block_time": 1782173086
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 16614.9898028541,
+        "rank": 21,
+        "block_time": 1782216410
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 50338.77906851567,
+        "rank": 7,
+        "block_time": 1782277223
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 36416.77855583632,
+        "rank": 3,
+        "block_time": 1782310278
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 31286.45099136512,
+        "rank": 5,
+        "block_time": 1782369557
+      }
+    ]
+  },
+  {
+    "wallet": "8P7FMLxrVTCExVAZQ2qdGKu9RSZmHDXhL7zPwWVHkp8p",
+    "score": 21.0,
+    "tokens_early_count": 7,
+    "avg_rank": 23.7,
+    "total_usd_deployed": 191607.1,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "FRWzU2pPTbQ9QivB8w6fsvqaw4hCGZUi3JQY1CptjTnK",
+        "amount_usd": 678.2568159478401,
+        "rank": 35,
+        "block_time": 1782091751
+      },
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 17450.22749971456,
+        "rank": 54,
+        "block_time": 1782107830
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 15307.10147233072,
+        "rank": 50,
+        "block_time": 1782173105
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 22781.407904644835,
+        "rank": 3,
+        "block_time": 1782216400
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 52287.59460635561,
+        "rank": 9,
+        "block_time": 1782277224
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 28425.302110712477,
+        "rank": 5,
+        "block_time": 1782310278
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 54677.213569088955,
+        "rank": 10,
+        "block_time": 1782369562
+      }
+    ]
+  },
+  {
+    "wallet": "2tgUbS9UMoQD6GkDZBiqKYCURnGrSb6ocYwRABrSJUvY",
+    "score": 18.0,
+    "tokens_early_count": 6,
+    "avg_rank": 14.0,
+    "total_usd_deployed": 315.2,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "akFbfXvZj8Jg9Q8yszJ9ynCAq5qtRcQKTjJkACogomo",
+        "amount_usd": 80.425819658664,
+        "rank": 6,
+        "block_time": 1781289000
+      },
+      {
+        "mint": "uQr8qR4FoPp7aS3JcEJnJiWbm4G9ojxFsW9gD2vpump",
+        "amount_usd": 31.064492207212798,
+        "rank": 18,
+        "block_time": 1781308547
+      },
+      {
+        "mint": "8bLAwkQr6iKiCnD2Ldaka3seNW9RHDpi6k7Zn9bkamwp",
+        "amount_usd": 69.15490896528,
+        "rank": 5,
+        "block_time": 1783435670
+      },
+      {
+        "mint": "FgddJNwVBQq8j3L53SJnwXVT3Q5UmqZenGRJvZnuTb6F",
+        "amount_usd": 56.94970737618,
+        "rank": 3,
+        "block_time": 1780268780
+      },
+      {
+        "mint": "BxihZJMeYqjVVaPoE21Hzzk4TiAaPBAgXPyBCTWapump",
+        "amount_usd": 30.761310550050002,
+        "rank": 20,
+        "block_time": 1780276797
+      },
+      {
+        "mint": "3aSWU5BQ8CwTSkQPrp6seeukjcJ8EYXGTUZJhdxmpump",
+        "amount_usd": 46.84522001354,
+        "rank": 32,
+        "block_time": 1780407660
+      }
+    ]
+  },
+  {
+    "wallet": "BwqAnizvi5cMijog92Hv4nsKJ469xL2o48gp55bic6DR",
+    "score": 18.0,
+    "tokens_early_count": 6,
+    "avg_rank": 24.7,
+    "total_usd_deployed": 193941.74,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "2oZw5HPVVupu2gDJSF7gPJJuHQ3M66Gat5mE9RNtUS7t",
+        "amount_usd": 10064.94135251408,
+        "rank": 2,
+        "block_time": 1782107771
+      },
+      {
+        "mint": "5uczasgDQziWd9tcjSDYtLtfgVY3DTd2VzYDywxskJFW",
+        "amount_usd": 12790.437658786883,
+        "rank": 8,
+        "block_time": 1782173061
+      },
+      {
+        "mint": "BKWBYr4qdYDJxrrbkTBxWbHQ4U7AhrWhnVASnGNZrtZt",
+        "amount_usd": 22849.410707459723,
+        "rank": 62,
+        "block_time": 1782216461
+      },
+      {
+        "mint": "2QijJBHPtjUTXn2TU3cQJ716h4yq8RPxz2Sh1J1hjCM6",
+        "amount_usd": 41464.81256033602,
+        "rank": 4,
+        "block_time": 1782277221
+      },
+      {
+        "mint": "85iVKdKVV41MKYWe74xzxxjiUvFV4gjriMPosjMRLedM",
+        "amount_usd": 57335.238513013916,
+        "rank": 36,
+        "block_time": 1782310311
+      },
+      {
+        "mint": "AzsuMSKXpRXjckAaKgRmE7XRr2oCs71BACHL5p6G4cdY",
+        "amount_usd": 49436.901486589435,
+        "rank": 36,
+        "block_time": 1782369590
+      }
+    ]
+  },
+  {
+    "wallet": "DR1fRprCszWiToXJJ5oSiyrT6vqQJE8RWMmdCxuh6Thu",
+    "score": 15.0,
+    "tokens_early_count": 5,
+    "avg_rank": 22.6,
+    "total_usd_deployed": 242675.01,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "3MCU6BuFe6ZrHtnhUcmZVZrZEPpbBnMmJmWyBJFzGWtD",
+        "amount_usd": 18698.949927611986,
+        "rank": 23,
+        "block_time": 1781732453
+      },
+      {
+        "mint": "5TnwAEmj52wwDCBzTUwiyoSiBBap6PCHXQxK3J4z4Ssp",
+        "amount_usd": 51534.99992838141,
+        "rank": 39,
+        "block_time": 1781928539
+      },
+      {
+        "mint": "6tEakZGokxHMFRBUQtBZwkup51zP7bs2naPTrtg9G3Wu",
+        "amount_usd": 28277.4138219844,
+        "rank": 1,
+        "block_time": 1781965173
+      },
+      {
+        "mint": "BE57kcg2aD887Z81722cLnUpBKNs2BNEAJ21rBc1d3Ti",
+        "amount_usd": 73602.01380776202,
+        "rank": 15,
+        "block_time": 1781987705
+      },
+      {
+        "mint": "4EpH7VUiouhL5UsjYLtmeZcTACFMLhG1eVkgQoprtCFH",
+        "amount_usd": 70561.62781300841,
+        "rank": 35,
+        "block_time": 1782013186
+      }
+    ]
+  },
+  {
+    "wallet": "72nn7t83dDFAWUevt7MDLzHJ8aTDxNy1vXuBS8fYrjFd",
+    "score": 15.0,
+    "tokens_early_count": 5,
+    "avg_rank": 17.2,
+    "total_usd_deployed": 233619.89,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "3MCU6BuFe6ZrHtnhUcmZVZrZEPpbBnMmJmWyBJFzGWtD",
+        "amount_usd": 21617.2439046926,
+        "rank": 32,
+        "block_time": 1781732466
+      },
+      {
+        "mint": "5TnwAEmj52wwDCBzTUwiyoSiBBap6PCHXQxK3J4z4Ssp",
+        "amount_usd": 38609.132576691096,
+        "rank": 3,
+        "block_time": 1781928512
+      },
+      {
+        "mint": "6tEakZGokxHMFRBUQtBZwkup51zP7bs2naPTrtg9G3Wu",
+        "amount_usd": 45333.560179955006,
+        "rank": 30,
+        "block_time": 1781965204
+      },
+      {
+        "mint": "BE57kcg2aD887Z81722cLnUpBKNs2BNEAJ21rBc1d3Ti",
+        "amount_usd": 55353.71233157659,
+        "rank": 11,
+        "block_time": 1781987701
+      },
+      {
+        "mint": "4EpH7VUiouhL5UsjYLtmeZcTACFMLhG1eVkgQoprtCFH",
+        "amount_usd": 72706.24024111002,
+        "rank": 10,
+        "block_time": 1782013172
+      }
+    ]
+  },
+  {
+    "wallet": "DAi9aCg4dyDUbFSo4NZFrigUAYYALBZANJoN88PezHSa",
+    "score": 15.0,
+    "tokens_early_count": 5,
+    "avg_rank": 28.2,
+    "total_usd_deployed": 249602.46,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "3MCU6BuFe6ZrHtnhUcmZVZrZEPpbBnMmJmWyBJFzGWtD",
+        "amount_usd": 21279.741192149868,
+        "rank": 33,
+        "block_time": 1781732471
+      },
+      {
+        "mint": "5TnwAEmj52wwDCBzTUwiyoSiBBap6PCHXQxK3J4z4Ssp",
+        "amount_usd": 52596.8673438282,
+        "rank": 36,
+        "block_time": 1781928535
+      },
+      {
+        "mint": "6tEakZGokxHMFRBUQtBZwkup51zP7bs2naPTrtg9G3Wu",
+        "amount_usd": 62588.49641666541,
+        "rank": 4,
+        "block_time": 1781965175
+      },
+      {
+        "mint": "BE57kcg2aD887Z81722cLnUpBKNs2BNEAJ21rBc1d3Ti",
+        "amount_usd": 40434.07177701,
+        "rank": 54,
+        "block_time": 1781987764
+      },
+      {
+        "mint": "4EpH7VUiouhL5UsjYLtmeZcTACFMLhG1eVkgQoprtCFH",
+        "amount_usd": 72703.2855037532,
+        "rank": 14,
+        "block_time": 1782013176
+      }
+    ]
+  },
+  {
+    "wallet": "F6ZBkwPYodmKYrp8Zi1KdAwpDbgjX2P5Ku1AzgdLqVWT",
+    "score": 15.0,
+    "tokens_early_count": 5,
+    "avg_rank": 30.2,
+    "total_usd_deployed": 246122.05,
+    "days_since_last_trade": 999,
+    "unique_tokens_traded": 0,
+    "tokens_detail": [
+      {
+        "mint": "3MCU6BuFe6ZrHtnhUcmZVZrZEPpbBnMmJmWyBJFzGWtD",
+        "amount_usd": 19311.584938061686,
+        "rank": 43,
+        "block_time": 1781732485
+      },
+      {
+        "mint": "5TnwAEmj52wwDCBzTUwiyoSiBBap6PCHXQxK3J4z4Ssp",
+        "amount_usd": 97299.71498421478,
+        "rank": 13,
+        "block_time": 1781928518
+      },
+      {
+        "mint": "6tEakZGokxHMFRBUQtBZwkup51zP7bs2naPTrtg9G3Wu",
+        "amount_usd": 21131.7447486722,
+        "rank": 62,
+        "block_time": 1781965241
+      },
+      {
+        "mint": "BE57kcg2aD887Z81722cLnUpBKNs2BNEAJ21rBc1d3Ti",
+        "amount_usd": 37655.54080399159,
+        "rank": 7,
+        "block_time": 1781987696
+      },
+      {
+        "mint": "4EpH7VUiouhL5UsjYLtmeZcTACFMLhG1eVkgQoprtCFH",
+        "amount_usd": 70723.46658906121,
+        "rank": 26,
+        "block_time": 1782013181
       }
     ]
   }

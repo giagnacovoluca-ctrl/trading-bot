@@ -6,7 +6,7 @@ cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
 echo "Inizio step 1"
-python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav
+python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav --provider xtts
 
 echo "Inizio step 2"
 python step2_sfondo.py --audio temp/voiceover.mp3

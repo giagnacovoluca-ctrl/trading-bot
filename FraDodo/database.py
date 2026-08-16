@@ -1,6 +1,8 @@
 import sqlite3
 import threading
 from typing import List, Dict, Any
+import shutil
+import os
 
 DB_PATH = 'fradodo.db'
 
@@ -37,6 +39,8 @@ def init_db():
             status TEXT DEFAULT 'approved',
             screenshot_url TEXT,
             ocr_confidence REAL,
+            api_match_id TEXT UNIQUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(discord_id) REFERENCES players(discord_id)
         )
     ''')
@@ -69,16 +73,6 @@ def init_db():
     
     try:
         cursor.execute("ALTER TABLE players ADD COLUMN contest_points REAL DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass
-        
-    try:
-        cursor.execute("ALTER TABLE matches ADD COLUMN api_match_id TEXT UNIQUE")
-    except sqlite3.OperationalError:
-        pass
-        
-    try:
-        cursor.execute("ALTER TABLE matches ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     except sqlite3.OperationalError:
         pass
         
@@ -117,6 +111,63 @@ def edit_player(discord_id: str, points: float, contest_points: float):
     cursor.execute('UPDATE players SET points = ?, contest_points = ? WHERE discord_id = ?', (int(points), float(contest_points), discord_id))
     conn.commit()
     conn.close()
+
+def edit_player_name(discord_id: str, new_name: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE players SET activision_id = ? WHERE discord_id = ?', (new_name, discord_id))
+    conn.commit()
+    conn.close()
+
+def rollback_merge():
+    if os.path.exists('backups/fradodo_pre_merge.db'):
+        shutil.copy2('backups/fradodo_pre_merge.db', DB_PATH)
+        return True
+    return False
+
+def merge_players(source_discord_id: str, target_discord_id: str):
+    if source_discord_id == target_discord_id:
+        return
+        
+    os.makedirs('backups', exist_ok=True)
+    shutil.copy2(DB_PATH, 'backups/fradodo_pre_merge.db')
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Get source stats
+    cursor.execute('SELECT points, matches_played, total_kills, total_damage, wins, contest_points FROM players WHERE discord_id = ?', (source_discord_id,))
+    src = cursor.fetchone()
+    if not src:
+        conn.close()
+        return
+        
+    src_points = src['points'] or 0
+    src_matches = src['matches_played'] or 0
+    src_kills = src['total_kills'] or 0
+    src_damage = src['total_damage'] or 0
+    src_wins = src['wins'] or 0
+    src_contest = src['contest_points'] or 0
+    
+    # Update target
+    cursor.execute('''
+        UPDATE players 
+        SET points = points + ?, matches_played = matches_played + ?, 
+            total_kills = total_kills + ?, total_damage = total_damage + ?, 
+            wins = wins + ?, contest_points = contest_points + ?
+        WHERE discord_id = ?
+    ''', (src_points, src_matches, src_kills, src_damage, src_wins, src_contest, target_discord_id))
+    
+    # Move matches and highlights
+    cursor.execute('UPDATE matches SET discord_id = ? WHERE discord_id = ?', (target_discord_id, source_discord_id))
+    cursor.execute('UPDATE highlights SET discord_id = ? WHERE discord_id = ?', (target_discord_id, source_discord_id))
+    
+    # Delete source
+    cursor.execute('DELETE FROM players WHERE discord_id = ?', (source_discord_id,))
+    
+    conn.commit()
+    conn.close()
+
+
 
 def match_exists(api_match_id: str) -> bool:
     if not api_match_id:
@@ -364,7 +415,7 @@ def recalculate_player_stats(discord_id: str):
 def get_user_match_count(discord_id: str) -> int:
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) as count FROM matches WHERE discord_id = ? AND date(created_at, 'localtime') = date('now', 'localtime')", (discord_id,))
+    cursor.execute("SELECT COUNT(*) as count FROM matches WHERE discord_id = ? AND date(created_at, 'localtime') = date('now', 'localtime') AND status != 'rejected'", (discord_id,))
     count = cursor.fetchone()['count']
     conn.close()
     return count
@@ -514,4 +565,20 @@ def get_hall_of_fame():
         
     conn.close()
     return hof
+
+def get_contest_stats():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(discord_id) as total_players FROM players")
+    total_players = c.fetchone()['total_players']
+    
+    c.execute("SELECT COUNT(id) as total_matches, SUM(kills) as total_kills, SUM(damage) as total_damage FROM matches WHERE status='approved'")
+    row = c.fetchone()
+    total_matches = row['total_matches'] or 0
+    total_kills = row['total_kills'] or 0
+    total_damage = row['total_damage'] or 0
+    
+    conn.close()
+    return total_players, total_matches, total_kills, total_damage
+
 

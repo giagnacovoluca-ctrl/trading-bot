@@ -1,74 +1,38 @@
 [
   {
-    "symbol": "PIZZA",
-    "system": "defi",
-    "chain": "base",
-    "pnl_eur": 17.22,
-    "invested_eur": 100.0,
-    "pct": 17.22,
-    "_queued_ts": 1785920768.407581
-  },
-  {
-    "symbol": "QUID",
+    "symbol": "병신",
     "system": "pump_grad",
     "chain": "base",
-    "pnl_eur": 43.69,
+    "pnl_eur": 45.59,
     "invested_eur": 100.0,
-    "pct": 43.69,
-    "_queued_ts": 1785920963.830184
+    "pct": 45.59,
+    "_queued_ts": 1786866010.300787
   },
   {
-    "symbol": "DRC",
+    "symbol": "DOS",
     "system": "v3",
     "chain": "base",
-    "pnl_eur": 35.0,
-    "invested_eur": 70.0,
-    "pct": 50.0,
-    "_queued_ts": 1785920966.8471596
+    "pnl_eur": 15.88,
+    "invested_eur": 100.0,
+    "pct": 15.879999999999999,
+    "_queued_ts": 1786881854.992246
   },
   {
-    "symbol": "kAI",
+    "symbol": "PEPETO",
+    "system": "v3",
+    "chain": "base",
+    "pnl_eur": 17.68,
+    "invested_eur": 100.0,
+    "pct": 17.68,
+    "_queued_ts": 1786885081.552096
+  },
+  {
+    "symbol": "plumber",
     "system": "pump_grad",
     "chain": "base",
-    "pnl_eur": 44.16,
+    "pnl_eur": 40.29,
     "invested_eur": 100.0,
-    "pct": 44.16,
-    "_queued_ts": 1785920972.8858285
-  },
-  {
-    "symbol": "Marcus",
-    "system": "pump_grad",
-    "chain": "base",
-    "pnl_eur": 40.82,
-    "invested_eur": 100.0,
-    "pct": 40.82,
-    "_queued_ts": 1785920975.8298335
-  },
-  {
-    "symbol": "PUMP",
-    "system": "midcap",
-    "chain": "cex_spot",
-    "pnl_eur": 14.38,
-    "invested_eur": 100.0,
-    "pct": 14.38,
-    "_queued_ts": 1785920978.838521
-  },
-  {
-    "symbol": "Elena",
-    "system": "pump_grad",
-    "chain": "base",
-    "pnl_eur": 46.43,
-    "invested_eur": 100.0,
-    "pct": 46.43,
-    "_queued_ts": 1785920981.885103
-  },
-  {
-    "symbol": "CASHCAT",
-    "system": "pump_grad",
-    "chain": "solana",
-    "pnl_eur": 50.0,
-    "invested_eur": 100.0,
-    "pct": 50.0,
-    "_queued_ts": 1785920997.0848832
+    "pct": 40.29,
+    "_queued_ts": 1786885571.8964834
   }
 ]

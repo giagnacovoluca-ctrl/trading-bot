@@ -51,10 +51,11 @@ async def web_upload(request: Request, discord_id: str = Form(...), screenshot: 
     if database.get_user_match_count(discord_id) >= 5:
         return RedirectResponse(url="/?error=Hai+gia+inserito+il+limite+massimo+di+5+match+al+giorno!", status_code=status.HTTP_303_SEE_OTHER)
         
-    safe_filename = screenshot.filename.replace(" ", "_")
+    import time
+    safe_filename = f"{int(time.time())}_{screenshot.filename.replace(' ', '_')}"
     file_path = f"web/static/uploads/{safe_filename}"
     if os.path.exists(file_path):
-        return RedirectResponse(url="/?error=screen+gia+caricsto", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/?error=screen+gia+caricato", status_code=status.HTTP_303_SEE_OTHER)
         
     img_bytes = await screenshot.read()
     try:
@@ -165,11 +166,12 @@ async def web_upload_contest(request: Request, player_name: str = Form(...), kil
         
     import shutil
     os.makedirs("web/static/uploads", exist_ok=True)
-    safe_filename = screenshot.filename.replace(" ", "_")
+    import time
+    safe_filename = f"{int(time.time())}_{screenshot.filename.replace(' ', '_')}"
     file_path = f"web/static/uploads/{safe_filename}"
     
     if os.path.exists(file_path):
-        return RedirectResponse(url="/?error=screen+gia+caricsto", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/?error=screen+gia+caricato", status_code=status.HTTP_303_SEE_OTHER)
     
     img_bytes = await screenshot.read()
     with open(file_path, "wb") as buffer:
@@ -195,6 +197,15 @@ async def api_edit_player(request: Request, discord_id: str = Form(...), passwor
     database.edit_player(discord_id, points, contest_points)
     return RedirectResponse(url="/?success=Giocatore+modificato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
 
+@app.post("/api/edit_player_name")
+async def api_edit_player_name(request: Request, discord_id: str = Form(...), new_name: str = Form(...), password: str = Form(...)):
+    if password != ADMIN_PASSWORD:
+        return RedirectResponse(url="/?error=Password+errata", status_code=status.HTTP_303_SEE_OTHER)
+        
+    database.edit_player_name(discord_id, new_name)
+    return RedirectResponse(url="/?success=Nome+giocatore+modificato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
+
+
 @app.get("/api/player_matches/{discord_id}")
 async def api_player_matches(discord_id: str):
     matches = database.get_all_player_matches(discord_id)
@@ -210,9 +221,31 @@ async def api_edit_match(request: Request, discord_id: str = Form(...), match_id
     return RedirectResponse(url="/?success=Match+modificato+con+successo", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel(request: Request):
+async def admin_panel(request: Request, error: str = None, success: str = None):
     pending = database.get_pending_reviews()
-    return templates.TemplateResponse(request=request, name="admin.html", context={"pending": pending})
+    players = database.get_all_players()
+    return templates.TemplateResponse(request=request, name="admin.html", context={"pending": pending, "players": players, "error": error, "success": success})
+
+@app.post("/admin/merge")
+async def admin_merge(request: Request, source_discord_id: str = Form(...), target_discord_id: str = Form(...), password: str = Form(...)):
+    if password != ADMIN_PASSWORD:
+        return RedirectResponse(url="/admin?error=Password errata", status_code=status.HTTP_303_SEE_OTHER)
+    if source_discord_id == target_discord_id:
+        return RedirectResponse(url="/admin?error=Non puoi unire un giocatore con se stesso", status_code=status.HTTP_303_SEE_OTHER)
+        
+    database.merge_players(source_discord_id, target_discord_id)
+    return RedirectResponse(url="/admin?success=Giocatori uniti con successo! Se hai fatto un errore, usa il tasto Rollback sotto.", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/admin/rollback_merge")
+async def admin_rollback_merge(request: Request, password: str = Form(...)):
+    if password != ADMIN_PASSWORD:
+        return RedirectResponse(url="/admin?error=Password errata", status_code=status.HTTP_303_SEE_OTHER)
+        
+    success = database.rollback_merge()
+    if success:
+        return RedirectResponse(url="/admin?success=Rollback completato con successo. Il database è tornato a prima dell'ultima unione.", status_code=status.HTTP_303_SEE_OTHER)
+    else:
+        return RedirectResponse(url="/admin?error=Nessun backup trovato. Impossibile fare rollback.", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/admin/resolve")
 async def admin_resolve(

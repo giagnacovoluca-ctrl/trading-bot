@@ -85,7 +85,7 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
           2. VALORE sensato, originale e concreto (spiega il "perché" in modo logico e affascinante).
           3. CTA finale organica: "{ebook['pitch']} Link in bio!".
           
-        Inoltre, PRIMA di rispondere con il testo, usa il tuo tool per generare 3 IMMAGINI 9:16 diverse e altamente cinematografiche per il background. DOPO averle generate, USA IL TOOL run_command per spostarle nella cartella '/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/' con nomi come promo_bg_1.jpg, ecc.
+        Inoltre, PRIMA di rispondere con il testo, usa il tuo tool per generare 3 IMMAGINI 9:16 diverse e altamente cinematografiche per il background. DOPO averle generate, USA IL TOOL run_command per spostarle nella cartella '/home/ubuntu/GIT/video_generator/assets/backgrounds/' con nomi come promo_bg_1.jpg, ecc.
         SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
         """
     elif mode == "virale":
@@ -117,7 +117,7 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
           2. STORIA/SPIEGAZIONE sensata e brillante che incolla lo spettatore allo schermo.
           3. ENGAGEMENT potente: fai una domanda divisiva o profonda e chiedi la loro opinione nei commenti.
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
+        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
         SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
         """
     else: # mode == "bastian"
@@ -149,7 +149,7 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
           2. STORIA/SPIEGAZIONE sensata e brillante che incolla lo spettatore allo schermo.
           3. ENGAGEMENT potente: fai una domanda divisiva o profonda e chiedi la loro opinione nei commenti.
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/magic/Scrivania/code/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
+        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
         SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
         """
 

@@ -31219,5 +31219,1405 @@
     "decimals": 6,
     "real_pnl_usdc": -99.965225,
     "close_ts": "2026-08-05T09:12:24.387632"
+  },
+  "SISYPUSS_20260805_133353": {
+    "signal_id": "SISYPUSS_20260805_133353",
+    "token_symbol": "SISYPUSS",
+    "token_address": "8HykgZKXNpMhfxQtDPb7AayRKJonZaQ8Mw1Xo3xmpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 211739.766092,
+    "usdc_spent": 100.0,
+    "usdc_received": 89.283013,
+    "status": "closed",
+    "entry_ts": "2026-08-05T13:54:18.087776",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -10.716987000000003,
+    "close_ts": "2026-08-05T13:56:45.712854"
+  },
+  "YOTS_20260805_141431": {
+    "signal_id": "YOTS_20260805_141431",
+    "token_symbol": "YOTS",
+    "token_address": "3f9LEP4RNM1yq5VnCD1LYMvq7FZis5tfGqyZMsiRpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 54339.580533,
+    "usdc_spent": 100.0,
+    "usdc_received": 127.54898800000001,
+    "status": "closed",
+    "entry_ts": "2026-08-05T14:15:16.326335",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 27.54898800000001,
+    "close_ts": "2026-08-05T14:38:12.448077"
+  },
+  "Chiikawa_20260805_195827": {
+    "signal_id": "Chiikawa_20260805_195827",
+    "token_symbol": "Chiikawa",
+    "token_address": "2c1KjiyQow66QfsnCtoyuqfo3AuxgpBMEoAq5oiiXqdu",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 45846.396719,
+    "usdc_spent": 100.0,
+    "usdc_received": 95.140721,
+    "status": "closed",
+    "entry_ts": "2026-08-05T19:58:33.365276",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -4.859279000000001,
+    "close_ts": "2026-08-05T20:35:16.684269"
+  },
+  "Tardimals_20260806_103524": {
+    "signal_id": "Tardimals_20260806_103524",
+    "token_symbol": "Tardimals",
+    "token_address": "77rUTY78vqn1MAaWMFW2dFQ9fHNr2WubS8e6P3nhpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 643025.901417,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.327074,
+    "status": "closed",
+    "entry_ts": "2026-08-06T10:35:45.598117",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -11.672926000000004,
+    "close_ts": "2026-08-06T10:39:43.075782"
+  },
+  "WW_20260806_211630": {
+    "signal_id": "WW_20260806_211630",
+    "token_symbol": "WW",
+    "token_address": "14doqPq3fLzx6kB4JRRnCMDPPLeGmGXd6QY5ZGXqpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 720331.496133,
+    "usdc_spent": 100.0,
+    "usdc_received": 97.749015,
+    "status": "closed",
+    "entry_ts": "2026-08-06T21:16:49.225696",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -2.250985,
+    "close_ts": "2026-08-06T21:37:49.355166"
+  },
+  "TINYTANK_20260807_051247": {
+    "signal_id": "TINYTANK_20260807_051247",
+    "token_symbol": "TINYTANK",
+    "token_address": "AA3VLt3muGJiXedDaMnkcst3pfjrg1JBxgHVSdSbpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 253059.416503,
+    "usdc_spent": 100.0,
+    "usdc_received": 118.73616799999999,
+    "status": "closed",
+    "entry_ts": "2026-08-07T05:13:14.779181",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 18.736167999999992,
+    "close_ts": "2026-08-07T05:29:15.668589"
+  },
+  "chrome_20260807_094426": {
+    "signal_id": "chrome_20260807_094426",
+    "token_symbol": "chrome",
+    "token_address": "68GYUJW31GSJwLz44HGGQYaGXpG5iiWwYGiWxZ6apump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 559430.153128,
+    "usdc_spent": 100.0,
+    "usdc_received": 86.400994,
+    "status": "closed",
+    "entry_ts": "2026-08-07T09:44:44.593702",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -13.599006000000003,
+    "close_ts": "2026-08-07T09:48:29.760385"
+  },
+  "Tanisha_20260807_201023": {
+    "signal_id": "Tanisha_20260807_201023",
+    "token_symbol": "Tanisha",
+    "token_address": "7U3io2T7S9ce2hpyLCejHBDQV5Q4UEDAPeshxSm2pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 338952.927233,
+    "usdc_spent": 100.0,
+    "usdc_received": 86.152749,
+    "status": "closed",
+    "entry_ts": "2026-08-07T20:10:44.959501",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -13.847251,
+    "close_ts": "2026-08-07T20:28:51.791236"
+  },
+  "HTZ_20260807_201637": {
+    "signal_id": "HTZ_20260807_201637",
+    "token_symbol": "HTZ",
+    "token_address": "EnA53NmMzfsAs7p44dATdvT55HHUACxpEbC9AKY3pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 581331.040789,
+    "usdc_spent": 100.0,
+    "usdc_received": 84.178504,
+    "status": "closed",
+    "entry_ts": "2026-08-07T20:16:58.839683",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -15.821495999999996,
+    "close_ts": "2026-08-07T20:43:11.514608"
+  },
+  "Frohorse_20260808_074358": {
+    "signal_id": "Frohorse_20260808_074358",
+    "token_symbol": "Frohorse",
+    "token_address": "9p84TE2ZwH8PXU7QMvj8ieK3TWodZPdCjpE8Q2uMpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 181603.914161,
+    "usdc_spent": 100.0,
+    "usdc_received": 110.473958,
+    "status": "closed",
+    "entry_ts": "2026-08-08T07:44:19.409353",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 10.473957999999996,
+    "close_ts": "2026-08-08T08:58:37.930070"
+  },
+  "Prometheus_20260808_111928": {
+    "signal_id": "Prometheus_20260808_111928",
+    "token_symbol": "Prometheus",
+    "token_address": "63zfjPfH4uaX3TQZoD35WqUrqiuCQQWndMTxQHsJpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 860619.875245,
+    "usdc_spent": 100.0,
+    "usdc_received": 111.12622400000001,
+    "status": "closed",
+    "entry_ts": "2026-08-08T11:19:46.522361",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 11.126224000000008,
+    "close_ts": "2026-08-08T11:25:13.768681"
+  },
+  "CATI_20260809_000441": {
+    "signal_id": "CATI_20260809_000441",
+    "token_symbol": "CATI",
+    "token_address": "Ce2gx9KGXJ6C9Mp5b5x1sn9Mg87JwEbrQby4Zqo3pump",
+    "system": "v3_large",
+    "tokens_held": 0.0,
+    "tokens_bought": 4453.222109,
+    "usdc_spent": 100.0,
+    "usdc_received": 98.950908,
+    "status": "closed",
+    "entry_ts": "2026-08-09T00:04:54.377368",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -1.0490920000000017,
+    "close_ts": "2026-08-09T00:30:14.222603"
+  },
+  "LIQ_tnos_20260809_035959": {
+    "signal_id": "LIQ_tnos_20260809_035959",
+    "token_symbol": "tnos",
+    "token_address": "odW2VErsd5iufeuetuV4RhUBz8MPGBvX6Jyn8Dopump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 37207.037966,
+    "usdc_spent": 100.0,
+    "usdc_received": 103.161761,
+    "status": "closed",
+    "entry_ts": "2026-08-09T04:00:13.118987",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 3.1617609999999985,
+    "close_ts": "2026-08-09T04:45:36.825827"
+  },
+  "PUMPGUY_20260809_084854": {
+    "signal_id": "PUMPGUY_20260809_084854",
+    "token_symbol": "PUMPGUY",
+    "token_address": "tpg7sWJPSKijHqPqtpHY2BWBEUq1RwGxmJpD8Tppump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 432365.06162,
+    "usdc_spent": 100.0,
+    "usdc_received": 128.887028,
+    "status": "closed",
+    "entry_ts": "2026-08-09T08:49:15.446280",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 28.887027999999987,
+    "close_ts": "2026-08-09T08:56:56.090925"
+  },
+  "MCX_20260809_141852": {
+    "signal_id": "MCX_20260809_141852",
+    "token_symbol": "MCX",
+    "token_address": "VjKdjkJPYkkGenggiASvcWJjSbKdWRBJGR3r9qWpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 1376.755233,
+    "usdc_spent": 100.0,
+    "usdc_received": 102.759173,
+    "status": "closed",
+    "entry_ts": "2026-08-09T14:19:20.227690",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 2.759173000000004,
+    "close_ts": "2026-08-09T15:04:11.964715"
+  },
+  "SAOF_20260809_145506": {
+    "signal_id": "SAOF_20260809_145506",
+    "token_symbol": "SAOF",
+    "token_address": "vbCjSScVVxSxTZgQWN2o4xknfwUdqTzZpVZ6D2Dpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 1472.777106,
+    "usdc_spent": 100.0,
+    "usdc_received": 0.002013,
+    "status": "closed",
+    "entry_ts": "2026-08-09T14:55:34.121702",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -99.997987,
+    "close_ts": "2026-08-09T15:29:04.489759"
+  },
+  "TERPBOT_20260809_150519": {
+    "signal_id": "TERPBOT_20260809_150519",
+    "token_symbol": "TERPBOT",
+    "token_address": "CwoWBvAVExTXAm581PY4tyS6uMdCoVHQvLbYpL5pump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 264193.851979,
+    "usdc_spent": 100.0,
+    "usdc_received": 97.9244,
+    "status": "closed",
+    "entry_ts": "2026-08-09T15:05:37.303105",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -2.0755999999999943,
+    "close_ts": "2026-08-09T15:50:29.200055"
+  },
+  "Doom_20260809_161410": {
+    "signal_id": "Doom_20260809_161410",
+    "token_symbol": "Doom",
+    "token_address": "Gymbmn9wwMKe4NnmVceyyfpncp9arbwPfSdBsyY9pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 174750.319544,
+    "usdc_spent": 100.0,
+    "usdc_received": 90.921784,
+    "status": "closed",
+    "entry_ts": "2026-08-09T16:14:17.828845",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -9.078215999999998,
+    "close_ts": "2026-08-09T16:59:08.387982"
+  },
+  "TOAD_20260809_162708": {
+    "signal_id": "TOAD_20260809_162708",
+    "token_symbol": "TOAD",
+    "token_address": "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 9915.684684,
+    "usdc_spent": 100.0,
+    "usdc_received": 94.140549,
+    "status": "closed",
+    "entry_ts": "2026-08-09T16:27:30.137815",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -5.859451000000007,
+    "close_ts": "2026-08-09T16:50:55.395791"
+  },
+  "TOAD_20260809_232646": {
+    "signal_id": "TOAD_20260809_232646",
+    "token_symbol": "TOAD",
+    "token_address": "FNsih1RmDBJpzeTZ8M3puvo3ZRmjNzu9SXGj4Zmpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 16472.352997,
+    "usdc_spent": 100.0,
+    "usdc_received": 107.026349,
+    "status": "closed",
+    "entry_ts": "2026-08-09T23:27:01.020516",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 7.026348999999996,
+    "close_ts": "2026-08-10T00:12:08.711434"
+  },
+  "PATE_20260810_004107": {
+    "signal_id": "PATE_20260810_004107",
+    "token_symbol": "PATE",
+    "token_address": "wtZRZMhSoGV4h8QwbsRjB2RQw9Z9fs6F1yzw33Jpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 3114.627975,
+    "usdc_spent": 100.0,
+    "usdc_received": 114.21727,
+    "status": "closed",
+    "entry_ts": "2026-08-10T00:41:25.482918",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 14.21727,
+    "close_ts": "2026-08-10T01:26:29.016947"
+  },
+  "UOTF_20260810_010949": {
+    "signal_id": "UOTF_20260810_010949",
+    "token_symbol": "UOTF",
+    "token_address": "A5xZVmw54zWgKXcs8tDk18WNovwirD8cahyHLrB5pump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 2578.8582,
+    "usdc_spent": 100.0,
+    "usdc_received": 14.915858,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:10:06.496813",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -85.084142,
+    "close_ts": "2026-08-10T01:30:21.860854"
+  },
+  "MCX_20260810_012052": {
+    "signal_id": "MCX_20260810_012052",
+    "token_symbol": "MCX",
+    "token_address": "iWsHrcKeZMRbskVyi1Kf9ncXiooFPzMcqwRcTT6pump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 1703.29614,
+    "usdc_spent": 100.0,
+    "usdc_received": 113.714418,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:21:04.547416",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 13.714417999999995,
+    "close_ts": "2026-08-10T02:06:07.686101"
+  },
+  "TNOS_20260810_012146": {
+    "signal_id": "TNOS_20260810_012146",
+    "token_symbol": "TNOS",
+    "token_address": "7BuFkqh7sqmuZXne1t79QbiKcK2gcBfdHAS57mPLpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 3694.721738,
+    "usdc_spent": 100.0,
+    "usdc_received": 107.519583,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:22:07.824175",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 7.519582999999997,
+    "close_ts": "2026-08-10T02:07:00.898740"
+  },
+  "Sheep_20260810_012853": {
+    "signal_id": "Sheep_20260810_012853",
+    "token_symbol": "Sheep",
+    "token_address": "Dz2iVSLXFp7dXowD1nybWyCXuUcpV7cBZu68YPV5pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 518939.408923,
+    "usdc_spent": 100.0,
+    "usdc_received": 111.82851199999999,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:29:11.912786",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 11.82851199999999,
+    "close_ts": "2026-08-10T01:46:19.973524"
+  },
+  "OGGLO_20260810_013513": {
+    "signal_id": "OGGLO_20260810_013513",
+    "token_symbol": "OGGLO",
+    "token_address": "5oNb2ASigkL96KZjALgE8spxnmhLZhHPFmBgjPLYpump",
+    "system": "pump_grad",
+    "tokens_held": 0.0,
+    "tokens_bought": 346780.889862,
+    "usdc_spent": 100.0,
+    "usdc_received": 1.345888,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:35:36.932187",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -98.654112,
+    "close_ts": "2026-08-10T01:56:58.245049"
+  },
+  "PUMPGUY_20260810_014311": {
+    "signal_id": "PUMPGUY_20260810_014311",
+    "token_symbol": "PUMPGUY",
+    "token_address": "tpg7sWJPSKijHqPqtpHY2BWBEUq1RwGxmJpD8Tppump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 251713.5359,
+    "usdc_spent": 100.0,
+    "usdc_received": 97.365067,
+    "status": "closed",
+    "entry_ts": "2026-08-10T01:43:36.300275",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -2.6349330000000037,
+    "close_ts": "2026-08-10T01:43:57.671443"
+  },
+  "Shitcoin_20260810_134931": {
+    "signal_id": "Shitcoin_20260810_134931",
+    "token_symbol": "Shitcoin",
+    "token_address": "5kr3KPg6Nhx2cBvunCuEgnUnJzRRz7C56aKNaFMmpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 717731.784594,
+    "usdc_spent": 100.0,
+    "usdc_received": 113.056738,
+    "status": "closed",
+    "entry_ts": "2026-08-10T13:49:38.274632",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 13.056737999999996,
+    "close_ts": "2026-08-10T14:05:20.195700"
+  },
+  "Remus_20260810_161050": {
+    "signal_id": "Remus_20260810_161050",
+    "token_symbol": "Remus",
+    "token_address": "23e4CNuJxvBQ7RjNLc8Bh3yN3pQq6jeiTbyzJGXYPgme",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 62934.286698,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.036701,
+    "status": "closed",
+    "entry_ts": "2026-08-10T16:11:26.215669",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -11.963299000000006,
+    "close_ts": "2026-08-10T16:12:29.625245"
+  },
+  "lickingcat_20260810_194755": {
+    "signal_id": "lickingcat_20260810_194755",
+    "token_symbol": "lickingcat",
+    "token_address": "EjD5Y9NVhXmtEqU7wYvAyZvDWZFQeEuHXFatJmTbpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 122479.79866,
+    "usdc_spent": 100.0,
+    "usdc_received": 86.957533,
+    "status": "closed",
+    "entry_ts": "2026-08-10T19:48:13.527662",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -13.042467000000002,
+    "close_ts": "2026-08-10T19:54:05.444425"
+  },
+  "fomocat_20260811_021056": {
+    "signal_id": "fomocat_20260811_021056",
+    "token_symbol": "fomocat",
+    "token_address": "67xmJC4zGwmiqFBW6d6Fu3o4vkGEHxs9KKixbHuBpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 454741.21687,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.286811,
+    "status": "closed",
+    "entry_ts": "2026-08-11T02:11:09.249949",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.713189,
+    "close_ts": "2026-08-11T02:16:21.838153"
+  },
+  "CHILLGUY_20260811_022527": {
+    "signal_id": "CHILLGUY_20260811_022527",
+    "token_symbol": "CHILLGUY",
+    "token_address": "Df6yfrKC8kZE3KNkrHERKzAetSxbrWeniQfyJY4Jpump",
+    "system": "v3_large",
+    "tokens_held": 0.0,
+    "tokens_bought": 9299.117099,
+    "usdc_spent": 100.0,
+    "usdc_received": 99.425549,
+    "status": "closed",
+    "entry_ts": "2026-08-11T02:25:37.948336",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -0.5744509999999963,
+    "close_ts": "2026-08-11T03:18:34.278997"
+  },
+  "MOLLIE_20260811_082150": {
+    "signal_id": "MOLLIE_20260811_082150",
+    "token_symbol": "MOLLIE",
+    "token_address": "GJPtJfWsHK5jooT2feabr41eTmiutuAmT7zmyirCpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 718884.499336,
+    "usdc_spent": 100.0,
+    "usdc_received": 85.852928,
+    "status": "closed",
+    "entry_ts": "2026-08-11T08:21:58.685306",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -14.147071999999994,
+    "close_ts": "2026-08-11T08:36:03.033653"
+  },
+  "LOBO_20260811_222126": {
+    "signal_id": "LOBO_20260811_222126",
+    "token_symbol": "LOBO",
+    "token_address": "k6BE8rsFShzuQ4t2Q5cfpjCdQFFerfqex8Me7Wupump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 732582.67325,
+    "usdc_spent": 100.0,
+    "usdc_received": 84.1654,
+    "status": "closed",
+    "entry_ts": "2026-08-11T22:21:35.208271",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -15.834599999999995,
+    "close_ts": "2026-08-11T22:55:46.662285"
+  },
+  "MARIO64_20260812_061030": {
+    "signal_id": "MARIO64_20260812_061030",
+    "token_symbol": "MARIO64",
+    "token_address": "CX2v7JSHJQDcNooubzzvZG8TPaDwbaPgfzcXRSWJpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 67957.300715,
+    "usdc_spent": 100.0,
+    "usdc_received": 124.786264,
+    "status": "closed",
+    "entry_ts": "2026-08-12T06:10:41.370467",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 24.786264000000003,
+    "close_ts": "2026-08-12T06:56:04.057184"
+  },
+  "BOT_20260812_073412": {
+    "signal_id": "BOT_20260812_073412",
+    "token_symbol": "BOT",
+    "token_address": "HukaK2eHhbTyiuUwuKMntjPJP4aGdD4VwiExsNmyT8WJ",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 74883.571816,
+    "usdc_spent": 100.0,
+    "usdc_received": 93.125539,
+    "status": "closed",
+    "entry_ts": "2026-08-12T07:34:18.003017",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -6.874460999999997,
+    "close_ts": "2026-08-12T07:57:03.910153"
+  },
+  "Prometheus_20260812_100925": {
+    "signal_id": "Prometheus_20260812_100925",
+    "token_symbol": "Prometheus",
+    "token_address": "63zfjPfH4uaX3TQZoD35WqUrqiuCQQWndMTxQHsJpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 268567.14005,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.681816,
+    "status": "closed",
+    "entry_ts": "2026-08-12T10:09:44.315427",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -11.318184000000002,
+    "close_ts": "2026-08-12T10:22:55.270965"
+  },
+  "Peach64_20260812_101519": {
+    "signal_id": "Peach64_20260812_101519",
+    "token_symbol": "Peach64",
+    "token_address": "EGkqSQDT7MYJNhf17vR2JZn5pc4sbUDeN2gFCP6Ppump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 463660.336594,
+    "usdc_spent": 100.0,
+    "usdc_received": 99.061594,
+    "status": "closed",
+    "entry_ts": "2026-08-12T10:15:48.578485",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -0.9384060000000005,
+    "close_ts": "2026-08-12T10:35:17.677038"
+  },
+  "BOT_20260812_153554": {
+    "signal_id": "BOT_20260812_153554",
+    "token_symbol": "BOT",
+    "token_address": "HukaK2eHhbTyiuUwuKMntjPJP4aGdD4VwiExsNmyT8WJ",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 94846.269284,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.539195,
+    "status": "closed",
+    "entry_ts": "2026-08-12T15:36:04.176488",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -11.460804999999993,
+    "close_ts": "2026-08-12T15:40:10.026841"
+  },
+  "apes_20260812_155403": {
+    "signal_id": "apes_20260812_155403",
+    "token_symbol": "apes",
+    "token_address": "7ZgRjHSnjDqc73mYitJZ4NAAVtdWrTyQEnoXB6Kfpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 608335.078317,
+    "usdc_spent": 100.0,
+    "usdc_received": 113.33394799999999,
+    "status": "closed",
+    "entry_ts": "2026-08-12T15:54:22.323464",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 13.333947999999992,
+    "close_ts": "2026-08-12T16:06:09.729424"
+  },
+  "COGE_20260812_163813": {
+    "signal_id": "COGE_20260812_163813",
+    "token_symbol": "COGE",
+    "token_address": "AvecKFxn8ihToR7gwgAVjfqV56N1rWhN7hv8joXQpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 823089.893492,
+    "usdc_spent": 100.0,
+    "usdc_received": 97.352563,
+    "status": "closed",
+    "entry_ts": "2026-08-12T16:38:26.256983",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -2.6474369999999965,
+    "close_ts": "2026-08-12T16:44:23.110350"
+  },
+  "AVA_20260812_211118": {
+    "signal_id": "AVA_20260812_211118",
+    "token_symbol": "AVA",
+    "token_address": "DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump",
+    "system": "v3_large",
+    "tokens_held": 0.0,
+    "tokens_bought": 8834.925194,
+    "usdc_spent": 100.0,
+    "usdc_received": 95.469063,
+    "status": "closed",
+    "entry_ts": "2026-08-12T21:11:36.556669",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -4.530936999999994,
+    "close_ts": "2026-08-13T03:14:50.443791"
+  },
+  "MOS_20260813_000722": {
+    "signal_id": "MOS_20260813_000722",
+    "token_symbol": "MOS",
+    "token_address": "4ChT49V1iazP2XUGtycGkEsS6pRMqvGfUbqvRC9Z91ZT",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 182990.957021927,
+    "usdc_spent": 100.0,
+    "usdc_received": 100.833337,
+    "status": "closed",
+    "entry_ts": "2026-08-13T00:07:33.235611",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": 0.8333370000000002,
+    "close_ts": "2026-08-13T01:07:57.873390"
+  },
+  "PITCOIN_20260813_013004": {
+    "signal_id": "PITCOIN_20260813_013004",
+    "token_symbol": "PITCOIN",
+    "token_address": "G1iBvjhZ9wpGUZdQcvhRSqjow3x6xetsnmEBBMm1pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 735656.451601,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.02825,
+    "status": "closed",
+    "entry_ts": "2026-08-13T01:30:22.175501",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.97175,
+    "close_ts": "2026-08-13T01:33:11.812201"
+  },
+  "susdog_20260813_075321": {
+    "signal_id": "susdog_20260813_075321",
+    "token_symbol": "susdog",
+    "token_address": "9vYai4xnyLwsw2hVeFQvt7wxtEADRXiaQKF1QA4Lpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 951799.111308,
+    "usdc_spent": 100.0,
+    "usdc_received": 82.860821,
+    "status": "closed",
+    "entry_ts": "2026-08-13T07:53:34.893861",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -17.139179,
+    "close_ts": "2026-08-13T07:54:39.253725"
+  },
+  "MOS_20260813_084907": {
+    "signal_id": "MOS_20260813_084907",
+    "token_symbol": "MOS",
+    "token_address": "4ChT49V1iazP2XUGtycGkEsS6pRMqvGfUbqvRC9Z91ZT",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 202782.24952109,
+    "usdc_spent": 100.0,
+    "usdc_received": 96.363798,
+    "status": "closed",
+    "entry_ts": "2026-08-13T08:49:24.105905",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": -3.6362019999999973,
+    "close_ts": "2026-08-13T09:45:52.175183"
+  },
+  "GTA6_20260813_111044": {
+    "signal_id": "GTA6_20260813_111044",
+    "token_symbol": "GTA6",
+    "token_address": "4kjruqGHDsSqkMdFfCjV7Vb62HPFhtXyWc2t6JpQzDnz",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 41164.395967504,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.632746,
+    "status": "closed",
+    "entry_ts": "2026-08-13T11:11:01.416307",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": -11.367254000000003,
+    "close_ts": "2026-08-13T11:49:53.964997"
+  },
+  "BUTTHOLE_20260813_111627": {
+    "signal_id": "BUTTHOLE_20260813_111627",
+    "token_symbol": "BUTTHOLE",
+    "token_address": "7ssJZGFT3twGqeYA1kvpoMWwZYvMZvrMEbjRaWgg46BL",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 45058.375246076,
+    "usdc_spent": 100.0,
+    "usdc_received": 94.106201,
+    "status": "closed",
+    "entry_ts": "2026-08-13T11:16:43.800925",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": -5.893799000000001,
+    "close_ts": "2026-08-13T12:54:08.647145"
+  },
+  "POWERS_20260813_120620": {
+    "signal_id": "POWERS_20260813_120620",
+    "token_symbol": "POWERS",
+    "token_address": "CuBgSCq48bBvu9omMCWyv1cBi7c716UcpgTixrrCpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 894203.095229,
+    "usdc_spent": 100.0,
+    "usdc_received": 88.373891,
+    "status": "closed",
+    "entry_ts": "2026-08-13T12:06:34.367754",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -11.626109,
+    "close_ts": "2026-08-13T12:12:17.774844"
+  },
+  "BUTTHOLE_20260813_194455": {
+    "signal_id": "BUTTHOLE_20260813_194455",
+    "token_symbol": "BUTTHOLE",
+    "token_address": "7ssJZGFT3twGqeYA1kvpoMWwZYvMZvrMEbjRaWgg46BL",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 64071.274283144,
+    "usdc_spent": 100.0,
+    "usdc_received": 94.949129,
+    "status": "closed",
+    "entry_ts": "2026-08-13T19:45:09.757870",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": -5.050871000000001,
+    "close_ts": "2026-08-13T20:50:36.161855"
+  },
+  "lickingcat_20260813_195131": {
+    "signal_id": "lickingcat_20260813_195131",
+    "token_symbol": "lickingcat",
+    "token_address": "EjD5Y9NVhXmtEqU7wYvAyZvDWZFQeEuHXFatJmTbpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 92037.655144,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.944111,
+    "status": "closed",
+    "entry_ts": "2026-08-13T19:51:56.849397",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.055888999999993,
+    "close_ts": "2026-08-13T20:19:45.896045"
+  },
+  "Niles_20260813_222918": {
+    "signal_id": "Niles_20260813_222918",
+    "token_symbol": "Niles",
+    "token_address": "GDPtXowyiXHjsHXgkwM1erpFufPEeNvqK8iGq71Bpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 388973.13378,
+    "usdc_spent": 100.0,
+    "usdc_received": 109.58710400000001,
+    "status": "closed",
+    "entry_ts": "2026-08-13T22:29:39.219347",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 9.58710400000001,
+    "close_ts": "2026-08-13T22:36:15.380874"
+  },
+  "BOB_20260814_004159": {
+    "signal_id": "BOB_20260814_004159",
+    "token_symbol": "BOB",
+    "token_address": "4CmYEygEusR76TpjxUbTjSLjyDbCMjxKhRKNozkrpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 363061.955743,
+    "usdc_spent": 100.0,
+    "usdc_received": 113.714831,
+    "status": "closed",
+    "entry_ts": "2026-08-14T00:42:13.198056",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 13.714831000000004,
+    "close_ts": "2026-08-14T01:21:59.246780"
+  },
+  "TOAD_20260814_033659": {
+    "signal_id": "TOAD_20260814_033659",
+    "token_symbol": "TOAD",
+    "token_address": "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 10393.013226,
+    "usdc_spent": 100.0,
+    "usdc_received": 96.54793,
+    "status": "closed",
+    "entry_ts": "2026-08-14T03:37:08.087979",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -3.452070000000006,
+    "close_ts": "2026-08-14T04:08:57.875924"
+  },
+  "BUTTHOLE_20260814_044021": {
+    "signal_id": "BUTTHOLE_20260814_044021",
+    "token_symbol": "BUTTHOLE",
+    "token_address": "7ssJZGFT3twGqeYA1kvpoMWwZYvMZvrMEbjRaWgg46BL",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 72317.53407002,
+    "usdc_spent": 100.0,
+    "usdc_received": 89.280128,
+    "status": "closed",
+    "entry_ts": "2026-08-14T04:40:39.017108",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 9,
+    "real_pnl_usdc": -10.719871999999995,
+    "close_ts": "2026-08-14T06:25:10.673387"
+  },
+  "Burpcoin_20260814_060329": {
+    "signal_id": "Burpcoin_20260814_060329",
+    "token_symbol": "Burpcoin",
+    "token_address": "FsLJrQRBT7gdDUXcdbww83itvh9LRusshFigpjswpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 433107.897701,
+    "usdc_spent": 100.0,
+    "usdc_received": 79.672676,
+    "status": "closed",
+    "entry_ts": "2026-08-14T06:03:34.462245",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -20.327324000000004,
+    "close_ts": "2026-08-14T06:20:18.962786"
+  },
+  "KNEWIT_20260814_075117": {
+    "signal_id": "KNEWIT_20260814_075117",
+    "token_symbol": "KNEWIT",
+    "token_address": "HKBWBhuW2jBHTLmJYFBwUBZkdzp6ji8ydjAwxP1aUSPo",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 168005.961817,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.588766,
+    "status": "closed",
+    "entry_ts": "2026-08-14T07:51:36.541881",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.411233999999993,
+    "close_ts": "2026-08-14T08:11:15.519491"
+  },
+  "Fartcoin_20260814_111856": {
+    "signal_id": "Fartcoin_20260814_111856",
+    "token_symbol": "Fartcoin",
+    "token_address": "vFsy4Kz5dBQwHgrQfLBw7hfJizrG2KC1HrQ698Hpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 855463.903323,
+    "usdc_spent": 100.0,
+    "usdc_received": 76.583458,
+    "status": "closed",
+    "entry_ts": "2026-08-14T11:19:16.558970",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -23.416542000000007,
+    "close_ts": "2026-08-14T11:32:40.004324"
+  },
+  "TOAD_20260814_161346": {
+    "signal_id": "TOAD_20260814_161346",
+    "token_symbol": "TOAD",
+    "token_address": "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 10794.060018,
+    "usdc_spent": 100.0,
+    "usdc_received": 86.519749,
+    "status": "closed",
+    "entry_ts": "2026-08-14T16:14:01.513775",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -13.480250999999996,
+    "close_ts": "2026-08-14T19:01:13.434772"
+  },
+  "FTR_20260814_195437": {
+    "signal_id": "FTR_20260814_195437",
+    "token_symbol": "FTR",
+    "token_address": "Dmkj4dB3Ngva9gWKkDgj8UMF39EC7ArpGf2rxLxDpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 193878.131507,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.939574,
+    "status": "closed",
+    "entry_ts": "2026-08-14T19:54:48.079143",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.060426000000007,
+    "close_ts": "2026-08-14T20:00:27.549686"
+  },
+  "TOAD_20260815_002446": {
+    "signal_id": "TOAD_20260815_002446",
+    "token_symbol": "TOAD",
+    "token_address": "A13oRB9FFaiUjfi6LdCg6p9ka1u8SfGkUFs4SKvPpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 12182.252875,
+    "usdc_spent": 100.0,
+    "usdc_received": 93.839716,
+    "status": "closed",
+    "entry_ts": "2026-08-15T00:25:06.273570",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -6.160284000000004,
+    "close_ts": "2026-08-15T08:03:15.867226"
+  },
+  "AVA_20260815_035624": {
+    "signal_id": "AVA_20260815_035624",
+    "token_symbol": "AVA",
+    "token_address": "DKu9kykSfbN5LBfFXtNNDPaX35o4Fv6vJ9FKk7pZpump",
+    "system": "v3_large",
+    "tokens_held": 0.0,
+    "tokens_bought": 6697.126976,
+    "usdc_spent": 100.0,
+    "usdc_received": 96.090754,
+    "status": "closed",
+    "entry_ts": "2026-08-15T03:56:37.967709",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -3.909245999999996,
+    "close_ts": "2026-08-15T04:40:48.031159"
+  },
+  "lickingcat_20260815_044642": {
+    "signal_id": "lickingcat_20260815_044642",
+    "token_symbol": "lickingcat",
+    "token_address": "EjD5Y9NVhXmtEqU7wYvAyZvDWZFQeEuHXFatJmTbpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 76173.477129,
+    "usdc_spent": 100.0,
+    "usdc_received": 94.767324,
+    "status": "closed",
+    "entry_ts": "2026-08-15T04:46:51.489670",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -5.232675999999998,
+    "close_ts": "2026-08-15T05:53:39.590989"
+  },
+  "Bros_20260815_070626": {
+    "signal_id": "Bros_20260815_070626",
+    "token_symbol": "Bros",
+    "token_address": "G3cS5325qGSFkqtH3seVRKYzdi6bweK9NbHN3rvZpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 917918.056798,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.156603,
+    "status": "closed",
+    "entry_ts": "2026-08-15T07:06:56.688633",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.843396999999996,
+    "close_ts": "2026-08-15T07:19:01.979233"
+  },
+  "Bichoraro_20260815_141510": {
+    "signal_id": "Bichoraro_20260815_141510",
+    "token_symbol": "Bichoraro",
+    "token_address": "Ct7ZFjNZ1AsjdHnzvejxzWm33kY45mUSTqdSFzAiHfoD",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 704713.58451,
+    "usdc_spent": 100.0,
+    "usdc_received": 86.334631,
+    "status": "closed",
+    "entry_ts": "2026-08-15T14:15:36.156728",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -13.665368999999998,
+    "close_ts": "2026-08-15T14:38:39.918094"
+  },
+  "Bear_20260815_190826": {
+    "signal_id": "Bear_20260815_190826",
+    "token_symbol": "Bear",
+    "token_address": "HXbqtbkRbmwdbSNv3c2CbeS1NYVEigp4BTwBKXJvpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 766807.18734,
+    "usdc_spent": 100.0,
+    "usdc_received": 106.723244,
+    "status": "closed",
+    "entry_ts": "2026-08-15T19:08:40.644611",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 6.723243999999994,
+    "close_ts": "2026-08-15T19:22:41.725154"
+  },
+  "LOOKSMAX_20260815_203533": {
+    "signal_id": "LOOKSMAX_20260815_203533",
+    "token_symbol": "LOOKSMAX",
+    "token_address": "GPzpoXpD74E2C4CJNayuoyBqPQJEsPtdse3nhntrpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 50725.472203,
+    "usdc_spent": 100.0,
+    "usdc_received": 95.16915,
+    "status": "closed",
+    "entry_ts": "2026-08-15T20:35:58.369665",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -4.830849999999998,
+    "close_ts": "2026-08-15T20:55:43.027954"
+  },
+  "Qenis_20260815_210105": {
+    "signal_id": "Qenis_20260815_210105",
+    "token_symbol": "Qenis",
+    "token_address": "EkcTa8n14fXcHdfvZqCg72cTCutJnnKb19vcHwKTpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 61359.771782,
+    "usdc_spent": 100.0,
+    "usdc_received": 92.677288,
+    "status": "closed",
+    "entry_ts": "2026-08-15T21:01:15.578884",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -7.322711999999996,
+    "close_ts": "2026-08-15T21:31:00.762914"
+  },
+  "TOADLAYER_20260816_013834": {
+    "signal_id": "TOADLAYER_20260816_013834",
+    "token_symbol": "TOADLAYER",
+    "token_address": "2FW3eNWNKSkJFdrSUwPC2U8zxu9MjExgVYxR5Wd7pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 221606.739921,
+    "usdc_spent": 100.0,
+    "usdc_received": 125.702125,
+    "status": "closed",
+    "entry_ts": "2026-08-16T01:39:00.919375",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 25.702124999999995,
+    "close_ts": "2026-08-16T03:33:09.151336"
+  },
+  "GUNICORN_20260816_015642": {
+    "signal_id": "GUNICORN_20260816_015642",
+    "token_symbol": "GUNICORN",
+    "token_address": "4xMegMRMd2TFQEXxv39vtMP1r5fFVuA7VcaSmAhLpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 223848.660285,
+    "usdc_spent": 100.0,
+    "usdc_received": 112.422487,
+    "status": "closed",
+    "entry_ts": "2026-08-16T01:56:58.285807",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN",
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": 12.422487000000004,
+    "close_ts": "2026-08-16T02:36:18.589255"
+  },
+  "WOFL_20260816_040928": {
+    "signal_id": "WOFL_20260816_040928",
+    "token_symbol": "WOFL",
+    "token_address": "DTGWeDVPAvr7TdY7sdbfjz2bi4QihVMMn9KhyKH1pump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 223788.266648,
+    "usdc_spent": 100.0,
+    "usdc_received": 89.1243,
+    "status": "closed",
+    "entry_ts": "2026-08-16T04:09:39.525505",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -10.875699999999995,
+    "close_ts": "2026-08-16T04:11:05.192594"
+  },
+  "Qenis_20260816_054806": {
+    "signal_id": "Qenis_20260816_054806",
+    "token_symbol": "Qenis",
+    "token_address": "EkcTa8n14fXcHdfvZqCg72cTCutJnnKb19vcHwKTpump",
+    "system": "v3",
+    "tokens_held": 0.0,
+    "tokens_bought": 67030.032255,
+    "usdc_spent": 100.0,
+    "usdc_received": 94.404852,
+    "status": "closed",
+    "entry_ts": "2026-08-16T05:48:32.521025",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -5.595147999999995,
+    "close_ts": "2026-08-16T06:10:09.615368"
+  },
+  "NETBOY_20260816_075415": {
+    "signal_id": "NETBOY_20260816_075415",
+    "token_symbol": "NETBOY",
+    "token_address": "J6xVFRZTX8Q5pd8tdxRcM7D43EmpAyXrCCpXh9TRpump",
+    "system": "defi",
+    "tokens_held": 0.0,
+    "tokens_bought": 210533.85337,
+    "usdc_spent": 100.0,
+    "usdc_received": 87.507246,
+    "status": "closed",
+    "entry_ts": "2026-08-16T07:54:26.129509",
+    "entry_tx": "DRY_RUN",
+    "exit_txs": [
+      "DRY_RUN"
+    ],
+    "decimals": 6,
+    "real_pnl_usdc": -12.492754000000005,
+    "close_ts": "2026-08-16T09:24:09.342417"
   }
 }

@@ -17,9 +17,14 @@
             overflow: hidden;
             color: white;
             font-family: 'Montserrat', sans-serif;
+            background-image: url('file:///home/ubuntu/GIT/video_generator/assets/backgrounds/carousel_bg.jpg');
+            background-size: cover;
+            background-position: center;
         }
+        /* Override themes to show background */
+        body[class^="theme-"] { background-color: transparent !important; background: transparent !important; }
+        
         /* DEFAULT THEME (0) - Indigo/Blue */
-        body.theme-0 { background: linear-gradient(135deg, #0f172a, #1e1b4b, #312e81); }
         body.theme-0 .orb1 { background: rgba(99, 102, 241, 0.4); }
         body.theme-0 .orb2 { background: rgba(236, 72, 153, 0.3); }
         body.theme-0.is-hook .glass-card { border: 2px solid rgba(236, 72, 153, 0.5); }

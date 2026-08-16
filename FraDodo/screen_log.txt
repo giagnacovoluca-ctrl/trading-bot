@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/home/ubuntu/GIT/FraDodo/venv/lib/python3.14/site-packages/discord/ui/vi
+ew.py", line 598, in _scheduled_task
+    await item.callback(interaction)
+  File "/home/ubuntu/GIT/FraDodo/cogs/ksd_contest.py", line 198, in btn_stats
+    total_players, total_matches, total_kills, total_damage = db.get_contest_sta
+ts()
+                                                              ^^
+NameError: name 'db' is not defined
+INFO:     87.10.235.164:0 - "GET / HTTP/1.1" 200 OK
+ERROR:discord.ui.view:Ignoring exception in view <KSDContestMenu timeout=None ch
+ildren=7> for item <Button style=<ButtonStyle.secondary: 2> url=None disabled=Fa
+lse label='Statistiche' emoji=<PartialEmoji animated=False name='Êÿ' id=None> ro
+w=1 sku_id=None id=None>
+Traceback (most recent call last):
+  File "/home/ubuntu/GIT/FraDodo/venv/lib/python3.14/site-packages/discord/ui/vi
+ew.py", line 598, in _scheduled_task
+    await item.callback(interaction)
+  File "/home/ubuntu/GIT/FraDodo/cogs/ksd_contest.py", line 198, in btn_stats
+    total_players, total_matches, total_kills, total_damage = db.get_contest_sta
+ts()
+                                                              ^^
+NameError: name 'db' is not defined
+

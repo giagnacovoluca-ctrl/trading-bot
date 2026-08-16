@@ -34,7 +34,10 @@ echo "$HOOK_TITLE" >> used_news_history.txt
 python -c "lines=[l for l in open('scripts/script_generato.txt').readlines() if not l.startswith('TITOLO:')]; open('scripts/script_generato.txt','w').writelines(lines)"
 
 set -e
-python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav >> cron_agy.log 2>&1
+python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav --provider xtts >> cron_agy.log 2>&1
+
+# Elimina eventuali file immagine fittizi da 0 byte creati in caso di errore di quota
+find assets/backgrounds -type f -size 0 -delete
 
 # Trova le immagini appena generate (ultimi 10 min) per passarle allo step 2
 IMAGES=$(find assets/backgrounds -type f -mmin -10 | tr '\n' ' ')

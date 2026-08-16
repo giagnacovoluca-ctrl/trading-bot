@@ -195,11 +195,57 @@ class KSDContestMenu(discord.ui.View):
 
     @discord.ui.button(label="Statistiche", emoji="📊", style=discord.ButtonStyle.secondary, custom_id="ksd_statistiche", row=1)
     async def btn_stats(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("📊 Statistiche generali del contest in arrivo...", ephemeral=True)
+        total_players, total_matches, total_kills, total_damage = database.get_contest_stats()
+        embed = discord.Embed(title="📊 Statistiche Globali KSD Contest", color=discord.Color.blurple())
+        embed.add_field(name="Giocatori Iscritti", value=f"**{total_players}**", inline=True)
+        embed.add_field(name="Partite Approvate", value=f"**{total_matches}**", inline=True)
+        embed.add_field(name="Kills Totali", value=f"**{total_kills}**", inline=True)
+        embed.add_field(name="Danni Totali", value=f"**{total_damage}**", inline=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @discord.ui.button(label="Hall Of Fame", emoji="🥇", style=discord.ButtonStyle.secondary, custom_id="ksd_hof", row=1)
     async def btn_hof(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🥇 La Hall of Fame mostra i vincitori storici del server KSD!", ephemeral=True)
+        hof = database.get_hall_of_fame()
+        if not hof:
+            await interaction.response.send_message("Nessun record disponibile. Inizia a registrare le tue partite!", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="🏆 Hall of Fame - I Migliori di FraDodo",
+            description="Ecco i record assoluti registrati dalla community in questa stagione!",
+            color=discord.Color.gold()
+        )
+        if 'top_killer' in hof:
+            embed.add_field(
+                name="💀 Mietitore (Record Kills)",
+                value=f"**{hof['top_killer']['name']}** con **{hof['top_killer']['value']}** Kills in una singola partita!",
+                inline=False
+            )
+        if 'top_damage' in hof:
+            embed.add_field(
+                name="💥 Demolitore (Record Danni)",
+                value=f"**{hof['top_damage']['name']}** con **{hof['top_damage']['value']}** Danni in una singola partita!",
+                inline=False
+            )
+        if 'top_score' in hof:
+            embed.add_field(
+                name="👑 Campione (Record Vittorie)",
+                value=f"**{hof['top_score']['name']}** con un totale di **{hof['top_score']['value']}** vittorie!",
+                inline=False
+            )
+        if 'most_dedicated' in hof:
+            embed.add_field(
+                name="🏅 Veterano (Più Partite)",
+                value=f"**{hof['most_dedicated']['name']}** con ben **{hof['most_dedicated']['value']}** partite giocate e approvate!",
+                inline=False
+            )
+            
+        with open("current_url.txt", "r") as f:
+            url = f.read().strip()
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Vedi Trofei Completi sul Web", url=f"{url}/trofei", style=discord.ButtonStyle.link, emoji="🌐"))
+        
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @discord.ui.button(label="Staff", emoji="⚙️", style=discord.ButtonStyle.danger, custom_id="ksd_staff", row=2)
     async def btn_staff(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -370,7 +416,8 @@ class KSDContest(commands.Cog):
         await interaction.response.send_message("⏳ Salvataggio del risultato in corso...", ephemeral=True)
         
         # Download the attachment
-        safe_filename = screenshot.filename.replace(" ", "_")
+        import time
+        safe_filename = f"{int(time.time())}_{screenshot.filename.replace(' ', '_')}"
         file_path = f"web/static/uploads/{safe_filename}"
         
         if os.path.exists(file_path):

@@ -117,12 +117,14 @@
             <div style="flex: 1; min-width: 300px; background: rgba(241, 196, 15, 0.05); padding: 24px; border-radius: 16px; border: 1px solid rgba(241, 196, 15, 0.2);" id="sec-invia">
               <h3 style="color: var(--accent-gold); margin-bottom: 16px;"><i class="fa-solid fa-trophy"></i> Invia Contest Mensile</h3>
               <form action="/upload_contest" method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
-                <input list="registered_players" id="player_name_input" name="player_name" required placeholder="Il tuo Nome in Game (es. FraDodo)" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%;">
-                <datalist id="registered_players">
+                <select id="player_select" onchange="document.getElementById('player_name_input').value = this.value;" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%; margin-bottom: 8px;">
+                  <option value="">Seleziona il tuo nome (o digita sotto)</option>
                   {% for p in players %}
-                  <option value="{{ p.activision_id }}">
+                  <option value="{{ p.activision_id }}">{{ p.activision_id }}</option>
                   {% endfor %}
-                </datalist>
+                </select>
+                <input type="text" id="player_name_input" name="player_name" required placeholder="Il tuo Nome in Game (es. FraDodo)" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 100%;">
+                <div style="display: flex; gap: 12px; width: 100%;">
                   <input type="number" name="kills" required placeholder="Kills" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 50%;">
                   <input type="number" name="posizione" required placeholder="Posizione" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; color: white; width: 50%;">
                 </div>
@@ -159,7 +161,6 @@
                   <th style="padding: 16px; color: var(--text-secondary);">Match</th>
                   <th style="padding: 16px; color: var(--text-secondary);">Kills</th>
                   <th style="padding: 16px; color: var(--text-secondary);">K/M</th>
-                  <th style="padding: 16px; color: var(--text-secondary);">Danno Med.</th>
                   <th style="padding: 16px; color: var(--text-secondary);">Win %</th>
                   <th style="padding: 16px; color: var(--text-secondary);">Azione</th>
                 </tr>
@@ -183,9 +184,11 @@
                   <td style="padding: 16px;">{{ p.matches_played }}</td>
                   <td style="padding: 16px;">{{ p.total_kills }}</td>
                   <td style="padding: 16px; color: #4ade80;">{{ p.kd_ratio }}</td>
-                  <td style="padding: 16px; color: #f87171;">{{ p.avg_damage }}</td>
                   <td style="padding: 16px; color: #60a5fa;">{{ p.win_rate }}</td>
                   <td style="padding: 16px; display: flex; gap: 8px; justify-content: flex-start;" onclick="event.stopPropagation()">
+                    <button onclick="promptEditPlayerName('{{ p.discord_id }}', '{{ p.activision_id }}')" style="background: rgba(52, 152, 219, 0.2); border: 1px solid var(--accent-blue); color: #3498db; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;" title="Cambia Nome">
+                      <i class="fa-solid fa-id-card"></i>
+                    </button>
                     <button onclick="promptEditPlayer('{{ p.discord_id }}', '{{ p.activision_id }}')" style="background: rgba(35, 165, 89, 0.2); border: 1px solid var(--accent-green); color: #4ade80; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s;">
                       <i class="fa-solid fa-pen"></i>
                     </button>
@@ -253,6 +256,40 @@
             form.appendChild(pwdInput);
             document.body.appendChild(form);
             form.submit();
+        }
+    }
+    
+    function promptEditPlayerName(discordId, currentName) {
+        const newName = prompt("Inserisci il nuovo nome per " + currentName + ":");
+        if (newName && newName !== currentName) {
+            const pwd = prompt("Inserisci la password (quella delle ammissioni foto) per confermare:");
+            if (pwd) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/api/edit_player_name';
+                
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'discord_id';
+                idInput.value = discordId;
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = 'new_name';
+                nameInput.value = newName;
+                
+                const pwdInput = document.createElement('input');
+                pwdInput.type = 'hidden';
+                pwdInput.name = 'password';
+                pwdInput.value = pwd;
+                
+                form.appendChild(idInput);
+                form.appendChild(nameInput);
+                form.appendChild(pwdInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
         }
     }
     

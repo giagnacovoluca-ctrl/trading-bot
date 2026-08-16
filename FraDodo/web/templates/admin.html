@@ -30,14 +30,10 @@
                 </div>
                 <form action="/admin/resolve" method="POST" class="flex flex-col gap-3">
                     <input type="hidden" name="match_id" value="{{ m.id }}">
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-sm text-gray-400">Kills</label>
                             <input type="number" name="kills" value="{{ m.kills }}" class="bg-gray-700 p-2 rounded w-full text-white">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-400">Danni</label>
-                            <input type="number" name="damage" value="{{ m.damage }}" class="bg-gray-700 p-2 rounded w-full text-white">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400">Piazzamento</label>
@@ -57,10 +53,44 @@
             {% endfor %}
         </div>
 
+        <div class="bg-gray-900 border border-blue-500 rounded-xl p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-blue-400">Unisci Giocatori</h2>
+            <p class="text-gray-400 mb-4">Seleziona due giocatori per unirli in uno solo. Tutti i punti, le statistiche e le partite del "Giocatore da eliminare" verranno trasferiti al "Giocatore di destinazione".</p>
+            <form action="/admin/merge" method="POST" onsubmit="return confirm('Sei sicuro? Questa azione è irreversibile e il giocatore sorgente verrà eliminato.');" class="flex flex-col gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Giocatore da ELIMINARE (Sorgente)</label>
+                        <select name="source_discord_id" required class="bg-gray-800 p-2 rounded w-full text-white border border-gray-700">
+                            <option value="">Seleziona...</option>
+                            {% for p in players %}
+                            <option value="{{ p.discord_id }}">{{ p.activision_id }} ({{ p.discord_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Giocatore di DESTINAZIONE (Mantiene il nome)</label>
+                        <select name="target_discord_id" required class="bg-gray-800 p-2 rounded w-full text-white border border-gray-700">
+                            <option value="">Seleziona...</option>
+                            {% for p in players %}
+                            <option value="{{ p.discord_id }}">{{ p.activision_id }} ({{ p.discord_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <input type="password" name="password" placeholder="Password Admin" required class="bg-gray-800 p-2 rounded w-full max-w-xs border border-gray-700">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded max-w-xs w-full transition">Unisci Giocatori</button>
+            </form>
+
+            <form action="/admin/rollback_merge" method="POST" onsubmit="return confirm('Sicuro di voler annullare l\'ultima unione? Questo riporterà il database esattamente come era prima dell\'unione.');" class="mt-4 flex gap-2">
+                <input type="password" name="password" placeholder="Password Admin per Rollback" required class="bg-gray-800 p-2 rounded max-w-xs border border-gray-700">
+                <button type="submit" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded transition border border-gray-600">Annulla Ultima Unione (Rollback)</button>
+            </form>
+        </div>
+
         <div class="bg-gray-900 border border-red-500 rounded-xl p-6">
             <h2 class="text-2xl font-bold mb-4">Gestione Torneo</h2>
             <form action="/admin/reset" method="POST" onsubmit="return confirm('Sei sicuro di voler azzerare la classifica? Questa azione è irreversibile.');">
-                <input type="password" name="password" placeholder="Password Admin" required class="bg-gray-800 p-2 rounded mb-2 w-full max-w-xs">
+                <input type="password" name="password" placeholder="Password Admin" required class="bg-gray-800 p-2 rounded mb-2 w-full max-w-xs border border-gray-700">
                 <br>
                 <button type="submit" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded max-w-xs w-full transition">Azzera Classifica Torneo</button>
             </form>

@@ -5,15 +5,13 @@ from tiktok_uploader.upload import TikTokUploader
 
 def test_upload():
     # create a dummy video
-    with open("dummy.mp4", "wb") as f:
-        f.write(b"\x00" * 1024 * 100) # 100KB dummy video
         
     print("Testing upload using TikTokUploader...")
     try:
         from tiktok_uploader.upload import upload_video
         
         failed = upload_video(
-            "dummy.mp4",
+            "dummy_valid.mp4",
             description="Test video",
             cookies="cookies.txt",
             headless=True

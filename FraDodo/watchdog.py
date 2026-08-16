@@ -28,10 +28,10 @@ def is_bot_alive():
 
 def is_tunnel_alive(url):
     try:
-        # Avoid caching/redirects, just check if it connects
-        resp = requests.get(url, timeout=5, verify=False)
-        # Even a 404 or 405 means the server is reachable
-        return True
+        resp = requests.get(url, timeout=10, verify=False)
+        if resp.status_code == 200 and "KSD Contest" in resp.text:
+            return True
+        return False
     except:
         return False
 

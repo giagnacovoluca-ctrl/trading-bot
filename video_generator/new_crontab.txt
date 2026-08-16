@@ -1,7 +1,7 @@
-0 21 * * * /home/magic/Scrivania/code/GIT/video_generator/video_promo.sh
-0 12,19 * * * /home/magic/Scrivania/code/GIT/video_generator/video_virale.sh
-0 15 * * * /home/magic/Scrivania/code/GIT/video_generator/video_bastian.sh
-0 13,22 * * * /home/magic/Scrivania/code/GIT/video_generator/carousel_promo.sh
-0 8,10,17 * * * /home/magic/Scrivania/code/GIT/video_generator/carousel_virale.sh
-0 20 * * * /home/magic/Scrivania/code/GIT/video_generator/carousel_bastian.sh
-0 23 * * * source /home/magic/Scrivania/code/GIT/video_generator/venv_video/bin/activate && python /home/magic/Scrivania/code/GIT/video_generator/analizza_risultati.py --user lgia888
+0 21 * * * /home/ubuntu/GIT/video_generator/video_promo.sh
+0 12,19 * * * /home/ubuntu/GIT/video_generator/video_virale.sh
+0 15 * * * /home/ubuntu/GIT/video_generator/video_bastian.sh
+0 13,22 * * * /home/ubuntu/GIT/video_generator/carousel_promo.sh
+0 8,10,17 * * * /home/ubuntu/GIT/video_generator/carousel_virale.sh
+0 20 * * * /home/ubuntu/GIT/video_generator/carousel_bastian.sh
+0 23 * * * source /home/ubuntu/GIT/video_generator/venv_video/bin/activate && python /home/ubuntu/GIT/video_generator/analizza_risultati.py --user lgia888

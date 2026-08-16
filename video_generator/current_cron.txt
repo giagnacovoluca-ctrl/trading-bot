@@ -1,2 +1,2 @@
-0 0,4,8,12,16,20 * * * /home/magic/Scrivania/code/GIT/video_generator/start_bot_cron.sh
-0 2,6,10,14,18,22 * * * /home/magic/Scrivania/code/GIT/video_generator/start_carousel_cron.sh
+0 0,4,8,12,16,20 * * * /home/ubuntu/GIT/video_generator/start_bot_cron.sh
+0 2,6,10,14,18,22 * * * /home/ubuntu/GIT/video_generator/start_carousel_cron.sh
