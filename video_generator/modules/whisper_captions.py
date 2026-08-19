@@ -82,27 +82,42 @@ def _render_word_highlight(words: list[str], current_word_index: int, video_w: i
     
     current_x = start_x
     for i, w in enumerate(enriched_words):
+        is_current = (i == current_word_index)
         # Hormozi style: Giallo forte per la parola pronunciata, Bianco per le altre
-        color = (250, 204, 21, 255) if i == current_word_index else (255, 255, 255, 255)
+        color = (250, 204, 21, 255) if is_current else (255, 255, 255, 255)
         
         # Gestiamo il testo e l'eventuale emoji separatamente
         parts = w.split(" ")
         base_word = parts[0]
         emoji_char = parts[1] if len(parts) > 1 else ""
         
-        # Disegno la parola base
-        draw.text((current_x, ty), base_word, font=font, fill=color)
         w_bbox = dummy_draw.textbbox((0, 0), base_word, font=font)
-        current_x += (w_bbox[2] - w_bbox[0])
+        word_w = w_bbox[2] - w_bbox[0]
+        
+        if is_current:
+            # Effetto POP: disegniamo un'ombra più marcata e uno stroke
+            # Ombra
+            draw.text((current_x + 4, ty + 4), base_word, font=font, fill=(0, 0, 0, 150))
+            # Testo con stroke
+            draw.text((current_x, ty), base_word, font=font, fill=color, stroke_width=3, stroke_fill="black")
+        else:
+            # Testo normale
+            draw.text((current_x, ty), base_word, font=font, fill=color, stroke_width=1, stroke_fill="black")
+            
+        current_x += word_w
         
         # Disegno l'emoji se presente (usando il font emoji)
         if emoji_char:
             # Aggiungo un piccolo spazio
             current_x += 10
+            
+            # Leggero pop per l'emoji se è la parola corrente
+            emoji_y = ty + 2 if is_current else ty + 5
+            
             try:
-                draw.text((current_x, ty + 5), emoji_char, font=emoji_font, embedded_color=True)
+                draw.text((current_x, emoji_y), emoji_char, font=emoji_font, embedded_color=True)
             except:
-                draw.text((current_x, ty + 5), emoji_char, font=emoji_font, fill=color)
+                draw.text((current_x, emoji_y), emoji_char, font=emoji_font, fill=color)
             
             e_bbox = dummy_draw.textbbox((0, 0), emoji_char, font=emoji_font)
             current_x += (e_bbox[2] - e_bbox[0])

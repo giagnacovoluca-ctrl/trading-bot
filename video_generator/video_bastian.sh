@@ -7,18 +7,19 @@ source venv_video/bin/activate
 
 HISTORY=$(tail -n 20 used_news_history.txt 2>/dev/null || echo "Nessuna notizia usata finora")
 
-/usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei il Direttore Creativo TikTok. 
+/usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un maestro dello storytelling visivo e un filosofo provocatorio. 
 
-TEMA OBBLIGATORIO: Mente, psicologia, salute, neuroscienze, crescita personale o nutrizione.
+TEMA OBBLIGATORIO: Qualsiasi argomento affascinante che stimoli estrema curiosità (es. esplorazione spaziale, storia nascosta, paradossi, biologia bizzarra, tecnologie rivoluzionarie, mente, psicologia, neuroscienze o fisica). Sii di ampie vedute.
 NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):
 $HISTORY
 
-STEP 1: Usa SUBITO il tool search_web per cercare su internet una notizia VERA, recentissima (ultime 24 ore) e molto discussa o controversa sul tema obbligatorio. Non ripetere le notizie già trattate.
+STEP 1: Usa SUBITO il tool search_web per cercare su internet una notizia VERA, recente e molto discussa o complessa sul tema obbligatorio. Assicurati che sia una notizia reale e verifica la data. Non ripetere le notizie già trattate.
 
 STEP 2: Scrivi uno script su questa notizia usando l'Angolo Contrariano.
 REGOLE:
-- RIGA 1: scrivi esattamente 'TITOLO: ' seguito da un titolo/hook provocatorio (max 5 parole).
-- RIGA 2 in poi: lo script di max 130 parole. Usa la tecnica del "Bastian Contrario". Analizza la notizia e proponi una visione fortemente impopolare, scomoda o contro-intuitiva, ma estremamente logica e sensata. Distruggi i luoghi comuni e fai riflettere. Evita i riassunti banali.
+- RIGA 1: scrivi esattamente 'TITOLO: ' seguito da un titolo/hook (max 5 parole). VIETATO usare espressioni banali come "scoperta assurda" o citare mesi (es. "ad agosto") per fingere attualità.
+- RIGA 2 in poi: lo script di max 130 parole. Usa la tecnica del "Bastian Contrario". Analizza la notizia e proponi una visione fortemente impopolare o contro-intuitiva.
+- FONTI OBBLIGATORIE: Devi citare a voce la fonte (es. "Secondo un recente studio di Stanford...").
 - Usa un hook ipnotico e chiudi chiedendo un parere divisivo nei commenti. (Nessun accenno ad Amazon).
 - REGOLE PER LA VOCE: Scrivi TUTTI i numeri in lettere (es. \"mille\" e non \"1000\"). Non usare MAI simboli speciali, parentesi o virgolette. Usa frasi brevi e incisive. MANTIENI la punteggiatura forte (punti, virgole).
 
@@ -27,7 +28,7 @@ STEP 4: Usa il tool per salvare una descrizione TikTok con hashtag virali in scr
 STEP 5: Genera 5 sfondi verticali fotorealistici pertinenti alla notizia e salvali in assets/backgrounds/." > cron_agy.log 2>&1
 
 HOOK_TITLE=$(grep -E "^TITOLO:" scripts/script_generato.txt | head -n 1 | sed -e 's/^TITOLO: *//' -e 's/ *$//')
-if [ -z "$HOOK_TITLE" ]; then HOOK_TITLE="SCOPERTA ASSURDA"; fi
+if [ -z "$HOOK_TITLE" ]; then HOOK_TITLE="LA VERITÀ SCOMODA"; fi
 echo "$HOOK_TITLE" >> used_news_history.txt
 
 # Rimuovi la riga del titolo per non farla leggere alla voce

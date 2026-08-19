@@ -3,125 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carousel Slide</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Minimalist Yellow Black Carousel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             padding: 0;
             width: 1080px;
-            height: 1920px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            color: white;
-            font-family: 'Montserrat', sans-serif;
-            background-image: url('file:///home/ubuntu/GIT/video_generator/assets/backgrounds/carousel_bg.jpg');
-            background-size: cover;
-            background-position: center;
-        }
-        /* Override themes to show background */
-        body[class^="theme-"] { background-color: transparent !important; background: transparent !important; }
-        
-        /* DEFAULT THEME (0) - Indigo/Blue */
-        body.theme-0 .orb1 { background: rgba(99, 102, 241, 0.4); }
-        body.theme-0 .orb2 { background: rgba(236, 72, 153, 0.3); }
-        body.theme-0.is-hook .glass-card { border: 2px solid rgba(236, 72, 153, 0.5); }
-        body.theme-0.is-hook #slide-content { color: #fbcfe8; }
-
-        /* THEME 1 - Emerald/Teal */
-        body.theme-1 { background: linear-gradient(135deg, #022c22, #064e3b, #0f766e); }
-        body.theme-1 .orb1 { background: rgba(16, 185, 129, 0.4); }
-        body.theme-1 .orb2 { background: rgba(6, 182, 212, 0.3); }
-        body.theme-1.is-hook .glass-card { border: 2px solid rgba(52, 211, 153, 0.5); }
-        body.theme-1.is-hook #slide-content { color: #a7f3d0; }
-
-        /* THEME 2 - Crimson/Orange */
-        body.theme-2 { background: linear-gradient(135deg, #450a0a, #7f1d1d, #b45309); }
-        body.theme-2 .orb1 { background: rgba(239, 68, 68, 0.4); }
-        body.theme-2 .orb2 { background: rgba(245, 158, 11, 0.3); }
-        body.theme-2.is-hook .glass-card { border: 2px solid rgba(251, 146, 60, 0.5); }
-        body.theme-2.is-hook #slide-content { color: #fed7aa; }
-
-        /* THEME 3 - Noir/Gold */
-        body.theme-3 { background: linear-gradient(135deg, #000000, #171717, #262626); }
-        body.theme-3 .orb1 { background: rgba(250, 204, 21, 0.25); }
-        body.theme-3 .orb2 { background: rgba(255, 255, 255, 0.1); }
-        body.theme-3.is-hook .glass-card { border: 2px solid rgba(250, 204, 21, 0.5); }
-        body.theme-3.is-hook #slide-content { color: #fef08a; }
-
-        /* THEME 4 - Cyberpunk (Purple/Pink) */
-        body.theme-4 { background: linear-gradient(135deg, #2e1065, #4c1d95, #831843); }
-        body.theme-4 .orb1 { background: rgba(217, 70, 239, 0.4); }
-        body.theme-4 .orb2 { background: rgba(244, 63, 94, 0.3); }
-        body.theme-4.is-hook .glass-card { border: 2px solid rgba(244, 114, 182, 0.5); }
-        body.theme-4.is-hook #slide-content { color: #fbcfe8; }
-
-        .orb1 { position: absolute; width: 600px; height: 600px; filter: blur(150px); top: -100px; left: -100px; border-radius: 50%; transition: background 0.5s; }
-        .orb2 { position: absolute; width: 500px; height: 500px; filter: blur(150px); bottom: -100px; right: -100px; border-radius: 50%; transition: background 0.5s; }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            width: 850px;
-            min-height: 900px;
-            padding: 80px;
+            height: 1920px; /* 9:16 TikTok Video format */
+            background-color: #0D0D0D;
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            z-index: 10;
+            position: relative;
+            overflow: hidden;
         }
 
-        #slide-content {
-            font-size: 65px;
-            font-weight: 700;
-            line-height: 1.4;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        #slide-number {
+        /* Subtle geometric shapes */
+        .decor-circle {
             position: absolute;
-            bottom: 60px;
-            font-size: 30px;
-            font-weight: 900;
-            letter-spacing: 5px;
-            opacity: 0.5;
-            z-index: 10;
+            width: 400px;
+            height: 400px;
+            border: 4px solid #FFE600;
+            border-radius: 50%;
+            top: -100px;
+            right: -150px;
+            opacity: 0.15;
+            z-index: 1;
         }
 
-        .is-hook #slide-content {
-            font-size: 85px;
-            font-weight: 900;
+        .decor-line {
+            position: absolute;
+            width: 800px;
+            height: 8px;
+            background-color: #FFE600;
+            bottom: 300px;
+            left: -200px;
+            transform: rotate(-45deg);
+            opacity: 0.15;
+            z-index: 1;
         }
+
+        .decor-dots {
+            position: absolute;
+            bottom: 150px;
+            right: 100px;
+            display: grid;
+            grid-template-columns: repeat(3, 15px);
+            gap: 15px;
+            opacity: 0.3;
+            z-index: 1;
+        }
+        .decor-dots div {
+            width: 15px;
+            height: 15px;
+            background-color: #FFE600;
+            border-radius: 50%;
+        }
+
+        /* Safe Margins container */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            padding: 150px 100px; /* Safe margins 100px */
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* Slide badge (top-left) */
+        #slide-badge {
+            background-color: #FFE600;
+            color: #0D0D0D;
+            font-weight: 900;
+            font-size: 36px;
+            padding: 15px 40px;
+            border-radius: 50px;
+            margin-bottom: auto; /* Pushes content down slightly */
+            align-self: flex-start;
+            position: absolute;
+            top: 200px;
+            left: 100px;
+        }
+
+        /* Main Text content */
+        #slide-content {
+            font-size: 75px;
+            font-weight: 700;
+            line-height: 1.3;
+            letter-spacing: -1px;
+            text-align: left;
+            width: 100%;
+            margin-top: -100px; /* Generous negative space adjustment */
+        }
+
+        /* Hook specific styling */
+        .is-hook #slide-content {
+            font-size: 110px;
+            font-weight: 900;
+            color: var(--accent, #FFE600);
+            line-height: 1.1;
+            letter-spacing: -3px;
+        }
+
+        /* Theme colors mapping for variety across carousels (optional, defaults to yellow) */
+        body.theme-0 { --accent: #FFE600; }
+        body.theme-1 { --accent: #00FF9D; }
+        body.theme-2 { --accent: #FF3366; }
+        body.theme-3 { --accent: #00D0FF; }
+        body.theme-4 { --accent: #FF9900; }
+
+        /* Dynamic accent applications */
+        .decor-circle { border-color: var(--accent); }
+        .decor-line { background-color: var(--accent); }
+        .decor-dots div { background-color: var(--accent); }
+        #slide-badge { background-color: var(--accent); }
+        .is-hook #slide-content { color: var(--accent); }
+
     </style>
 </head>
-<body>
-    <div class="orb1"></div>
-    <div class="orb2"></div>
-    <div class="glass-card">
+<body class="theme-0">
+    <!-- Decor -->
+    <div class="decor-circle"></div>
+    <div class="decor-line"></div>
+    <div class="decor-dots">
+        <div></div><div></div><div></div>
+        <div></div><div></div><div></div>
+        <div></div><div></div><div></div>
+    </div>
+
+    <!-- Content -->
+    <div class="container">
+        <div id="slide-badge">1/7</div>
         <div id="slide-content">TESTO DI ESEMPIO</div>
     </div>
-    <div id="slide-number">1 / 5</div>
 
     <script>
-        // Funzione chiamata da Playwright per iniettare il testo
-        function setSlideData(testo, current, total, themeIndex = 0) {
-            document.getElementById('slide-content').innerText = testo;
-            document.getElementById('slide-number').innerText = current + " / " + total;
-            
-            // Imposta il tema
-            document.body.className = `theme-${themeIndex}`;
-            
-            if (current === 1) {
-                document.body.classList.add('is-hook');
-            }
+        function setSlideData(testo, current, total, themeIndex = 0, bgUrl = '') {
+            return new Promise((resolve) => {
+                document.getElementById('slide-content').innerText = testo;
+                document.getElementById('slide-badge').innerText = `${current}/${total}`;
+                
+                document.body.className = `theme-${themeIndex}`;
+                
+                if (current === 1) {
+                    document.body.classList.add('is-hook');
+                } else {
+                    document.body.classList.remove('is-hook');
+                }
+                
+                if (bgUrl) {
+                    const img = new Image();
+                    img.onload = () => {
+                        document.body.style.backgroundImage = `url('${bgUrl}')`;
+                        document.body.style.backgroundSize = 'cover';
+                        document.body.style.backgroundPosition = 'center';
+                        if (!document.getElementById('bg-overlay')) {
+                            const overlay = document.createElement('div');
+                            overlay.id = 'bg-overlay';
+                            overlay.style.position = 'absolute';
+                            overlay.style.top = '0';
+                            overlay.style.left = '0';
+                            overlay.style.width = '100%';
+                            overlay.style.height = '100%';
+                            overlay.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                            overlay.style.zIndex = '0';
+                            document.body.insertBefore(overlay, document.body.firstChild);
+                        }
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                    img.src = bgUrl;
+                } else {
+                    resolve();
+                }
+            });
         }
     </script>
 </body>

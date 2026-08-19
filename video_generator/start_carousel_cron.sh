@@ -15,8 +15,8 @@ fi
 
 source venv_video/bin/activate
 
-# Fai generare e salvare i JSON da Antigravity nel workspace
-/usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "Sei un social media manager. Genera le 6 slide per un carosello TikTok virale su una curiosità a tua scelta (non usare argomenti vecchi). Salvale esattamente in scripts/slides_carosello.json." > cron_carousel.log 2>&1
+# Fai generare e salvare i JSON da Antigravity nel workspace (usando massima qualità)
+/usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --effort high --model pro --print "Sei un social media manager. Genera le 6 slide per un carosello TikTok virale su una curiosità a tua scelta (non usare argomenti vecchi). Salvale esattamente in scripts/slides_carosello.json." > cron_carousel.log 2>&1
 
 set -e
 # Avvia la creazione

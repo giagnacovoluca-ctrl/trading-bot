@@ -61,7 +61,7 @@ def main():
     video_finale = "output/video_finale.mp4"
     
     # Assicurati che non ci siano vecchi file in giro
-    for f in [script_txt, audio_mp3, video_base]:
+    for f in [script_txt, audio_mp3, video_base, "scripts/tiktok_caption.txt"]:
         if Path(f).exists():
             Path(f).unlink()
 
@@ -93,22 +93,30 @@ def main():
         console.print("[red]Errore: Lo script non è stato generato o è vuoto.[/]")
         sys.exit(1)
         
-    # Estrai il titolo e pulisci lo script per la voce
+    # Estrai il titolo, la fonte e pulisci lo script per la voce
     script_content = script_path.read_text(encoding="utf-8").splitlines()
     hook_title = "SCOPERTA SHOCK"
+    fonte_notizia = ""
     clean_lines = []
     for line in script_content:
         if line.startswith("TITOLO:"):
             hook_title = line.replace("TITOLO:", "").strip()
+        elif line.startswith("FONTE_NOTIZIA:"):
+            fonte_notizia = line.replace("FONTE_NOTIZIA:", "").strip()
         else:
             clean_lines.append(line)
             
-    # Sovrascrivi il file pulito senza il titolo (così la voce non lo legge)
+    if "Errore di Generazione" in hook_title:
+        console.print("[bold red]✖ ERRORE FATALE:[/] L'Agente ha restituito 'Errore di Generazione' (probabile limite API 429). Processo interrotto per evitare la pubblicazione del video errato.")
+        sys.exit(1)
+            
+    # Sovrascrivi il file pulito senza i metadati (così la voce non li legge)
     script_path.write_text("\n".join(clean_lines).strip(), encoding="utf-8")
     
-    # Salva il titolo nello storico per non ripetere la notizia
+    # Salva la vera fonte nello storico per non ripetere la notizia
+    storia_da_salvare = fonte_notizia if fonte_notizia else hook_title
     with open("used_news_history.txt", "a", encoding="utf-8") as f:
-        f.write(hook_title + "\n")
+        f.write(storia_da_salvare + "\n")
     
     # Crea il filename basato sul titolo
     safe_title = "".join([c if c.isalnum() else "_" for c in hook_title.lower()]).strip("_")
@@ -160,19 +168,52 @@ def main():
     run_step(step3_cmd, "STEP 3: Sottotitoli Dinamici e CTA (Whisper)")
 
     # STEP 4: Pubblicazione Automatica (Opzionale)
+    profile_path = Path("chrome_profile")
     cookies_path = Path("cookies.txt")
-    if cookies_path.exists():
-        console.print("\n[bold magenta]🚀 Cookie trovati: Avvio pubblicazione automatica su TikTok...[/]")
+    if profile_path.exists() or cookies_path.exists():
+        console.print("\n[bold magenta]🚀 Profilo/Cookie trovati: Avvio pubblicazione automatica su TikTok...[/]")
         step4_cmd = [
             python_exe, "step4_pubblica.py", 
             "--video", video_finale, 
             "--script", script_txt,
-            "--cookies", str(cookies_path),
             "--mode", args.mode
         ]
+        if cookies_path.exists() and not profile_path.exists():
+            step4_cmd.extend(["--cookies", str(cookies_path)])
+            
         run_step(step4_cmd, "STEP 4: Generazione Metadata e Upload TikTok")
     else:
-        console.print("\n[dim]Salto la pubblicazione automatica: file 'cookies.txt' non trovato nella cartella principale.[/]")
+        console.print("\n[dim]Salto la pubblicazione automatica: né 'chrome_profile' né 'cookies.txt' trovati.[/]")
+
+    # --- INTEGRAZIONE SITO NEXT.JS (Solo in modalità promo) ---
+    if args.mode == "promo":
+        console.print("\n[bold cyan]🔗 INTEGRAZIONE SITO: Avvio auto-post articolo su Conscia-Mente...[/]")
+        try:
+            timestamp = int(time.time())
+            video_filename = f"promo_{timestamp}.mp4"
+            public_video_dir = Path("/home/ubuntu/conscia-mente/public/videos")
+            public_video_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copia il video
+            subprocess.run(["cp", video_finale, str(public_video_dir / video_filename)], check=True)
+            
+            # Lancia la generazione dell'articolo usando il titolo del video come hook
+            console.print(f"[dim]Generazione articolo per '{hook_title}' con video '{video_filename}'[/dim]")
+            subprocess.run(
+                ["node", "scripts/generate-article.mjs", hook_title, "--video", video_filename],
+                cwd="/home/ubuntu/conscia-mente",
+                check=True
+            )
+            
+            # Push automatico su Vercel
+            console.print("[dim]Push su GitHub (Vercel Deploy)...[/dim]")
+            subprocess.run(["git", "add", "."], cwd="/home/ubuntu/conscia-mente", check=True)
+            subprocess.run(["git", "commit", "-m", f"Auto-post article: {hook_title}"], cwd="/home/ubuntu/conscia-mente", check=True)
+            subprocess.run(["git", "push", "origin", "main"], cwd="/home/ubuntu/conscia-mente", check=True)
+            
+            console.print("[bold green]✓ Articolo pubblicato su Conscia-Mente con successo![/]")
+        except Exception as e:
+            console.print(f"[bold red]✖ Errore nell'integrazione sito Conscia-Mente: {e}[/]")
 
     console.print("\n" + "="*60)
     console.print(f"🎉 [bold magenta]PROCESSO COMPLETATO![/]")

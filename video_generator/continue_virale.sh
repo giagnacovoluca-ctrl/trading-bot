@@ -6,7 +6,7 @@ cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
 
 HOOK_TITLE=$(grep -E "^TITOLO:" scripts/script_generato.txt | head -n 1 | sed -e 's/^TITOLO: *//' -e 's/ *$//')
-if [ -z "$HOOK_TITLE" ]; then HOOK_TITLE="SCOPERTA ASSURDA"; fi
+if [ -z "$HOOK_TITLE" ]; then HOOK_TITLE="LA VERITÀ NASCOSTA"; fi
 
 set -e
 python step1_voce.py --script scripts/script_generato.txt --voice assets/voices/mia_voce.wav --provider xtts >> cron_agy.log 2>&1

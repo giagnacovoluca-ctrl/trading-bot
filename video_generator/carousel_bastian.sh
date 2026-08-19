@@ -9,7 +9,7 @@ HISTORY=$(tail -n 20 used_news_history.txt 2>/dev/null || echo "Nessuna notizia 
 
 /usr/local/bin/agy --add-dir /home/ubuntu/GIT/video_generator --dangerously-skip-permissions --print "@tiktok_video_generator Sei un maestro dello storytelling visivo. Genera un carosello TikTok ipnotico (5 o 6 slide).
 
-TEMA OBBLIGATORIO: Mente, psicologia, salute, neuroscienze, crescita personale o nutrizione.
+TEMA OBBLIGATORIO: Mente, psicologia, neuroscienze, crescita personale, spiritualità o consapevolezza.
 NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):
 $HISTORY
 

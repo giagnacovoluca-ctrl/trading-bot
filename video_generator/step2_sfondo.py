@@ -41,9 +41,11 @@ def main():
         
         pexels_vids = []
         if args.topic and getattr(config, "PEXELS_API_KEY", None):
-            query = args.topic.split()[0] if len(args.topic.split()) > 3 else args.topic
+            topic_words = args.topic.split()
             from modules.video_composer import _download_pexels_video
-            for _ in range(min(3, n_clips_needed)):
+            # Scarica più video per evitare ripetizioni variando la keyword
+            for i in range(min(10, n_clips_needed)):
+                query = topic_words[i % len(topic_words)]
                 vid = _download_pexels_video(query, config.BG_DIR)
                 if vid and vid not in pexels_vids:
                     pexels_vids.append(vid)

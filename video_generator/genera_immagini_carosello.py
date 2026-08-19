@@ -53,7 +53,15 @@ async def generate_carousel_images(json_path: str):
             # Escape text for JS
             safe_text = json.dumps(slide_text)
             
-            await page.evaluate(f"setSlideData({safe_text}, {current}, {total}, {theme_index})")
+            import urllib.parse
+            # Use the slide text to generate an AI background
+            prompt = f"Abstract beautiful background for {slide_text[:50]}, dark mode, minimalist, elegant, 9:16 vertical"
+            encoded_prompt = urllib.parse.quote(prompt)
+            # Aggiungiamo un parametro casuale per forzare il non-caching tra slide
+            import time
+            bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={int(time.time())+i}"
+            
+            await page.evaluate(f"setSlideData({safe_text}, {current}, {total}, {theme_index}, '{bg_url}')")
             
             # Scatta screenshot
             out_path = out_dir / f"slide_{current}.png"

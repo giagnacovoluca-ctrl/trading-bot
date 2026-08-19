@@ -23,16 +23,23 @@ Tutti i comandi vanno lanciati dal virtual environment:
 ## Ruolo dell'Agente
 Come agente, il mio compito è orchestrare l'esecuzione manuale o automatizzata di questi step su indicazione dell'utente, gestire eventuali errori (come Pexels down o file mancanti) e passare al RAG per la redazione dei nuovi script quando richiesto.
 
-## Workflow Caroselli (Novità)
-Oltre ai video classici, il sistema gestisce la pubblicazione 100% automatica di caroselli motivazionali.
-*   **Script Principale:** `python crea_carosello.py`
-*   **Funzionamento:** Genera testi con Gemini, crea 5 slide 9:16 con testo gigante (120/160px) sovrapposto allo sfondo `assets/backgrounds/carousel_bg.jpg`, e applica una colonna sonora automatica presa a caso da `assets/ambient/`. Infine crea un MP4 da 15 secondi per TikTok.
-*   **Pubblicazione Automatica:** `python step4_pubblica.py` carica il video/carosello tramite Playwright bypassando i limiti API.
+## Pubblicazione Automatica (Playwright)
+La pubblicazione automatica (`step4_pubblica.py`) non usa più i cookie testuali (`cookies.txt`), ma si affida a una **sessione browser persistente** sempre attiva salvata nella cartella `chrome_profile`. 
+*   **Caroselli:** `python crea_carosello.py` genera testi con Gemini, 5 slide e crea un MP4. `step4_pubblica.py` carica il carosello/video usando Playwright bypassando i limiti API.
+*   **Gestione Sessione:** `agente_tiktok.py` rileva la cartella `chrome_profile` per lanciare la pubblicazione. Se la sessione scade, basta rieseguire `setup_tiktok_login.sh` per aggiornarla.
 
 ## Automazione (Cronjob)
-Il file `current_cron.txt` contiene i timing esatti per la pubblicazione autonoma:
-- **Video Standard (`start_bot_cron.sh`)**: Ogni 4 ore (00, 04, 08, 12, 16, 20).
-- **Caroselli (`start_carousel_cron.sh`)**: Sfalsati di 2 ore (02, 06, 10, 14, 18, 22). Il bash script aggiorna prima l'immagine di sfondo usando lo strumento Antigravity CLI e poi lancia lo script Python.
+Il file `new_crontab.txt` contiene i timing esatti per la pubblicazione autonoma, divisa in script specifici che fungono da ponte verso l'orchestratore centrale `agente_tiktok.py` e il creatore di caroselli `crea_carosello.py`:
+- **Video Standard**:
+  - `video_virale.sh` (08:30, 19:00)
+  - `video_bastian.sh` (15:00)
+  - `video_promo.sh` (21:00) -> Questo script (in modalità promo) si occupa anche di trasferire il video nel progetto Conscia-Mente, generare l'articolo per il blog e fare push su Vercel.
+- **Caroselli**:
+  - `carousel_virale.sh` (08:00, 17:00)
+  - `carousel_promo.sh` (13:00, 22:00)
+  - `carousel_bastian.sh` (20:00)
+Tutti questi script bash richiamano internamente Antigravity CLI utilizzando la massima qualità disponibile (`--model pro --effort high`), senza mai chiamare le vecchie API a pagamento. 
+**Gestione Metadati (Novità)**: La descrizione (caption) dei video viene generata dinamicamente e in tempo reale all'interno di `step4_pubblica.py` tramite CLI se manca, eliminando completamente i bug di disallineamento (caption miste tra caroselli e video).
 
 ## Novità Architetturali Recenti (Ricerca Web & Tematiche)
 Il vecchio e instabile `viral_news.py` è stato **deprecato**. Adesso il sistema si affida interamente alle capacità native dell'agente (Antigravity `search_web` API) per esplorare internet in tempo reale alla ricerca delle ultime notizie.

@@ -25,8 +25,26 @@ def genera_metadata_tiktok(script_text: str, mode: str = "promo") -> str:
         except Exception as e:
             console.print(f"[red]Errore lettura caption:[/] {e}")
 
-    # Fallback
-    return "Scopri i segreti in questo video! 📖 Clicca il link in bio per il manuale. #imparacontiktok #libri"
+    import subprocess
+    console.print("[dim]Nessun file tiktok_caption.txt trovato, lo genero al volo tramite AGY CLI...[/dim]")
+    prompt = f"Sei un social media manager per TikTok. Crea una breve caption per un post basato su questo copione. Usa hashtag virali appropriati. Metti sempre una CTA forte per commentare. Se la modalità è 'promo', INCLUDI ASSOLUTAMENTE la CTA di cliccare il link in bio per scaricare l'ebook. Restituisci SOLO la caption.\n\nMODALITA: {mode}\nCOPIONE:\n{script_text}"
+    try:
+        result = subprocess.run(
+            ["agy", "--dangerously-skip-permissions", "--print", prompt], 
+            capture_output=True, 
+            text=True
+        )
+        if result.returncode == 0:
+            caption = result.stdout.strip()
+            # Salva per cache/debug
+            caption_path.parent.mkdir(parents=True, exist_ok=True)
+            caption_path.write_text(caption, encoding="utf-8")
+            return caption
+    except Exception as e:
+        console.print(f"[red]Errore AGY nella generazione caption:[/] {e}")
+
+    # Fallback estremo
+    return "Scopri i segreti in questo video! 📖 Clicca il link in bio per scoprire di più. #imparacontiktok #crescita"
 
 
 def normalize_cookies(cookies_path: Path) -> Path:
@@ -127,8 +145,18 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
             try:
                 post_btn = container.locator("button:has-text('Post'), button:has-text('Pubblica')").last
                 post_btn.click(force=True)
-                console.print("[dim]Pulsante Pubblica cliccato.[/]")
-                time.sleep(15)
+                console.print("[dim]Pulsante Pubblica cliccato. Controllo popup di conferma...[/]")
+                time.sleep(5)
+                
+                try:
+                    post_now_btn = page.locator("button:has-text('Post now'), button:has-text('Pubblica ora')").last
+                    if post_now_btn.count() > 0 and post_now_btn.is_visible():
+                        post_now_btn.click(force=True)
+                        console.print("[bold yellow]Popup 'Post now' bypassato![/]")
+                except Exception:
+                    pass
+                
+                time.sleep(30)
                 page.screenshot(path="tiktok_after_post.png")
             except Exception as e:
                 console.print(f"[yellow]⚠ Pulsante pubblica non trovato: {e}[/]")

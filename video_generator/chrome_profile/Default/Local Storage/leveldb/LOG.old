@@ -1,3 +1,7 @@
-2026/08/16-16:10:48.188 fc5c5 Reusing MANIFEST /home/ubuntu/GIT/video_generator/chrome_profile/Default/Local Storage/leveldb/MANIFEST-000001
-2026/08/16-16:10:48.213 fc5c5 Recovering log #16
-2026/08/16-16:10:48.217 fc5c5 Reusing old log /home/ubuntu/GIT/video_generator/chrome_profile/Default/Local Storage/leveldb/000016.log 
+2026/08/19-08:08:09.585 1396b8 Reusing MANIFEST /home/ubuntu/GIT/video_generator/chrome_profile/Default/Local Storage/leveldb/MANIFEST-000001
+2026/08/19-08:08:09.603 1396b8 Recovering log #35
+2026/08/19-08:08:09.603 1396b8 Level-0 table #38: started
+2026/08/19-08:08:09.607 1396b8 Level-0 table #38: 19794 bytes OK
+2026/08/19-08:08:09.609 1396b8 Recovering log #38
+2026/08/19-08:08:09.610 1396b8 Reusing old log /home/ubuntu/GIT/video_generator/chrome_profile/Default/Local Storage/leveldb/000038.log 
+2026/08/19-08:08:09.614 1396b8 Delete type=0 #35
