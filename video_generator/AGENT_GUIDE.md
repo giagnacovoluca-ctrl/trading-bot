@@ -50,3 +50,19 @@ Il vecchio e instabile `viral_news.py` è stato **deprecato**. Adesso il sistema
 3. **Modalità "Bastian Contrario":** È stata introdotta una logica contrariana (`video_bastian.sh` e `carousel_bastian.sh`). Usata con moderazione serve a creare hook polarizzanti, smontando i luoghi comuni.
 4. **Formattazione Text-To-Speech (TTS):** I prompt obbligano l'AI a non usare virgolette, parentesi o simboli strani. Le fonti devono essere citate in modo discorsivo (es. "secondo la rivista Nature") per evitare che la voce sintetica legga a voce alta i segni di punteggiatura.
 5. **Divieto di Clickbait Obsoleto:** È severamente vietato l'uso di formule ripetitive come "Scoperta assurda" o citazioni di mesi specifici (es. "scoperta di agosto") per mantenere il contenuto sempreverde e naturale.
+
+## 6. AGGIORNAMENTO 2026-08-20: Transizione all'Agente Autonomo (Subagents & Scheduling)
+L'orchestrazione è stata migrata verso un workflow agentico basato su `agente_autonomo.py` gestito nativamente dai task asincroni di Antigravity, limitando la dipendenza da script bash statici.
+- **Subagents Integrati**:
+  1. **`trend_hunter`**: Subagent esplorativo che seleziona dinamicamente le nicchie (Spazio, Fisica, Biologia, ecc.) e legge autonomamente `used_news_history.txt` per non creare contenuti doppi.
+  2. **`revisore_editoriale`**: Subagent severo che esegue un controllo qualità (voto 1-10) del testo prima della generazione audio. Rifiuta testi sotto voto 8.
+  3. **Self-Healing**: Il codice gestisce attivamente i crash di rete/API (es. Pexels down) in tempo reale fornendo argomenti e asset di fallback sicuri senza interruzioni.
+- **Disabilitazione Linux Crontab**: Per delegare la responsabilità all'Agente, i vecchi lavori crontab di Linux sono stati commentati con `#` nel terminale. Lo schedule è stato replicato tramite il tool `schedule` interno dell'agente.
+
+> **NOTA SULL'ARCHITETTURA IBRIDA (Salvaguardia Prompt):** Tutti i prompt lunghi e testati per le modalità (virale, promo, bastian) sono stati volutamente mantenuti dentro `rag_generator.py` e nei file `carousel_*.sh`. Il nuovo `agente_autonomo.py` funziona da orchestratore intelligente, leggendo il `--mode` e innescando gli script storici, assicurando così che nessuna istruzione di base vada mai persa.
+
+**⚠️ ISTRUZIONI PER IL ROLLBACK ⚠️**
+Se vuoi ritornare al vecchio sistema passivo senza IA orchestrante:
+1. Esegui il comando `crontab -e` e togli il simbolo `# ` dalle righe per riattivare i cron di sistema.
+2. Ripristina i file della cartella di backup: `/home/ubuntu/GIT/video_generator/backup_vecchio_sistema/`.
+3. Chiedi a me (Antigravity) di aprire i Task in background attivi (o usare /manage_task) e fermare i miei Cron interni.

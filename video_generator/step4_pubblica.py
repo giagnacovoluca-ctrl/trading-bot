@@ -144,14 +144,14 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
             # Clicca Pubblica
             try:
                 post_btn = container.locator("button:has-text('Post'), button:has-text('Pubblica')").last
-                post_btn.click(force=True)
-                console.print("[dim]Pulsante Pubblica cliccato. Controllo popup di conferma...[/]")
+                post_btn.evaluate("node => node.click()")
+                console.print("[dim]Pulsante Pubblica cliccato (via JS). Controllo popup di conferma...[/]")
                 time.sleep(5)
                 
                 try:
                     post_now_btn = page.locator("button:has-text('Post now'), button:has-text('Pubblica ora')").last
                     if post_now_btn.count() > 0 and post_now_btn.is_visible():
-                        post_now_btn.click(force=True)
+                        post_now_btn.evaluate("node => node.click()")
                         console.print("[bold yellow]Popup 'Post now' bypassato![/]")
                 except Exception:
                     pass
@@ -223,7 +223,7 @@ def main():
     parser.add_argument("--video", default="output/video_finale.mp4", help="Video da caricare")
     parser.add_argument("--script", default="scripts/script_generato.txt", help="Copione generato")
     parser.add_argument("--cookies", default="cookies.txt", help="File cookies.txt (fallback)")
-    parser.add_argument("--mode", default="promo", choices=["promo", "virale"], help="Modalità video")
+    parser.add_argument("--mode", default="promo", choices=["promo", "virale", "bastian"], help="Modalità video")
     parser.add_argument("--show-browser", action="store_true", help="Mostra il browser durante l'upload")
     parser.add_argument("--force-cookies", action="store_true", help="Forza uso cookies.txt anche se il profilo esiste")
 

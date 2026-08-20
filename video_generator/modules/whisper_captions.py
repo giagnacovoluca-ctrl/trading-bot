@@ -15,8 +15,8 @@ def get_whisper_model():
     if _model is None:
         console.print("[cyan]Caricamento modello Whisper (versione base, gratuita)...[/]")
         import whisper_timestamped as whisper
-        # 'base' è un buon compromesso tra velocità e precisione.
-        _model = whisper.load_model("base")
+        # 'small' migliora notevolmente la precisione in italiano senza rallentare troppo
+        _model = whisper.load_model("small")
     return _model
 
 def _caption_font_path() -> str:

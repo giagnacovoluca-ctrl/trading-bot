@@ -81,11 +81,34 @@ def main():
     # Recupero forzato delle immagini generate dall'agente RAG (che le salva nella sua cartella artefatti)
     console.print("[dim]Recupero eventuali immagini generate dall'agente...[/]")
     try:
-        subprocess.run("find ~/.gemini/antigravity-cli/brain/ -type f -mmin -5 \( -name '*.jpg' -o -name '*.png' \) -exec cp {} assets/backgrounds/ \;", shell=True)
+        # Copia i media generati dall'agente
+        subprocess.run(r"find ~/.gemini/antigravity-cli/brain/ -type f -mmin -5 \( -name '*.jpg' -o -name '*.png' \) -exec cp {} assets/backgrounds/ \;", shell=True)
     except Exception:
         pass
 
     new_bg_files = list(set(bg_dir.glob("*.*")) - old_bg_files)
+    
+    # FALLBACK POLLINATIONS se Antigravity ha fallito
+    if not new_bg_files:
+        console.print("[yellow]Antigravity non ha generato immagini. Tento fallback con Pollinations...[/]")
+        import urllib.request
+        import urllib.parse
+        import time
+        for i in range(3):
+            try:
+                prompt = f"Abstract beautiful highly aesthetic background for {topic}, dark mode, minimalist, vertical 9:16"
+                encoded_prompt = urllib.parse.quote(prompt)
+                bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={int(time.time())+i}"
+                local_path = bg_dir / f"fallback_bg_{int(time.time())}_{i}.jpg"
+                req = urllib.request.Request(bg_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as response, open(local_path, 'wb') as out_file:
+                    out_file.write(response.read())
+                new_bg_files.append(local_path)
+                console.print(f"[dim]Scarico immagine fallback {i+1}/3...[/]")
+            except Exception as e:
+                console.print(f"[red]Errore fallback Pollinations slide {i}: {e}[/]")
+        if new_bg_files:
+            console.print("[green]Fallback Pollinations riuscito per i video![/]")
 
     # Assicurati che lo script esista e non sia vuoto
     script_path = Path(script_txt)
@@ -103,6 +126,8 @@ def main():
             hook_title = line.replace("TITOLO:", "").strip()
         elif line.startswith("FONTE_NOTIZIA:"):
             fonte_notizia = line.replace("FONTE_NOTIZIA:", "").strip()
+        elif line.startswith("TESTO:"):
+            clean_lines.append(line.replace("TESTO:", "").strip())
         else:
             clean_lines.append(line)
             

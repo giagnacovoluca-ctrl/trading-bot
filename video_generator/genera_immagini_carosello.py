@@ -54,14 +54,28 @@ async def generate_carousel_images(json_path: str):
             safe_text = json.dumps(slide_text)
             
             import urllib.parse
-            # Use the slide text to generate an AI background
+            import urllib.request
+            import time
+            import subprocess
+            
             prompt = f"Abstract beautiful background for {slide_text[:50]}, dark mode, minimalist, elegant, 9:16 vertical"
             encoded_prompt = urllib.parse.quote(prompt)
-            # Aggiungiamo un parametro casuale per forzare il non-caching tra slide
-            import time
             bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={int(time.time())+i}"
             
-            await page.evaluate(f"setSlideData({safe_text}, {current}, {total}, {theme_index}, '{bg_url}')")
+            local_bg_path = out_dir / f"bg_slide_{current}.jpg"
+            try:
+                # Provo a scaricare l'immagine da Pollinations
+                req = urllib.request.Request(bg_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as response, open(local_bg_path, 'wb') as out_file:
+                    out_file.write(response.read())
+            except Exception as e:
+                print(f"Pollinations fallito per slide {current}, avvio fallback Antigravity... ({e})")
+                fallback_prompt = f"Sei l'agente di backup. Il motore primario ha fallito. DEVI usare il tuo tool interno 'generate_image' per generare uno sfondo verticale (AspectRatio 9:16) astratto per: '{slide_text[:50]}'. NESSUN TESTO. Dopo averla generata, usa 'run_command' per copiarla fisicamente in: {local_bg_path.resolve()}. Rispondi solo 'OK'."
+                subprocess.run(["agy", "--dangerously-skip-permissions", "--print", fallback_prompt], capture_output=True)
+            
+            # Passa il percorso locale (assoluto) all'HTML del carosello
+            local_bg_url = f"file://{local_bg_path.resolve()}"
+            await page.evaluate(f"setSlideData({safe_text}, {current}, {total}, {theme_index}, '{local_bg_url}')")
             
             # Scatta screenshot
             out_path = out_dir / f"slide_{current}.png"

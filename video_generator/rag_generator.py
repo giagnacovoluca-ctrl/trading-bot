@@ -94,16 +94,14 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
         
-        STRUTTURA OBBLIGATORIA:
-        - RIGA 1: Scrivi "TITOLO: " seguito da un titolo magnetico che generi forte curiosità (hook irresistibile).
-        - RIGA 2 in poi: 
-          1. HOOK IPNOTICO (primi 3 secondi): Usa leve psicologiche estreme (curiosità, paradosso, rottura di schemi). Inizia con una rivelazione scioccante o smontando una credenza comune per incollare l'utente allo schermo. Concentra il 90% dello sforzo sulle prime 15 parole.
-          2. VALORE sensato, originale e concreto (spiega il "perché" in modo logico e affascinante).
-          3. CTA finale organica: "{ebook['pitch']} Link in bio!".
-        - ULTIMA RIGA (NUOVA E OBBLIGATORIA): Scrivi "FONTE_NOTIZIA: " seguito da un brevissimo riassunto di 1 riga del concetto esatto che hai trattato. Questo servirà al sistema per non fartelo ripetere in futuro!
+        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        TITOLO: <il tuo titolo magnetico qui>
+        TESTO: <il tuo copione qui (circa 130 parole), inclusa la CTA>
+        FONTE_NOTIZIA: <brevissimo riassunto di 1 riga del concetto esatto trattato>
           
-        Inoltre, PRIMA di rispondere con il testo, usa il tuo tool per generare 3 IMMAGINI 9:16 diverse e altamente cinematografiche per il background. DOPO averle generate, USA IL TOOL run_command per spostarle nella cartella '/home/ubuntu/GIT/video_generator/assets/backgrounds/' con nomi come promo_bg_1.jpg, ecc.
-        SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
+        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
+        SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """
     elif mode == "virale":
         prompt = f"""
@@ -124,16 +122,14 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
         
-        STRUTTURA OBBLIGATORIA:
-        - RIGA 1: "TITOLO: " + un titolo (max 5 parole). VIETATO usare frasi fatte come "scoperta assurda" o menzionare mesi (es. "ad agosto") per fingere attualità.
-        - RIGA 2 in poi: 
-          1. HOOK IPNOTICO (primi 3 secondi): Usa leve psicologiche estreme (curiosità, paradosso, rottura di schemi). Inizia con una rivelazione scioccante o smontando una credenza comune per incollare l'utente allo schermo. Concentra il 90% dello sforzo sulle prime 15 parole.
-          2. STORIA/SPIEGAZIONE: cita sempre la FONTE a voce (es. "I ricercatori del MIT...").
-          3. ENGAGEMENT potente: fai una domanda divisiva o profonda e chiedi la loro opinione nei commenti.
-        - ULTIMA RIGA (NUOVA E OBBLIGATORIA): Scrivi "FONTE_NOTIZIA: " seguito da un brevissimo riassunto di 1 riga della vera notizia che hai trattato (es. Studio MIT sui topi e memoria). Questo servirà al sistema per non fartelo ripetere in futuro!
+        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        TITOLO: <il tuo titolo magnetico qui (max 5 parole)>
+        TESTO: <il tuo copione qui (circa 130 parole), con le regole vocali applicate>
+        FONTE_NOTIZIA: <brevissimo riassunto di 1 riga della notizia reale>
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
-        SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
+        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
+        SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """
     else: # mode == "bastian"
         prompt = f"""
@@ -154,16 +150,14 @@ def generate_tiktok_script(topic: str, ebook: dict, api_key: str, mode: str = "p
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
         
-        STRUTTURA OBBLIGATORIA:
-        - RIGA 1: "TITOLO: " + un titolo (max 5 parole). VIETATO usare frasi fatte come "scoperta assurda" o menzionare mesi (es. "ad agosto") per fingere attualità.
-        - RIGA 2 in poi: 
-          1. HOOK IPNOTICO (primi 3 secondi): Usa leve psicologiche estreme (curiosità, paradosso, rottura di schemi). Inizia con una rivelazione scioccante o smontando una credenza comune per incollare l'utente allo schermo. Concentra il 90% dello sforzo sulle prime 15 parole.
-          2. STORIA/SPIEGAZIONE: cita sempre la FONTE a voce (es. "Secondo un recente studio di Stanford...").
-          3. ENGAGEMENT potente: fai una domanda divisiva o profonda e chiedi la loro opinione nei commenti.
-        - ULTIMA RIGA (NUOVA E OBBLIGATORIA): Scrivi "FONTE_NOTIZIA: " seguito da un brevissimo riassunto di 1 riga della vera notizia che hai trattato. Questo servirà al sistema per non fartelo ripetere in futuro!
+        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        TITOLO: <il tuo titolo magnetico qui (max 5 parole)>
+        TESTO: <il tuo copione qui (circa 130 parole), con le regole vocali applicate>
+        FONTE_NOTIZIA: <brevissimo riassunto di 1 riga della vera notizia che hai trattato>
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'. Solo dopo scrivimi il copione.
-        SE LA GENERAZIONE IMMAGINI FALLISCE PER LIMITE DI QUOTA O ERRORE 429: IGNORA il problema, NON scusarti e procedi a scrivere il copione senza menzionare l'accaduto.
+        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 3 IMMAGINI 9:16 fotorealistiche. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
+        SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """
 
     console.print(f"[dim]Generazione del copione in corso tramite AGY CLI...[/]")
