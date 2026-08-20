@@ -27,3 +27,6 @@ node_modules/
 __pycache__/
 *.pyc
 video_generator/chrome_profile/
+
+# Ignore environment variables
+.env
