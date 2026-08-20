@@ -120,12 +120,15 @@ def main():
     script_content = script_path.read_text(encoding="utf-8").splitlines()
     hook_title = "SCOPERTA SHOCK"
     fonte_notizia = ""
+    ebook_filename = ""
     clean_lines = []
     for line in script_content:
         if line.startswith("TITOLO:"):
             hook_title = line.replace("TITOLO:", "").strip()
         elif line.startswith("FONTE_NOTIZIA:"):
             fonte_notizia = line.replace("FONTE_NOTIZIA:", "").strip()
+        elif line.startswith("EBOOK_FILE:"):
+            ebook_filename = line.replace("EBOOK_FILE:", "").strip()
         elif line.startswith("TESTO:"):
             clean_lines.append(line.replace("TESTO:", "").strip())
         else:
@@ -212,20 +215,25 @@ def main():
 
     # --- INTEGRAZIONE SITO NEXT.JS (Solo in modalità promo) ---
     if args.mode == "promo":
-        console.print("\n[bold cyan]🔗 INTEGRAZIONE SITO: Avvio auto-post articolo su Conscia-Mente...[/]")
         try:
-            timestamp = int(time.time())
-            video_filename = f"promo_{timestamp}.mp4"
+            console.print(f"\n[bold cyan]🔗 INTEGRAZIONE SITO: Avvio auto-post articolo su Conscia-Mente...[/]")
+            
+            # Copia il video nella directory di Conscia-Mente
+            promo_video_name = f"promo_{int(time.time())}.mp4"
             public_video_dir = Path("/home/ubuntu/conscia-mente/public/videos")
             public_video_dir.mkdir(parents=True, exist_ok=True)
             
-            # Copia il video
-            subprocess.run(["cp", video_finale, str(public_video_dir / video_filename)], check=True)
+            subprocess.run(["cp", str(video_finale), str(public_video_dir / promo_video_name)], check=True)
+            console.print(f"Generazione articolo per '{hook_title}' con video '{promo_video_name}'")
             
-            # Lancia la generazione dell'articolo usando il titolo del video come hook
-            console.print(f"[dim]Generazione articolo per '{hook_title}' con video '{video_filename}'[/dim]")
+            # 1. Avvia lo script di generazione articolo (passando il file video se lo script lo supporta)
+            # Assicuriamoci di essere nella cartella conscia-mente per eseguire npm/node
+            blog_cmd = ["node", "scripts/generate-article.mjs", "--topic", hook_title, "--video", f"videos/{promo_video_name}"]
+            if ebook_filename:
+                blog_cmd.extend(["--ebook", ebook_filename])
+                
             subprocess.run(
-                ["node", "scripts/generate-article.mjs", hook_title, "--video", video_filename],
+                blog_cmd, 
                 cwd="/home/ubuntu/conscia-mente",
                 check=True
             )

@@ -200,7 +200,11 @@ def main():
     # 3. Salvataggio
     out_path = Path(args.output)
     out_path.parent.mkdir(exist_ok=True, parents=True)
-    out_path.write_text(script_text, encoding="utf-8")
+    
+    ebook_filename = ebook["file"].name if ebook["file"] else ""
+    final_text = script_text + f"\nEBOOK_FILE: {ebook_filename}"
+    
+    out_path.write_text(final_text, encoding="utf-8")
     
     console.print(f"[bold green]✓ Script salvato in {out_path}[/]")
     console.print(f"Anteprima:\n[dim]{script_text}[/dim]")
