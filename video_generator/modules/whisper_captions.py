@@ -142,10 +142,10 @@ def generate_dynamic_captions(audio_path: str, video_w: int, video_h: int):
     
     audio = whisper.load_audio(audio_path)
     try:
-        result = whisper.transcribe(model, audio, language="it")
+        result = whisper.transcribe(model, audio, language="it", condition_on_previous_text=False)
     except Exception as e:
         console.print(f"[yellow]Errore Whisper ({e}), riprovo con naive_approach=True...[/]")
-        result = whisper.transcribe(model, audio, language="it", naive_approach=True)
+        result = whisper.transcribe(model, audio, language="it", naive_approach=True, condition_on_previous_text=False)
     
     captions = []
     MAX_WORDS_PER_LINE = 3
@@ -158,7 +158,7 @@ def generate_dynamic_captions(audio_path: str, video_w: int, video_h: int):
         chunks = [words[i:i + MAX_WORDS_PER_LINE] for i in range(0, len(words), MAX_WORDS_PER_LINE)]
         
         for chunk in chunks:
-            chunk_texts = [w["text"].upper() for w in chunk]
+            chunk_texts = [w["text"].strip().upper() for w in chunk]
             
             # Per ogni blocco di 4 parole, generiamo le singole frame animate
             for i, word in enumerate(chunk):

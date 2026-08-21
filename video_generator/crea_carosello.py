@@ -28,17 +28,17 @@ def genera_testi_carosello():
                 for s in slides[:6]:
                     testo = str(s)
                     if isinstance(s, dict):
-                        testo = s.get('testo_schermo', s.get('text', s.get('testo', s.get('content', str(s)))))
+                        testo = s.get('testo_schermo', s.get('text', s.get('testo', s.get('content', s.get('testo_principale', str(s))))))
                     elif isinstance(s, str):
                         try:
                             parsed = json.loads(s)
                             if isinstance(parsed, dict):
-                                testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', s))))
+                                testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', s)))))
                         except:
                             try:
                                 parsed = ast.literal_eval(s)
                                 if isinstance(parsed, dict):
-                                    testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', s))))
+                                    testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', s)))))
                             except:
                                 pass
                                 
