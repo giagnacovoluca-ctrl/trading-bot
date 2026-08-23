@@ -106,3 +106,55 @@ Un video è stato rimosso da TikTok per disinformazione. L'analisi ha rivelato c
 - **Se una notizia non è verificabile**, sceglierne un'altra invece di inventare
 - **I numeri vanno sempre in lettere** nel copione TTS (es. "tremila" non "3000")
 - **Il tone of voice** deve essere "insider affascinato che condivide una scoperta reale", NON "guru che svela segreti nascosti"
+
+---
+
+## 8. AGGIORNAMENTO 2026-08-23: Salto di Qualità — M1-M10
+
+### 🎯 Obiettivo: Miglioramento profondo di contenuto, estetica e sicurezza
+
+#### M1 — Script a 5 atti (`rag_generator.py`)
+Tutti i prompt (promo/virale/bastian) ora generano copioni con struttura narrativa obbligatoria:
+- **ATTO 1 — HOOK** (15-20 parole): fatto contro-intuitivo che rompe aspettative
+- **ATTO 2 — CONTESTO** (25-30 parole): rilevanza per la vita quotidiana
+- **ATTO 3 — RIVELAZIONE** (40-50 parole): dato/studio con fonte verificata
+- **ATTO 4 — COLPO DI SCENA** (15-20 parole): implicazione inaspettata
+- **ATTO 5 — CTA** (10-15 parole): azione specifica concreta
+
+#### M2 — Immagini contestualizzate per scena (`rag_generator.py`)
+Le 7 immagini sfondo vengono generate DOPO il copione con prompt specifici per ogni atto:
+- Immagine 1 → Atto 1 (shock visivo coerente con hook)
+- Immagine 2 → Atto 2 (scena di vita quotidiana)
+- Immagine 3 → Atto 3 (visualizzazione scientifica del dato)
+- Immagine 4 → Atto 4 (immagine spiazzante/paradossale)
+- Immagine 5 → Atto 5 (motivazionale/di azione)
+- Immagine 6 → panoramica tematica
+- Immagine 7 → chiusura brandizzata (sfondo scuro)
+Tutti i prompt immagini sono in inglese, fotorealistici, ultra HD, cinematic lighting.
+
+#### M4 — Template dark premium (`templates/carousel_dark.html`)
+- Sfondo: `#0a0a0a → #1a1a2e`, font Inter, glassmorphism, glow ambientale radiale
+- Usato automaticamente per `mode=dark` o `mode=bastian`
+
+#### M5 — Template promo ebook (`templates/carousel_promo.html`)
+- Slide hero: copertina ebook + badge BESTSELLER + CTA "Link in Bio"
+- Slide benefit: checkmark oro, font Playfair Display, palette #D4A853
+- Usato automaticamente per `mode=promo`
+
+#### M7 — Ken Burns evoluto (`step2_sfondo.py`)
+Ogni clip video ora applica una delle 4 varianti di movimento randomizzate:
+- `zoom_in` (1.0 → 1.04), `zoom_out` (1.04 → 1.0), `pan_h` (pan orizzontale), `pan_v` (pan verticale)
+
+#### M8 — Sottotitoli Hormozi evoluti (`modules/whisper_captions.py`)
+- `font_size`: 60 → 78
+- `stroke_width` parole non-correnti: 1 → 3
+- Posizione: già nella metà inferiore (70% height) ✅
+- Max parole per riga: già 3 ✅
+
+#### M10 — Validatore qualità copione (`agente_tiktok.py`)
+Prima di ogni pubblicazione, il copione viene valutato con score 0-10:
+- Accuratezza scientifica: 40%
+- Potenziale watch-time: 35%
+- Originalità: 25%
+- Se score < 7: rigenera automaticamente con `rag_generator.py --force-new` (max 1 retry)
+- Il `quality_score` viene loggato in `output/upload_log.json` per ogni pubblicazione
