@@ -53,6 +53,40 @@ def run_step(command: list[str], step_name: str):
     durata = time.time() - start_time
     console.print(f"[bold green]✓ {step_name} COMPLETATO con successo in {durata:.1f} secondi.[/]\n")
 
+def valida_qualita_copione(script_text: str) -> tuple[int, str]:
+    """
+    Valida il copione con AGY prima della pubblicazione.
+    Ritorna (score: int 0-10, motivazione: str).
+    Score < 7 → rigenera con topic diverso.
+    """
+    import re
+    prompt = f'''Sei un critico editoriale esperto di TikTok e contenuti scientifici virali.
+Valuta questo copione con uno score da 0 a 10 basandoti su:
+- Accuratezza scientifica (no esagerazioni, no trasformazioni correlazione→causalità): peso 40%
+- Potenziale watch-time (hook forte, struttura narrativa, colpo di scena): peso 35%  
+- Originalità (evita cliché, argomento fresco, non ripetitivo): peso 25%
+
+COPIONE:
+{script_text[:1500]}
+
+Rispondi SOLO con questo formato:
+SCORE: [numero da 0 a 10]
+MOTIVAZIONE: [max 2 righe]
+PROBLEMI: [lista bullet dei problemi principali, max 3]
+'''
+
+    try:
+        result = subprocess.run(
+            ['agy', 'run', '--model', 'flash', '--prompt', prompt],
+            capture_output=True, text=True, timeout=60
+        )
+        output = result.stdout
+        score_match = re.search(r'SCORE:\s*(\d+)', output)
+        score = int(score_match.group(1)) if score_match else 5
+        return score, output
+    except Exception as e:
+        return 7, f"Validazione skippata: {e}"  # In caso di errore, procedi
+
 def main():
     parser = argparse.ArgumentParser(description="Agente Orchestratore TikTok")
     parser.add_argument("--topic", help="Tema del video (opzionale, altrimenti ne pesca uno a caso dai tuoi libri)")
@@ -171,7 +205,29 @@ def main():
             
     # Sovrascrivi il file pulito senza i metadati (così la voce non li legge)
     script_path.write_text("\n".join(clean_lines).strip(), encoding="utf-8")
-    
+
+    # --- Validazione qualità copione (M10) ---
+    script_content_clean = script_path.read_text(encoding="utf-8")
+    quality_score, quality_report = valida_qualita_copione(script_content_clean)
+    console.print(f"[{'green' if quality_score >= 7 else 'red'}]📊 Quality Score: {quality_score}/10[/]")
+
+    if quality_score < 7:
+        console.print(f"[yellow]⚠️ Copione sotto soglia ({quality_score}/10). Rigenero con nuovo topic...[/]")
+        # Re-run rag_generator con flag --force-new per cambiare topic
+        subprocess.run(
+            [python_exe, 'rag_generator.py', '--topic', topic, '--output', script_txt,
+             '--mode', args.mode, '--force-new'],
+            capture_output=False
+        )
+        # Ricarica e ripulisci il copione rigenerato
+        if script_path.exists() and script_path.stat().st_size > 0:
+            script_content_clean = script_path.read_text(encoding="utf-8")
+            quality_score, quality_report = valida_qualita_copione(script_content_clean)
+            console.print(f"[cyan]📊 Quality Score (secondo tentativo): {quality_score}/10[/]")
+        else:
+            console.print("[red]Rigenero fallito: uso il copione originale.[/]")
+    # --- Fine M10 ---
+
     # Salva la vera fonte nello storico per non ripetere la notizia
     if fonte_notizia and "Errore" not in fonte_notizia:
         with open("used_news_history.txt", "a", encoding="utf-8") as f:
@@ -257,6 +313,7 @@ def main():
                     "mode": args.mode,
                     "hook_title": hook_title,
                     "fonte_notizia": fonte_notizia,
+                    "quality_score": quality_score,
                     "success": True
                 }, f)
                 f.write("\n")
@@ -271,6 +328,7 @@ def main():
                     "mode": args.mode,
                     "hook_title": hook_title,
                     "fonte_notizia": fonte_notizia,
+                    "quality_score": quality_score,
                     "success": False,
                     "error": "Errore durante upload TikTok"
                 }, f)

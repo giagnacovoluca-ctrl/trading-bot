@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Premium Carousel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 1080px;
+            height: 1920px; /* 9:16 TikTok / Reels format */
+            background: linear-gradient(160deg, #0a0a0a 0%, #0f0f1a 50%, #1a1a2e 100%);
+            color: #FFFFFF;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* === Ambient glow blobs === */
+        .glow-top {
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(108, 99, 255, 0.18) 0%, transparent 70%);
+            top: -200px;
+            right: -200px;
+            z-index: 0;
+        }
+
+        .glow-bottom {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(108, 99, 255, 0.10) 0%, transparent 70%);
+            bottom: -150px;
+            left: -150px;
+            z-index: 0;
+        }
+
+        /* === Subtle grid overlay === */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(108, 99, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(108, 99, 255, 0.04) 1px, transparent 1px);
+            background-size: 80px 80px;
+            z-index: 0;
+        }
+
+        /* === Slide number — top right === */
+        #slide-badge {
+            position: absolute;
+            top: 110px;
+            right: 100px;
+            font-size: 30px;
+            font-weight: 600;
+            color: #6C63FF;
+            letter-spacing: 2px;
+            z-index: 10;
+        }
+
+        /* === Main container === */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            padding: 160px 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* === Accent line above text === */
+        .accent-line {
+            width: 80px;
+            height: 5px;
+            background: linear-gradient(90deg, #6C63FF, #a78bfa);
+            border-radius: 3px;
+            margin-bottom: 52px;
+        }
+
+        /* === Glassmorphism text box === */
+        .text-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 28px;
+            padding: 70px 75px;
+            width: 100%;
+        }
+
+        /* === Main text === */
+        #slide-content {
+            font-size: 54px;
+            font-weight: 700;
+            line-height: 1.35;
+            letter-spacing: -0.5px;
+            color: #FFFFFF;
+        }
+
+        /* === Hook slide (slide 1) overrides === */
+        .is-hook .accent-line {
+            width: 120px;
+            height: 6px;
+        }
+
+        .is-hook #slide-content {
+            font-size: 72px;
+            font-weight: 900;
+            line-height: 1.15;
+            letter-spacing: -2px;
+            color: #FFFFFF;
+        }
+
+        .is-hook .text-box {
+            background: rgba(108, 99, 255, 0.12);
+            border-color: rgba(108, 99, 255, 0.30);
+        }
+
+        /* === Bottom brand strip === */
+        .brand-strip {
+            position: absolute;
+            bottom: 110px;
+            left: 110px;
+            right: 110px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            z-index: 10;
+        }
+
+        .brand-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #6C63FF;
+        }
+
+        .brand-line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(108,99,255,0.5), transparent);
+        }
+
+    </style>
+</head>
+<body class="theme-0">
+
+    <!-- Ambient effects -->
+    <div class="glow-top"></div>
+    <div class="glow-bottom"></div>
+    <div class="grid-overlay"></div>
+
+    <!-- Slide number -->
+    <div id="slide-badge">01 / 07</div>
+
+    <!-- Content -->
+    <div class="container">
+        <div class="accent-line"></div>
+        <div class="text-box">
+            <div id="slide-content">TESTO DI ESEMPIO</div>
+        </div>
+    </div>
+
+    <!-- Bottom strip -->
+    <div class="brand-strip">
+        <div class="brand-dot"></div>
+        <div class="brand-line"></div>
+    </div>
+
+    <script>
+        function setSlideData(testo, current, total, themeIndex = 0, bgUrl = '') {
+            return new Promise((resolve) => {
+                document.getElementById('slide-content').innerText = testo;
+
+                // Format badge as zero-padded numbers
+                const pad = (n) => String(n).padStart(2, '0');
+                document.getElementById('slide-badge').innerText = `${pad(current)} / ${pad(total)}`;
+
+                // Hook class for first slide
+                if (current === 1) {
+                    document.body.classList.add('is-hook');
+                } else {
+                    document.body.classList.remove('is-hook');
+                }
+
+                // Background image with gradient overlay
+                if (bgUrl) {
+                    const img = new Image();
+                    img.onload = () => {
+                        document.body.style.backgroundImage = `url('${bgUrl}')`;
+                        document.body.style.backgroundSize = 'cover';
+                        document.body.style.backgroundPosition = 'center';
+                        if (!document.getElementById('bg-overlay')) {
+                            const overlay = document.createElement('div');
+                            overlay.id = 'bg-overlay';
+                            overlay.style.cssText = [
+                                'position: absolute',
+                                'top: 0',
+                                'left: 0',
+                                'width: 100%',
+                                'height: 100%',
+                                'background: linear-gradient(160deg, rgba(10,10,10,0.85) 0%, rgba(26,26,46,0.80) 100%)',
+                                'z-index: 1'
+                            ].join('; ');
+                            document.body.insertBefore(overlay, document.body.firstChild);
+                        }
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                    img.src = bgUrl;
+                } else {
+                    resolve();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

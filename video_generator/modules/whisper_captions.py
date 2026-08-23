@@ -25,7 +25,7 @@ def _caption_font_path() -> str:
         return str(p)
     return "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
 
-def _render_word_highlight(words: list[str], current_word_index: int, video_w: int, font_size: int = 60):
+def _render_word_highlight(words: list[str], current_word_index: int, video_w: int, font_size: int = 78):
     """
     Renderizza una riga di testo, colorando di GIALLO solo la parola corrente
     e di BIANCO le altre (Hormozi style). Aggiunge emoji in automatico.
@@ -102,7 +102,7 @@ def _render_word_highlight(words: list[str], current_word_index: int, video_w: i
             draw.text((current_x, ty), base_word, font=font, fill=color, stroke_width=3, stroke_fill="black")
         else:
             # Testo normale
-            draw.text((current_x, ty), base_word, font=font, fill=color, stroke_width=1, stroke_fill="black")
+            draw.text((current_x, ty), base_word, font=font, fill=color, stroke_width=3, stroke_fill="black")
             
         current_x += word_w
         

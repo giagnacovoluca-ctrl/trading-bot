@@ -231,12 +231,26 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
         
-        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        STRUTTURA OBBLIGATORIA DEL COPIONE (5 ATTI — RISPETTA QUESTA STRUTTURA ESATTA):
         TITOLO: <il tuo titolo accurato qui (max 5 parole)>
-        TESTO: <il tuo copione qui (circa 130 parole), inclusa la CTA>
+        TESTO: 
+        ATTO 1 — HOOK (15-20 parole): Un fatto contro-intuitivo o domanda destabilizzante che rompe le aspettative. NON iniziare con 'Sapevi che'. Usa frasi come 'Ogni volta che...', 'Il tuo cervello sta...', 'Quello che pensi di sapere su X è sbagliato.'
+        ATTO 2 — CONTESTO (25-30 parole): Perché questo è rilevante per la vita quotidiana di chi guarda. Connetti il dato scientifico all'esperienza personale.
+        ATTO 3 — RIVELAZIONE (40-50 parole): Il dato/studio con fonte verificata. Usa 'Secondo uno studio dell'[università/journal]...' — NON trasformare correlazioni in causalità.
+        ATTO 4 — COLPO DI SCENA (15-20 parole): L'implicazione inaspettata che nessuno aveva considerato. La parte che fa venire voglia di condividere.
+        ATTO 5 — CTA (10-15 parole): Azione specifica che l'utente può fare ORA. Non 'seguimi', ma qualcosa di concreto.
         FONTE_NOTIZIA: <fonte reale o libro da cui hai tratto l'informazione (max 1 riga)>
           
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 7 IMMAGINI 9:16. Le immagini DEVONO RAPPRESENTARE ESATTAMENTE e in modo fedele ciò di cui parla la voce nel copione (scene, oggetti, personaggi o concetti citati). NON devono essere immagini a caso sul tema generale. Assicurati inoltre che abbiano uno stile visivo vario e adatto alla scena. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        DOPO aver scritto il copione a 5 atti, genera le immagini sfondo usando i generate_image con questi prompt SPECIFICI derivati dal copione:
+        - Immagine 1 (per ATTO 1 — hook): scena che trasmette sorpresa/shock visivo coerente con la prima frase del copione
+        - Immagine 2 (per ATTO 2 — contesto): scena di vita quotidiana coerente con il contesto descritto
+        - Immagine 3 (per ATTO 3 — rivelazione): visualizzazione scientifica/astratta del dato rivelato
+        - Immagine 4 (per ATTO 4 — colpo di scena): immagine spiazzante o paradossale coerente con l'implicazione
+        - Immagine 5 (per ATTO 5 — CTA): immagine motivazionale/di azione
+        - Immagine 6: panoramica tematica del macro-argomento
+        - Immagine 7: immagine di chiusura brandizzata (sfondo scuro con elemento grafico del tema)
+        NB: i prompt delle immagini devono essere in INGLESE, fotorealistici, ultra HD, cinematic lighting.
+        Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
         SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
         SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """
@@ -264,12 +278,26 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
         
-        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        STRUTTURA OBBLIGATORIA DEL COPIONE (5 ATTI — RISPETTA QUESTA STRUTTURA ESATTA):
         TITOLO: <il tuo titolo accurato qui (max 5 parole)>
-        TESTO: <il tuo copione qui (circa 130 parole), con le regole vocali applicate>
+        TESTO: 
+        ATTO 1 — HOOK (15-20 parole): Un fatto contro-intuitivo o domanda destabilizzante che rompe le aspettative. NON iniziare con 'Sapevi che'. Usa frasi come 'Ogni volta che...', 'Il tuo cervello sta...', 'Quello che pensi di sapere su X è sbagliato.'
+        ATTO 2 — CONTESTO (25-30 parole): Perché questo è rilevante per la vita quotidiana di chi guarda. Connetti il dato scientifico all'esperienza personale.
+        ATTO 3 — RIVELAZIONE (40-50 parole): Il dato/studio con fonte verificata. Usa 'Secondo uno studio dell'[università/journal]...' — NON trasformare correlazioni in causalità.
+        ATTO 4 — COLPO DI SCENA (15-20 parole): L'implicazione inaspettata che nessuno aveva considerato. La parte che fa venire voglia di condividere.
+        ATTO 5 — CTA (10-15 parole): Azione specifica che l'utente può fare ORA. Non 'seguimi', ma qualcosa di concreto.
         FONTE_NOTIZIA: <nome della fonte verificata, es. 'Studio dell'Università di Harvard' oppure 'Articolo su Nature' (max 1 riga)>
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 7 IMMAGINI 9:16. Le immagini DEVONO RAPPRESENTARE ESATTAMENTE e in modo fedele ciò di cui parla la voce nel copione. NON devono essere immagini a caso sul tema generale. Assicurati inoltre che abbiano uno stile visivo vario e adatto alla scena. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        DOPO aver scritto il copione a 5 atti, genera le immagini sfondo usando i generate_image con questi prompt SPECIFICI derivati dal copione:
+        - Immagine 1 (per ATTO 1 — hook): scena che trasmette sorpresa/shock visivo coerente con la prima frase del copione
+        - Immagine 2 (per ATTO 2 — contesto): scena di vita quotidiana coerente con il contesto descritto
+        - Immagine 3 (per ATTO 3 — rivelazione): visualizzazione scientifica/astratta del dato rivelato
+        - Immagine 4 (per ATTO 4 — colpo di scena): immagine spiazzante o paradossale coerente con l'implicazione
+        - Immagine 5 (per ATTO 5 — CTA): immagine motivazionale/di azione
+        - Immagine 6: panoramica tematica del macro-argomento
+        - Immagine 7: immagine di chiusura brandizzata (sfondo scuro con elemento grafico del tema)
+        NB: i prompt delle immagini devono essere in INGLESE, fotorealistici, ultra HD, cinematic lighting.
+        Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
         SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
         SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """
@@ -297,12 +325,26 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato.
         
-        STRUTTURA OBBLIGATORIA (DEVI RISPETTARE ESATTAMENTE QUESTO FORMATO, NESSUNA PAROLA IN PIU'):
+        STRUTTURA OBBLIGATORIA DEL COPIONE (5 ATTI — RISPETTA QUESTA STRUTTURA ESATTA):
         TITOLO: <il tuo titolo accurato qui (max 5 parole)>
-        TESTO: <il tuo copione qui (circa 130 parole)>
+        TESTO: 
+        ATTO 1 — HOOK (15-20 parole): Un fatto contro-intuitivo o domanda destabilizzante che rompe le aspettative. NON iniziare con 'Sapevi che'. Usa frasi come 'Ogni volta che...', 'Il tuo cervello sta...', 'Quello che pensi di sapere su X è sbagliato.'
+        ATTO 2 — CONTESTO (25-30 parole): Perché questo è rilevante per la vita quotidiana di chi guarda. Connetti il dato scientifico all'esperienza personale.
+        ATTO 3 — RIVELAZIONE (40-50 parole): Il dato/studio con fonte verificata. Usa 'Secondo uno studio dell'[università/journal]...' — NON trasformare correlazioni in causalità.
+        ATTO 4 — COLPO DI SCENA (15-20 parole): L'implicazione inaspettata che nessuno aveva considerato. La parte che fa venire voglia di condividere.
+        ATTO 5 — CTA (10-15 parole): Azione specifica che l'utente può fare ORA. Non 'seguimi', ma qualcosa di concreto.
         FONTE_NOTIZIA: <nome della fonte verificata della notizia reale (max 1 riga)>
         
-        CRITICO: PRIMA di scrivermi il copione, DEVI USARE il tuo strumento di generazione immagini per creare 7 IMMAGINI 9:16. Le immagini DEVONO RAPPRESENTARE ESATTAMENTE e in modo fedele ciò di cui parla la voce nel copione. Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
+        DOPO aver scritto il copione a 5 atti, genera le immagini sfondo usando i generate_image con questi prompt SPECIFICI derivati dal copione:
+        - Immagine 1 (per ATTO 1 — hook): scena che trasmette sorpresa/shock visivo coerente con la prima frase del copione
+        - Immagine 2 (per ATTO 2 — contesto): scena di vita quotidiana coerente con il contesto descritto
+        - Immagine 3 (per ATTO 3 — rivelazione): visualizzazione scientifica/astratta del dato rivelato
+        - Immagine 4 (per ATTO 4 — colpo di scena): immagine spiazzante o paradossale coerente con l'implicazione
+        - Immagine 5 (per ATTO 5 — CTA): immagine motivazionale/di azione
+        - Immagine 6: panoramica tematica del macro-argomento
+        - Immagine 7: immagine di chiusura brandizzata (sfondo scuro con elemento grafico del tema)
+        NB: i prompt delle immagini devono essere in INGLESE, fotorealistici, ultra HD, cinematic lighting.
+        Immediatamente dopo, USA IL TOOL run_command per copiarle/spostarle fisicamente in '/home/ubuntu/GIT/video_generator/assets/backgrounds/'.
         SOLO DOPO aver completato le immagini, rispondi scrivendo il copione ESATTAMENTE con il formato richiesto (TITOLO:, TESTO:, FONTE_NOTIZIA:) e nient'altro.
         SE LA GENERAZIONE IMMAGINI FALLISCE: procedi comunque scrivendo il copione.
         """

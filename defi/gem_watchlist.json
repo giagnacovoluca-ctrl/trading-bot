@@ -486,15 +486,15 @@
       "token_name": "",
       "chain": "base",
       "pair_address": "0x25434c5da1fa2e1735e9b6045615e709308d4ee2",
-      "gem_probability": 0.55,
-      "inflow_usd": 118253.875713,
+      "gem_probability": 0.72,
+      "inflow_usd": 109817.46939800004,
       "inflow_wallet_count": 105,
-      "avg_wallet_pnl_pct": 0.5631136938714286,
+      "avg_wallet_pnl_pct": 0.5229403304666669,
       "social_score": 25.0,
-      "market_cap_usd": 882967.0,
-      "gem_class": "NEUTRAL",
-      "added_at": "2026-08-23T17:46:01.794048",
-      "expires_at": "2026-08-24T05:46:01.794053"
+      "market_cap_usd": 952115.0,
+      "gem_class": "STEADY_GROWTH",
+      "added_at": "2026-08-23T19:47:19.695519",
+      "expires_at": "2026-08-24T07:47:19.695527"
     },
     {
       "token_address": "4cht49v1iazp2xugtycgkess6prmqvgfubqvrc9z91zt",
@@ -711,14 +711,14 @@
       "chain": "base",
       "pair_address": "0x215b2146c3164aba3f5b18e8619b737c7f7dd11e5ba693646dcd9a336c5a30ba",
       "gem_probability": 0.72,
-      "inflow_usd": 1067079.343536339,
-      "inflow_wallet_count": 199,
-      "avg_wallet_pnl_pct": 2.6811038782320074,
+      "inflow_usd": 1056644.613474874,
+      "inflow_wallet_count": 213,
+      "avg_wallet_pnl_pct": 2.4803864166076854,
       "social_score": 25.0,
-      "market_cap_usd": 31315964.0,
+      "market_cap_usd": 34535563.0,
       "gem_class": "STEADY_GROWTH",
-      "added_at": "2026-08-23T17:45:38.039480",
-      "expires_at": "2026-08-24T05:45:38.039488"
+      "added_at": "2026-08-23T19:46:55.716339",
+      "expires_at": "2026-08-24T07:46:55.716354"
     },
     {
       "token_address": "h9fikysbqrei3wxmdjtw9ghtdp8r8h4szma2dsuwpump",
@@ -1697,5 +1697,5 @@
       "expires_at": "2026-08-24T06:15:31.002614"
     }
   ],
-  "last_updated": "2026-08-23T18:54:48.041516"
+  "last_updated": "2026-08-23T19:47:19.697320"
 }

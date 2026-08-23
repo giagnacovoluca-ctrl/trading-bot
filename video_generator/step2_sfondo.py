@@ -1,4 +1,5 @@
 import os
+import random
 import argparse
 import sys
 import math
@@ -10,6 +11,24 @@ from modules.video_composer import get_dynamic_background_videos, crop_to_ratio,
 import config
 
 console = Console()
+
+def apply_ken_burns(clip):
+    """Applica effetto Ken Burns con 4 varianti randomizzate per ogni clip."""
+    effect = random.choice(['zoom_in', 'zoom_out', 'pan_h', 'pan_v'])
+    duration = clip.duration
+
+    if effect == 'zoom_in':
+        return clip.resize(lambda t: 1.0 + 0.04 * (t / duration))
+    elif effect == 'zoom_out':
+        return clip.resize(lambda t: 1.04 - 0.04 * (t / duration))
+    elif effect == 'pan_h':
+        W, H = clip.size
+        return clip.resize(1.08).set_position(lambda t: (-(W * 0.04) * (t / duration), 'center'))
+    elif effect == 'pan_v':
+        W, H = clip.size
+        return clip.resize(1.08).set_position(lambda t: ('center', -(H * 0.04) * (t / duration)))
+    return clip
+
 
 def main():
     parser = argparse.ArgumentParser(description="Step 2: Video Base (Senza Sottotitoli)")
@@ -98,11 +117,8 @@ def main():
         if ext in ['jpg', 'jpeg', 'png']:
             clip = ImageClip(str(p)).set_duration(target_clip_dur)
             clip = crop_to_ratio(clip, target_w, target_h)
-            # Applica un minuscolo resize per dare un effetto di movimento (Ken Burns)
-            clip = clip.resize(lambda t: 1 + 0.02 * t)
-            # Crop al centro dopo il resize
-            w, h = clip.size
-            clip = clip.crop(x1=(w-target_w)//2, y1=(h-target_h)//2, x2=(w+target_w)//2, y2=(h+target_h)//2)
+            # Applica effetto Ken Burns randomizzato (zoom_in/out, pan_h/v)
+            clip = apply_ken_burns(clip)
         else:
             clip = VideoFileClip(str(p), audio=False)
             clip = crop_to_ratio(clip, target_w, target_h)

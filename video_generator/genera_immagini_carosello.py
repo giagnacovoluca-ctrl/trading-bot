@@ -6,7 +6,7 @@ import random
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-async def generate_carousel_images(json_path: str):
+async def generate_carousel_images(json_path: str, mode: str = 'default'):
     p_file = Path(json_path)
     if not p_file.exists():
         print(f"File {json_path} non trovato!")
@@ -30,7 +30,16 @@ async def generate_carousel_images(json_path: str):
     for old_file in out_dir.glob("slide_*.png"):
         old_file.unlink()
 
-    template_path = Path("templates/carousel_slide.html").resolve()
+    # Template selection based on mode
+    _mode = mode.lower().strip()
+    if _mode == 'promo':
+        _template_name = "carousel_promo.html"
+    elif _mode in ('dark', 'bastian'):
+        _template_name = "carousel_dark.html"
+    else:
+        _template_name = "carousel_slide.html"
+    template_path = Path(f"templates/{_template_name}").resolve()
+    print(f"Template selezionato: {_template_name} (mode='{mode}')")  
     
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -125,4 +134,5 @@ async def generate_carousel_images(json_path: str):
 
 if __name__ == "__main__":
     json_path = sys.argv[1] if len(sys.argv) > 1 else "scripts/slides_carosello.json"
-    asyncio.run(generate_carousel_images(json_path))
+    mode = sys.argv[2] if len(sys.argv) > 2 else "default"
+    asyncio.run(generate_carousel_images(json_path, mode))
