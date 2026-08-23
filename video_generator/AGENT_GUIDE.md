@@ -51,18 +51,58 @@ Il vecchio e instabile `viral_news.py` è stato **deprecato**. Adesso il sistema
 4. **Formattazione Text-To-Speech (TTS):** I prompt obbligano l'AI a non usare virgolette, parentesi o simboli strani. Le fonti devono essere citate in modo discorsivo (es. "secondo la rivista Nature") per evitare che la voce sintetica legga a voce alta i segni di punteggiatura.
 5. **Divieto di Clickbait Obsoleto:** È severamente vietato l'uso di formule ripetitive come "Scoperta assurda" o citazioni di mesi specifici (es. "scoperta di agosto") per mantenere il contenuto sempreverde e naturale.
 
-## 6. AGGIORNAMENTO 2026-08-20: Transizione all'Agente Autonomo (Subagents & Scheduling)
-L'orchestrazione è stata migrata verso un workflow agentico basato su `agente_autonomo.py` gestito nativamente dai task asincroni di Antigravity, limitando la dipendenza da script bash statici.
-- **Subagents Integrati**:
-  1. **`trend_hunter`**: Subagent esplorativo che seleziona dinamicamente le nicchie (Spazio, Fisica, Biologia, ecc.) e legge autonomamente `used_news_history.txt` per non creare contenuti doppi.
-  2. **`revisore_editoriale`**: Subagent severo che esegue un controllo qualità (voto 1-10) del testo prima della generazione audio. Rifiuta testi sotto voto 8.
-  3. **Self-Healing**: Il codice gestisce attivamente i crash di rete/API (es. Pexels down) in tempo reale fornendo argomenti e asset di fallback sicuri senza interruzioni.
-- **Disabilitazione Linux Crontab**: Per delegare la responsabilità all'Agente, i vecchi lavori crontab di Linux sono stati commentati con `#` nel terminale. Lo schedule è stato replicato tramite il tool `schedule` interno dell'agente.
+## 6. AGGIORNAMENTO 2026-08-22: Rollback a Linux Crontab
+L'esperimento di migrazione dell'orchestrazione verso i task asincroni nativi di Antigravity (tramite il tool `schedule` e `agente_autonomo.py`) si è rivelato inaffidabile o non ottimale. Di conseguenza, il sistema è stato **ripristinato al crontab nativo di Linux**.
 
-> **NOTA SULL'ARCHITETTURA IBRIDA (Salvaguardia Prompt):** Tutti i prompt lunghi e testati per le modalità (virale, promo, bastian) sono stati volutamente mantenuti dentro `rag_generator.py` e nei file `carousel_*.sh`. Il nuovo `agente_autonomo.py` funziona da orchestratore intelligente, leggendo il `--mode` e innescando gli script storici, assicurando così che nessuna istruzione di base vada mai persa.
+Attualmente, la pianificazione è governata nuovamente dagli script bash (es. `video_virale.sh`, `carousel_promo.sh`) che vengono richiamati direttamente dal cron di sistema agli orari stabiliti. Questi script, al loro interno, utilizzano l'interfaccia CLI di Antigravity per l'intelligenza artificiale, ma l'avvio temporizzato è demandato interamente al sistema operativo (Linux Cron) per garantire massima stabilità.
 
-**⚠️ ISTRUZIONI PER IL ROLLBACK ⚠️**
-Se vuoi ritornare al vecchio sistema passivo senza IA orchestrante:
-1. Esegui il comando `crontab -e` e togli il simbolo `# ` dalle righe per riattivare i cron di sistema.
-2. Ripristina i file della cartella di backup: `/home/ubuntu/GIT/video_generator/backup_vecchio_sistema/`.
-3. Chiedi a me (Antigravity) di aprire i Task in background attivi (o usare /manage_task) e fermare i miei Cron interni.
+*Il tool interno `schedule` dell'agente non è più in uso per questo workflow.*
+
+Se in futuro si vorranno sperimentare nuovamente orchestrazioni agentiche avanzate in background, andranno valutate architetture alternative o l'avvio stesso dell'agente autonomo dovrà essere triggerato dal crontab.
+
+---
+
+## 7. AGGIORNAMENTO 2026-08-23: Migliorie Qualità Contenuti & Anti-Ban TikTok
+
+### 🚨 Problema Risolto: Ban TikTok per Disinformazione
+Un video è stato rimosso da TikTok per disinformazione. L'analisi ha rivelato che il sistema generava titoli sensazionalistici e scientificamente inesatti (es. "il tuo sangue hackerava il cervello"). Cause identificate:
+- Il prompt non aveva guardrail anti-disinformazione
+- Il titolo hook di default era "SCOPERTA SHOCK"
+- La history era contaminata da entry "SCOPERTA ASSURDA" ed "Errore di Generazione" che venivano reinieriate nei prompt
+
+### Modifiche Implementate (23/08/2026):
+
+#### `rag_generator.py` — Riscritto completamente
+- **Anti-disinformazione**: Regole iniettate in tutti i prompt: vietato esagerare studi, vietato trasformare correlazioni in causalità, obbligo di citare fonte credibile
+- **40+ topic** divisi in 12 categorie (neuroscienze, fisica/spazio, biologia, storia, tecnologia, matematica, filosofia, economia comportamentale, ambiente, sociologia)
+- **Topic picker intelligente**: ruota le categorie evitando quelle usate nelle ultime 3 sessioni
+- **Pulizia history**: filtra automaticamente le entry corrotte ("SCOPERTA ASSURDA", "Errore di Generazione") prima di iniettarle nel prompt
+- **Ricerca virale migliorata**: notizie degli ultimi 7 giorni (non 24h) da fonti verificabili (Nature, Science, NASA, WHO, università)
+- **Salvataggio history robusto**: salva `FONTE_NOTIZIA` non il titolo hook; in caso di errore salva `SKIP`
+
+#### `agente_tiktok.py` — Aggiornato
+- **Hook title di fallback**: più generico e neutro (non più "SCOPERTA SHOCK")
+- **Cleanup immagini background**: elimina immagini generate dinamicamente dai run precedenti (prefissi `fallback_bg_`, `pexels_`) prima di ogni run, evitando il riuso di sfondi vecchi e ripetitivi
+- **Notifiche Telegram**: funzione `notify_telegram()` invia alert su errori critici del cron (richiede `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` nel `.env`)
+- **Log upload JSON**: ogni pubblicazione viene loggata in `output/upload_log.json` con timestamp, filename, mode, fonte_notizia, esito
+
+#### `genera_immagini_carosello.py` — Aggiornato
+- **Retry con backoff esponenziale** su Pollinations (2s, 4s, 6s prima di arrendersi)
+- **Fallback AGY sincrono**: attendere il completamento del subprocess e verificare che il file esista
+- **Fallback PIL garantito**: se tutto fallisce, genera uno sfondo gradient colorato con PIL (basato sul tema e sul numero slide) — ogni slide ha SEMPRE uno sfondo
+
+#### `crea_carosello.py` — Aggiornato
+- **Rilevamento automatico modalità**: controlla il `tiktok_caption.txt` per parole chiave ("link in bio", "Amazon") e imposta `--mode promo` o `virale` di conseguenza
+
+#### Script Bash (`carousel_virale.sh`, `carousel_bastian.sh`, `carousel_promo.sh`) — Aggiornati
+- **11 categorie tematiche** selezionate casualmente con `$RANDOM` ad ogni esecuzione
+- **Anti-disinformazione** esplicita nel prompt: vietato clickbait, esagerazioni, titoli tipo "SCOPERTA ASSURDA"
+- **Ricerca 7 giorni** invece di "ultime 24h" (che portava a invenzioni)
+- **Carosello promo**: sceglie random tra i 3 ebook e fa divulgazione su un concetto specifico del libro selezionato
+
+### Note per l'Agente:
+- **NON usare mai** il titolo hook del video come `FONTE_NOTIZIA` — sono due cose diverse
+- **SEMPRE verificare** che la fonte sia un ente accreditato prima di affermare qualcosa come fatto
+- **Se una notizia non è verificabile**, sceglierne un'altra invece di inventare
+- **I numeri vanno sempre in lettere** nel copione TTS (es. "tremila" non "3000")
+- **Il tone of voice** deve essere "insider affascinato che condivide una scoperta reale", NON "guru che svela segreti nascosti"

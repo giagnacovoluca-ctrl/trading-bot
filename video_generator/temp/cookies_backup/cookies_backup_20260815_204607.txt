@@ -1,6 +1,0 @@
-# Netscape HTTP Cookie File
-# Generato automaticamente da cookie_uploader.py
-# Data: 2026-08-15T20:44:41.708812
-
-#HttpOnly_.tiktok.com	TRUE	/	TRUE	1999999999	sessionid	test_abc123
-.tiktok.com	TRUE	/	TRUE	1999999999	tt_csrf_token	csrf_xyz

@@ -1,52 +1,52 @@
 {
   "available": true,
   "weekly": {
-    "trades": 243,
-    "wins": 79,
-    "losses": 164,
-    "win_rate": 32.5,
-    "pnl_eur": 1113.5,
+    "trades": 315,
+    "wins": 179,
+    "losses": 136,
+    "win_rate": 56.8,
+    "pnl_eur": 3388.21,
     "best": {
-      "symbol": "COCK",
-      "pnl_eur": 46.71
+      "symbol": "BASED",
+      "pnl_eur": 50.0
     },
     "by_system": {
-      "midcap": {
-        "pnl_eur": -0.53,
-        "n": 7,
-        "win_rate": 42.9
+      "v3": {
+        "pnl_eur": 14.96,
+        "n": 46,
+        "win_rate": 28.3
       },
       "pump_grad": {
-        "pnl_eur": 1340.34,
-        "n": 165,
-        "win_rate": 32.7
+        "pnl_eur": 3237.27,
+        "n": 182,
+        "win_rate": 60.4
       },
       "defi": {
-        "pnl_eur": -110.12,
-        "n": 41,
-        "win_rate": 34.1
-      },
-      "v3": {
-        "pnl_eur": -9.57,
-        "n": 25,
-        "win_rate": 24.0
+        "pnl_eur": -72.21,
+        "n": 48,
+        "win_rate": 37.5
       },
       "v3_large": {
-        "pnl_eur": -106.62,
-        "n": 5,
-        "win_rate": 40.0
+        "pnl_eur": 17.08,
+        "n": 2,
+        "win_rate": 50.0
+      },
+      "midcap": {
+        "pnl_eur": 191.11,
+        "n": 37,
+        "win_rate": 100.0
       }
     }
   },
-  "updated_at": 1786888104.378517,
-  "updated_iso": "2026-08-16 13:48 UTC",
-  "trades_closed": 4927,
-  "wins": 2192,
-  "losses": 2735,
-  "win_rate": 44.5,
-  "total_pnl_eur": 9097.84,
-  "pnl_24h_eur": 404.39,
-  "avg_pnl_eur": 1.85,
+  "updated_at": 1787492914.3282812,
+  "updated_iso": "2026-08-23 13:48 UTC",
+  "trades_closed": 5242,
+  "wins": 2371,
+  "losses": 2871,
+  "win_rate": 45.2,
+  "total_pnl_eur": 12486.05,
+  "pnl_24h_eur": 514.9,
+  "avg_pnl_eur": 2.38,
   "best": {
     "symbol": "Steve",
     "pnl_eur": 1760.0
@@ -57,9 +57,9 @@
   },
   "by_system": {
     "defi": {
-      "pnl_eur": -643.75,
-      "n": 766,
-      "win_rate": 39.8
+      "pnl_eur": -715.96,
+      "n": 814,
+      "win_rate": 39.7
     },
     "v2": {
       "pnl_eur": -612.97,
@@ -67,14 +67,14 @@
       "win_rate": 16.0
     },
     "v3": {
-      "pnl_eur": -9.9,
-      "n": 237,
-      "win_rate": 40.5
+      "pnl_eur": 5.06,
+      "n": 283,
+      "win_rate": 38.5
     },
     "v3_large": {
-      "pnl_eur": 126.45,
-      "n": 52,
-      "win_rate": 55.8
+      "pnl_eur": 143.53,
+      "n": 54,
+      "win_rate": 55.6
     },
     "bnf": {
       "pnl_eur": 5.97,
@@ -87,14 +87,14 @@
       "win_rate": 37.5
     },
     "pump_grad": {
-      "pnl_eur": 10542.13,
-      "n": 3264,
-      "win_rate": 44.9
+      "pnl_eur": 13779.4,
+      "n": 3446,
+      "win_rate": 45.7
     },
     "midcap": {
-      "pnl_eur": -197.69,
-      "n": 545,
-      "win_rate": 51.4
+      "pnl_eur": -6.58,
+      "n": 582,
+      "win_rate": 54.5
     },
     "pre_grad": {
       "pnl_eur": -102.91,

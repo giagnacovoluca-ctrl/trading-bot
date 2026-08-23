@@ -17,18 +17,18 @@ class GridConfig:
     # Parametri specifici per coppia (sovrascrivono i default)
     PAIR_SETTINGS = {
         "BTC/USDT": {
-            "range_pct": 0.03,
-            "num_levels": 14,
+            "range_pct": 0.06,
+            "num_levels": 30,
             "order_size_usd": 20.0,
         },
         "ETH/USDT": {
-            "range_pct": 0.04,
-            "num_levels": 16,
+            "range_pct": 0.08,
+            "num_levels": 40,
             "order_size_usd": 15.0,
         },
         "SOL/USDT": {
-            "range_pct": 0.08,
-            "num_levels": 20,
+            "range_pct": 0.10,
+            "num_levels": 40,
             "order_size_usd": 10.0,
         }
     }

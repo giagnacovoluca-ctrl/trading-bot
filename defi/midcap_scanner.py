@@ -157,7 +157,7 @@ def fetch_coingecko_universe() -> dict:
 # FETCH OHLCV ASYNC — ccxt.async_support + semaforo per rate limit
 # ─────────────────────────────────────────────────────────────────────────────
 
-FALLBACK_EXCHANGES = ["binance", "mexc", "gateio"]   # cascata: copre i token assenti su Binance (~40% top mover settimanali)
+FALLBACK_EXCHANGES = ["binance", "mexc", "gate"]   # cascata: copre i token assenti su Binance (~40% top mover settimanali)
 
 
 async def _fetch_one(exchange: ccxt.Exchange, symbol: str,

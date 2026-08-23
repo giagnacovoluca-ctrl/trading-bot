@@ -13,7 +13,7 @@ BOT_URL_LOCAL = "http://localhost:8000/"
 CHECK_INTERVAL = 30  
 TUNNEL_URL = ""
 
-SERVICES = ["direct", "localhost.run", "serveo.net"]
+SERVICES = ["direct", "localhost.run"]
 current_service_index = 0
 DIRECT_URL = "https://fradodo.duckdns.org"
 
@@ -39,13 +39,14 @@ def is_tunnel_alive(url):
 def kill_bot():
     print("[Watchdog] Sto killando il bot...")
     subprocess.run(["screen", "-S", "fradodo_bot", "-X", "quit"], stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-f", "main.py"], stderr=subprocess.DEVNULL)
 
 def start_bot():
     print("[Watchdog] Riavvio il Bot...")
     kill_bot()
     os.system("screen -dmS fradodo_bot bash -c 'source venv/bin/activate && ./venv/bin/python main.py'")
-    # Diamo 90 secondi al bot per caricare il modello OCR prima di controllarlo
-    time.sleep(90)
+    # Diamo 120 secondi al bot per caricare il modello OCR prima di controllarlo
+    time.sleep(120)
 
 def _read_tunnel_output(process):
     global TUNNEL_URL
@@ -108,6 +109,7 @@ while True:
         print("[Watchdog] ⚠️ Bot non risponde! Riavvio in corso...")
         start_bot()
         time.sleep(10)
+        continue
         
     if TUNNEL_URL:
         tunnel_ok = is_tunnel_alive(TUNNEL_URL)

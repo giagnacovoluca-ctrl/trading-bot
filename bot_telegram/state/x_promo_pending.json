@@ -1,38 +1,56 @@
 [
   {
-    "symbol": "병신",
+    "symbol": "GOOGLE ",
     "system": "pump_grad",
     "chain": "base",
-    "pnl_eur": 45.59,
+    "pnl_eur": 44.23,
     "invested_eur": 100.0,
-    "pct": 45.59,
-    "_queued_ts": 1786866010.300787
+    "pct": 44.23,
+    "_queued_ts": 1787482626.5236785
   },
   {
-    "symbol": "DOS",
-    "system": "v3",
+    "symbol": "CYBERLEEK",
+    "system": "pump_grad",
+    "chain": "solana",
+    "pnl_eur": 24.02,
+    "invested_eur": 100.0,
+    "pct": 24.02,
+    "_queued_ts": 1787486984.0581155
+  },
+  {
+    "symbol": "SOLY",
+    "system": "defi",
     "chain": "base",
-    "pnl_eur": 15.88,
+    "pnl_eur": 12.39,
     "invested_eur": 100.0,
-    "pct": 15.879999999999999,
-    "_queued_ts": 1786881854.992246
+    "pct": 12.39,
+    "_queued_ts": 1787492086.638824
   },
   {
-    "symbol": "PEPETO",
-    "system": "v3",
-    "chain": "base",
-    "pnl_eur": 17.68,
+    "symbol": "MORPHO",
+    "system": "midcap",
+    "chain": "cex_spot",
+    "pnl_eur": 13.51,
     "invested_eur": 100.0,
-    "pct": 17.68,
-    "_queued_ts": 1786885081.552096
+    "pct": 13.51,
+    "_queued_ts": 1787495909.3640885
   },
   {
-    "symbol": "plumber",
+    "symbol": "PENGU",
+    "system": "midcap",
+    "chain": "cex_spot",
+    "pnl_eur": 12.72,
+    "invested_eur": 100.0,
+    "pct": 12.72,
+    "_queued_ts": 1787503802.2311087
+  },
+  {
+    "symbol": "BOB",
     "system": "pump_grad",
     "chain": "base",
-    "pnl_eur": 40.29,
+    "pnl_eur": 11.48,
     "invested_eur": 100.0,
-    "pct": 40.29,
-    "_queued_ts": 1786885571.8964834
+    "pct": 11.48,
+    "_queued_ts": 1787503917.5102549
   }
 ]

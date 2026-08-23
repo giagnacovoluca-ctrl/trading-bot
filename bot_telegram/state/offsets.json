@@ -1,11 +1,11 @@
 {
-  "signals_log.csv": 2531021,
-  "pump_grad_signals.csv": 7185703,
+  "signals_log.csv": 2801825,
+  "pump_grad_signals.csv": 7254276,
   "pre_grad_signals.csv": 323313,
-  "mirror_signals.csv": 80705,
-  "midcap_signals.csv": 193339,
-  "_live_trades": 2608761,
-  "_wallet_events": 2243694,
+  "mirror_signals.csv": 94819,
+  "midcap_signals.csv": 217260,
+  "_live_trades": 2759193,
+  "_wallet_events": 2297213,
   "base_pump_signals.csv": 229,
-  "gems_log_v3.csv": 956270
+  "gems_log_v3.csv": 1109600
 }

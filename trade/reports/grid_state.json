@@ -1,380 +1,380 @@
 {
-    "cumulative_pnl": 6.494351449702947,
+    "cumulative_pnl": 10.524698855410328,
     "grids": {
         "BTC/USDT": {
-            "inventory": 0.002845861929118019,
-            "realized_pnl": 1.4552368615636766,
-            "center_price": 63058.41,
+            "inventory": -0.007356484697195989,
+            "realized_pnl": 3.7724670074972737,
+            "center_price": 68744.08,
             "range_pct": 0.012166042640096545,
-            "paused": false,
+            "paused": true,
             "levels": [
                 {
-                    "price": 62291.23869512332,
+                    "price": 67907.7365914658,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.0003210724400246317
+                    "qty": 0.0002945172524350262
                 },
                 {
-                    "price": 62400.834595819986,
+                    "price": 68027.21422125639,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.0003205085337326519
+                    "qty": 0.00029399998557857484
                 },
                 {
-                    "price": 62510.43049651665,
+                    "price": 68146.691851047,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.0003199466047688551
+                    "qty": 0.00029348453250988915
                 },
                 {
-                    "price": 62620.026397213325,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.00031938664275124015
-                },
-                {
-                    "price": 62729.62229791,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.00031882863737036005
-                },
-                {
-                    "price": 62839.218198606664,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.00031827257838868946
-                },
-                {
-                    "price": 62948.81409930333,
+                    "price": 68266.16948083759,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.0003177184556399982
+                    "qty": 0.0002929708837056403
                 },
                 {
-                    "price": 63168.00590069668,
+                    "price": 68385.6471106282,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.0002924590297090526
+                },
+                {
+                    "price": 68505.1247404188,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.0002919489611293237
+                },
+                {
+                    "price": 68624.6023702094,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.0002914406686410498
+                },
+                {
+                    "price": 68863.55762979061,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.00031661597852940016
+                    "qty": 0.00029042937496084187
                 },
                 {
-                    "price": 63277.60180139334,
+                    "price": 68983.0352595812,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.0003160676041859666
+                    "qty": 0.00028992635544000884
                 },
                 {
-                    "price": 63387.19770209001,
+                    "price": 69102.5128893718,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.00031552112611125195
+                    "qty": 0.00028942507535172524
                 },
                 {
-                    "price": 63496.79360278668,
+                    "price": 69221.99051916241,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.0003149765344863376
+                    "qty": 0.0002889255256891737
                 },
                 {
-                    "price": 63606.389503483355,
+                    "price": 69341.468148953,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.00031443381955997856
+                    "qty": 0.00028842769750761304
                 },
                 {
-                    "price": 63715.98540418002,
+                    "price": 69460.94577874361,
+                    "side": "sell",
+                    "status": "filled",
+                    "order_id": null,
+                    "qty": 0.00028793158192384397
+                },
+                {
+                    "price": 69580.4234085342,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.000313892971648021
-                },
-                {
-                    "price": 63825.58130487669,
-                    "side": "sell",
-                    "status": "pending",
-                    "order_id": null,
-                    "qty": 0.0003133539811328263
+                    "qty": 0.0002874371701156816
                 }
             ]
         },
         "ETH/USDT": {
-            "inventory": -0.12404312946619128,
-            "realized_pnl": 2.8097231330479766,
-            "center_price": 1886.34,
+            "inventory": -0.26464395716788314,
+            "realized_pnl": 3.7323561094034967,
+            "center_price": 1933.0,
             "range_pct": 0.01122363750261015,
-            "paused": false,
+            "paused": true,
             "levels": [
                 {
-                    "price": 1865.1684036333263,
+                    "price": 1911.3047087074547,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.008042169259773099
+                    "qty": 0.007848042194247484
                 },
                 {
-                    "price": 1867.8148531791603,
+                    "price": 1914.0166201190227,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.00803077455694759
+                    "qty": 0.007836922544103734
                 },
                 {
-                    "price": 1870.4613027249945,
+                    "price": 1916.728531530591,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.008019412098046158
+                    "qty": 0.007825834359559436
                 },
                 {
-                    "price": 1873.1077522708288,
+                    "price": 1919.440442942159,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.00800808174639981
+                    "qty": 0.007814777507244602
                 },
                 {
-                    "price": 1875.754201816663,
+                    "price": 1922.1523543537273,
                     "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.007803751854541911
+                },
+                {
+                    "price": 1924.8642657652954,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.007792757269581416
+                },
+                {
+                    "price": 1927.5761771768637,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.007781793621235278
+                },
+                {
+                    "price": 1930.2880885884317,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.007770860779112563
+                },
+                {
+                    "price": 1935.7119114115683,
+                    "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.007996783366110836
+                    "qty": 0.0077490869956271715
                 },
                 {
-                    "price": 1878.4006513624972,
-                    "side": "buy",
+                    "price": 1938.4238228231363,
+                    "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.007985516822047392
+                    "qty": 0.007738245797120816
                 },
                 {
-                    "price": 1881.0471009083315,
-                    "side": "buy",
+                    "price": 1941.1357342347046,
+                    "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.007974281979838096
+                    "qty": 0.007727434890540393
                 },
                 {
-                    "price": 1883.6935504541657,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.007963078705866697
-                },
-                {
-                    "price": 1888.9864495458341,
+                    "price": 1943.8476456462727,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.007940766331916475
+                    "qty": 0.00771665414910279
                 },
                 {
-                    "price": 1891.6328990916684,
+                    "price": 1946.559557057841,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.007929656968433335
+                    "qty": 0.007705903446731418
                 },
                 {
-                    "price": 1894.2793486375026,
+                    "price": 1949.271468469409,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.007918578646169079
+                    "qty": 0.007695182658051306
                 },
                 {
-                    "price": 1896.9257981833368,
+                    "price": 1951.9833798809773,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.00790753123520452
+                    "qty": 0.007684491658384217
                 },
                 {
-                    "price": 1899.572247729171,
+                    "price": 1954.6952912925453,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.007896514606344473
-                },
-                {
-                    "price": 1902.2186972750053,
-                    "side": "sell",
-                    "status": "pending",
-                    "order_id": null,
-                    "qty": 0.007885528631112724
-                },
-                {
-                    "price": 1904.8651468208395,
-                    "side": "sell",
-                    "status": "pending",
-                    "order_id": null,
-                    "qty": 0.00787457318174703
-                },
-                {
-                    "price": 1907.5115963666735,
-                    "side": "sell",
-                    "status": "pending",
-                    "order_id": null,
-                    "qty": 0.00786364813119417
+                    "qty": 0.007673830323743823
                 }
             ]
         },
         "SOL/USDT": {
-            "inventory": -3.923150190133252,
-            "realized_pnl": 2.229391455091295,
-            "center_price": 75.01,
+            "inventory": -6.430070587655632,
+            "realized_pnl": 3.019875738509555,
+            "center_price": 78.79,
             "range_pct": 0.011840688912809509,
-            "paused": false,
+            "paused": true,
             "levels": [
                 {
-                    "price": 74.12182992465016,
+                    "price": 77.85707212055975,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.1349130210380083
+                    "qty": 0.128440483666214
                 },
                 {
-                    "price": 74.21064693218514,
+                    "price": 77.95036490850377,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13475155403426353
+                    "qty": 0.12828676314392826
                 },
                 {
-                    "price": 74.29946393972013,
+                    "price": 78.0436576964478,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13459047306334668
+                    "qty": 0.12813341013430174
                 },
                 {
-                    "price": 74.38828094725511,
+                    "price": 78.13695048439183,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13442977674252862
+                    "qty": 0.12798042332094264
                 },
                 {
-                    "price": 74.4770979547901,
+                    "price": 78.23024327233585,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13426946369567608
+                    "qty": 0.12782780139373856
                 },
                 {
-                    "price": 74.56591496232508,
+                    "price": 78.32353606027988,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13410953255321237
+                    "qty": 0.12767554304881912
                 },
                 {
-                    "price": 74.65473196986007,
+                    "price": 78.4168288482239,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13394998195207833
+                    "qty": 0.12752364698851879
                 },
                 {
-                    "price": 74.74354897739505,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.13379081053569364
-                },
-                {
-                    "price": 74.83236598493004,
-                    "side": "buy",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.13363201695391844
-                },
-                {
-                    "price": 74.92118299246502,
+                    "price": 78.51012163616792,
                     "side": "buy",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.133473599863015
+                    "qty": 0.12737211192134001
                 },
                 {
-                    "price": 75.09881700753499,
+                    "price": 78.60341442411196,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.12722093656191674
+                },
+                {
+                    "price": 78.69670721205598,
+                    "side": "buy",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.12707011963097797
+                },
+                {
+                    "price": 78.88329278794403,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.1331578898106565
+                    "qty": 0.1267695559677287
                 },
                 {
-                    "price": 75.18763401506997,
+                    "price": 78.97658557588805,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.13300059419339735
+                    "qty": 0.126619806707028
                 },
                 {
-                    "price": 75.27645102260496,
+                    "price": 79.06987836383209,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.13284366975532727
+                    "qty": 0.12647041081796037
                 },
                 {
-                    "price": 75.36526803013994,
+                    "price": 79.16317115177611,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.1326871151841564
+                    "qty": 0.12632136705119398
                 },
                 {
-                    "price": 75.45408503767493,
+                    "price": 79.25646393972013,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.1325309291737738
+                    "qty": 0.12617267416327924
                 },
                 {
-                    "price": 75.54290204520991,
+                    "price": 79.34975672766416,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.13237511042421077
+                    "qty": 0.12602433091661444
                 },
                 {
-                    "price": 75.6317190527449,
+                    "price": 79.44304951560818,
                     "side": "sell",
                     "status": "filled",
                     "order_id": null,
-                    "qty": 0.1322196576416052
+                    "qty": 0.1258763360794112
                 },
                 {
-                    "price": 75.72053606027988,
-                    "side": "sell",
-                    "status": "filled",
-                    "order_id": null,
-                    "qty": 0.13206456953816548
-                },
-                {
-                    "price": 75.80935306781487,
+                    "price": 79.53634230355222,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13190984483213505
+                    "qty": 0.12572868842566054
                 },
                 {
-                    "price": 75.89817007534985,
+                    "price": 79.62963509149624,
                     "side": "sell",
                     "status": "pending",
                     "order_id": null,
-                    "qty": 0.13175548224775702
+                    "qty": 0.125581386735099
+                },
+                {
+                    "price": 79.72292787944026,
+                    "side": "sell",
+                    "status": "pending",
+                    "order_id": null,
+                    "qty": 0.12543442979317496
                 }
             ]
         }

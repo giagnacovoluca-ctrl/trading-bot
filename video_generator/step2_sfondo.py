@@ -41,7 +41,10 @@ def main():
         
         pexels_vids = []
         if args.topic and getattr(config, "PEXELS_API_KEY", None):
-            topic_words = args.topic.split()
+            stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per", "tra", "fra", "che", "del", "della", "dei", "delle", "al", "allo", "alla", "ai", "agli", "alle", "nel", "nella", "nei", "nelle", "sul", "sulla", "sui", "sulle", "come", "non", "più"}
+            topic_words = [w for w in args.topic.split() if w.lower() not in stop_words and len(w) > 2]
+            if not topic_words:
+                topic_words = [args.topic] # fallback
             from modules.video_composer import _download_pexels_video
             # Scarica più video per evitare ripetizioni variando la keyword
             for i in range(min(10, n_clips_needed)):

@@ -26,7 +26,23 @@ FraDodo_backup.zip
 node_modules/
 __pycache__/
 *.pyc
+
+# video_generator — sessione browser e file sensibili
 video_generator/chrome_profile/
+video_generator/cookies.txt
+video_generator/temp/
+video_generator/output/
+video_generator/assets/backgrounds/fallback_bg_*.jpg
+video_generator/assets/carousels/
+video_generator/tiktok_*.png
+video_generator/tiktok_*.html
+video_generator/frame_test_*.jpg
+video_generator/debug_log.txt
+video_generator/scripts/script_generato.txt
+video_generator/scripts/script_carosello.txt
+video_generator/scripts/slides_carosello.json
+video_generator/scripts/tiktok_caption.txt
+video_generator/scripts/analytics.json
 
 # Ignore environment variables
 .env

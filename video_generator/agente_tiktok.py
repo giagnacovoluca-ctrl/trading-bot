@@ -4,10 +4,23 @@ import time
 import random
 import argparse
 import subprocess
+import requests
 from pathlib import Path
 from rich.console import Console
 
 console = Console()
+
+def notify_telegram(message: str):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        console.print("[dim yellow]Telegram notify skipped (missing env variables)[/]")
+        return
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        requests.post(url, json={"chat_id": chat_id, "text": message})
+    except Exception as e:
+        console.print(f"[dim red]Errore notifica Telegram: {e}[/]")
 
 # Argomenti random se non ne viene fornito uno
 TOPIC_IDEAS = [
@@ -34,6 +47,7 @@ def run_step(command: list[str], step_name: str):
     except subprocess.CalledProcessError as e:
         console.print(f"\n[bold red]✖ ERRORE FATALE IN {step_name}[/]")
         console.print(f"Codice di uscita: {e.returncode}")
+        notify_telegram(f"ERRORE FATALE IN {step_name} (Exit code: {e.returncode})")
         sys.exit(1)
         
     durata = time.time() - start_time
@@ -67,6 +81,17 @@ def main():
 
     bg_dir = Path("assets/backgrounds")
     bg_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Pulizia bg generati
+    now = time.time()
+    for f in list(bg_dir.glob("*.*")):
+        name = f.name.lower()
+        if name.startswith("fallback_bg_") or name.startswith("pexels_"):
+            f.unlink()
+        elif f.suffix.lower() in [".jpg", ".png", ".jpeg"]:
+            if now - f.stat().st_mtime < 7200:
+                f.unlink()
+
     old_bg_files = set(bg_dir.glob("*.*"))
 
     # STEP 0: Generazione Testo (RAG)
@@ -118,7 +143,7 @@ def main():
         
     # Estrai il titolo, la fonte e pulisci lo script per la voce
     script_content = script_path.read_text(encoding="utf-8").splitlines()
-    hook_title = "SCOPERTA SHOCK"
+    hook_title = "Scoperta Interessante"
     fonte_notizia = ""
     ebook_filename = ""
     clean_lines = []
@@ -134,17 +159,28 @@ def main():
         else:
             clean_lines.append(line)
             
-    if "Errore di Generazione" in hook_title:
-        console.print("[bold red]✖ ERRORE FATALE:[/] L'Agente ha restituito 'Errore di Generazione' (probabile limite API 429). Processo interrotto per evitare la pubblicazione del video errato.")
+    if not hook_title or hook_title == "Scoperta Interessante":
+        full_text = " ".join(clean_lines)
+        if full_text:
+            hook_title = " ".join(full_text.split()[:5])
+
+    if "Errore" in hook_title or hook_title == "SCOPERTA SHOCK":
+        notify_telegram(f"ERRORE FATALE: hook_title invalido ({hook_title})")
+        console.print(f"[bold red]✖ ERRORE FATALE:[/] hook_title invalido ({hook_title}). Processo interrotto per evitare la pubblicazione del video errato.")
         sys.exit(1)
             
     # Sovrascrivi il file pulito senza i metadati (così la voce non li legge)
     script_path.write_text("\n".join(clean_lines).strip(), encoding="utf-8")
     
     # Salva la vera fonte nello storico per non ripetere la notizia
-    storia_da_salvare = fonte_notizia if fonte_notizia else hook_title
-    with open("used_news_history.txt", "a", encoding="utf-8") as f:
-        f.write(storia_da_salvare + "\n")
+    if fonte_notizia and "Errore" not in fonte_notizia:
+        with open("used_news_history.txt", "a", encoding="utf-8") as f:
+            f.write(fonte_notizia + "\n")
+            
+    if Path("used_news_history.txt").exists():
+        history_lines = Path("used_news_history.txt").read_text(encoding="utf-8").splitlines()
+        filtered = [l for l in history_lines if "SCOPERTA ASSURDA" not in l and "Errore" not in l and "SCOPERTA SHOCK" not in l]
+        Path("used_news_history.txt").write_text("\n".join(filtered) + "\n", encoding="utf-8")
     
     # Crea il filename basato sul titolo
     safe_title = "".join([c if c.isalnum() else "_" for c in hook_title.lower()]).strip("_")
@@ -209,7 +245,37 @@ def main():
         if cookies_path.exists() and not profile_path.exists():
             step4_cmd.extend(["--cookies", str(cookies_path)])
             
-        run_step(step4_cmd, "STEP 4: Generazione Metadata e Upload TikTok")
+        try:
+            run_step(step4_cmd, "STEP 4: Generazione Metadata e Upload TikTok")
+            import json
+            import datetime
+            Path("output").mkdir(exist_ok=True)
+            with open("output/upload_log.json", "a", encoding="utf-8") as f:
+                json.dump({
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "video_file": video_finale,
+                    "mode": args.mode,
+                    "hook_title": hook_title,
+                    "fonte_notizia": fonte_notizia,
+                    "success": True
+                }, f)
+                f.write("\n")
+        except SystemExit as e:
+            import json
+            import datetime
+            Path("output").mkdir(exist_ok=True)
+            with open("output/upload_log.json", "a", encoding="utf-8") as f:
+                json.dump({
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "video_file": video_finale,
+                    "mode": args.mode,
+                    "hook_title": hook_title,
+                    "fonte_notizia": fonte_notizia,
+                    "success": False,
+                    "error": "Errore durante upload TikTok"
+                }, f)
+                f.write("\n")
+            raise
     else:
         console.print("\n[dim]Salto la pubblicazione automatica: né 'chrome_profile' né 'cookies.txt' trovati.[/]")
 

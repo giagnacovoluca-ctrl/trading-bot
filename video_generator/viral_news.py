@@ -136,16 +136,16 @@ def get_random_viral_news() -> str:
     if not news_data:
         fallbacks = [
             {
-                'title': "Gli scienziati hanno fatto una scoperta sconvolgente sulla mente umana",
-                'text': "Una nuova ricerca rivela segreti inaspettati sulle capacità del nostro cervello.",
+                'title': "L'abbinamento perfetto: perché dovresti sempre mangiare limone e spinaci insieme",
+                'text': "Una nuova ricerca rivela che accoppiare la vitamina C col ferro vegetale sblocca l'assorbimento dei nutrienti in modo incredibile, agendo come un superfood naturale.",
                 'score': "Mondiale",
                 'source_name': "Science Daily"
             },
             {
-                'title': "Fisici quantistici dimostrano un nuovo paradosso sul tempo",
-                'text': "Il tempo potrebbe non scorrere in una sola direzione. Le nuove scoperte sfidano la percezione della realtà che abbiamo ogni giorno.",
+                'title': "La geniale abitudine mattutina che accomuna Steve Jobs e Nikola Tesla",
+                'text': "Analizzando le routine dei più grandi innovatori, i ricercatori hanno scoperto un pattern comportamentale nelle prime ore del mattino che riprogramma la neuroplasticità per il successo.",
                 'score': "Mondiale",
-                'source_name': "Nature Science"
+                'source_name': "Psychology Today"
             },
             {
                 'title': "Scoperta una connessione fisica tra solitudine e invecchiamento del DNA",
@@ -154,10 +154,10 @@ def get_random_viral_news() -> str:
                 'source_name': "Wired Health"
             },
             {
-                'title': "Intelligenza Artificiale svela un linguaggio nascosto nelle piante",
-                'text': "I nuovi algoritmi hanno registrato e tradotto suoni ad alta frequenza emessi dagli alberi, dimostrando che comunicano.",
+                'title': "L'effetto Zeigarnik: il vero motivo per cui non riesci a dormire la notte",
+                'text': "Una curiosità psicologica svela perché il nostro cervello si rifiuta di 'spegnersi' quando lasciamo compiti a metà durante la giornata.",
                 'score': "Mondiale",
-                'source_name': "Tech & Biology"
+                'source_name': "Neuroscience News"
             }
         ]
         news_data = random.choice(fallbacks)

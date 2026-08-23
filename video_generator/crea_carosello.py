@@ -28,17 +28,17 @@ def genera_testi_carosello():
                 for s in slides[:6]:
                     testo = str(s)
                     if isinstance(s, dict):
-                        testo = s.get('testo_schermo', s.get('text', s.get('testo', s.get('content', s.get('testo_principale', str(s))))))
+                        testo = s.get('testo_schermo', s.get('text', s.get('testo', s.get('content', s.get('testo_principale', s.get('text_on_screen', str(s)))))))
                     elif isinstance(s, str):
                         try:
                             parsed = json.loads(s)
                             if isinstance(parsed, dict):
-                                testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', s)))))
+                                testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', parsed.get('text_on_screen', s))))))
                         except:
                             try:
                                 parsed = ast.literal_eval(s)
                                 if isinstance(parsed, dict):
-                                    testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', s)))))
+                                    testo = parsed.get('testo_schermo', parsed.get('text', parsed.get('testo', parsed.get('content', parsed.get('testo_principale', parsed.get('text_on_screen', s))))))
                             except:
                                 pass
                                 
@@ -154,12 +154,20 @@ def main():
     
     console.print("[cyan]4. Pubblicazione su TikTok...[/]")
     import sys
+    
+    tiktok_caption_path = config.SCRIPTS_DIR / "tiktok_caption.txt"
+    mode = "virale"
+    if tiktok_caption_path.exists():
+        caption_text = tiktok_caption_path.read_text(encoding="utf-8").lower()
+        if "link in bio" in caption_text or "amazon" in caption_text:
+            mode = "promo"
+            
     # Esegue step4_pubblica.py
     cmd = [
         sys.executable, "step4_pubblica.py",
         "--video", str(out_video),
         "--script", str(script_path),
-        "--mode", "virale"
+        "--mode", mode
     ]
     subprocess.run(cmd, check=True)
     

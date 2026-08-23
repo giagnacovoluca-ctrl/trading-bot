@@ -13,12 +13,13 @@ console = Console()
 TOPIC_IDEAS = [
     "energia e digestione",
     "meditazione e stress",
-    "fisica quantistica e mente",
+    "abbinamenti geniali di super food e cibo normale",
     "scienza e vibrazioni",
-    "alimentazione e umore",
-    "frequenze del pensiero",
-    "cibo per il cervello",
-    "neuroplasticità e abitudini"
+    "le abitudini mattutine dei personaggi famosi",
+    "curiosità psicologiche interessanti",
+    "cibo per il cervello e nootropi naturali",
+    "neuroplasticità e abitudini di successo",
+    "abitudini serali che rovinano il sonno"
 ]
 
 def run_step(command: list[str], step_name: str) -> bool:
