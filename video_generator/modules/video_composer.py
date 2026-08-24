@@ -36,9 +36,15 @@ console = Console()
 def _list_local_backgrounds() -> list[Path]:
     exts = ("*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm", "*.jpg", "*.jpeg", "*.png")
     vids: list[Path] = []
+    
+    custom_dir = Path("/home/ubuntu/home/video")
+    if custom_dir.exists():
+        for pat in exts:
+            vids.extend(custom_dir.rglob(pat))
+            
     for pat in exts:
         vids.extend(config.BG_DIR.glob(pat))
-    return vids
+    return list(set(vids))
 
 
 def _download_pexels_video(keyword: str, dest_dir: Path) -> Path | None:
@@ -123,9 +129,17 @@ def get_dynamic_background_videos(audio_duration: float, preferred_bg: str | Pat
     # 2. Raccogliamo N clip
     queries = list(config.PEXELS_SEARCH_QUERIES) if hasattr(config, "PEXELS_SEARCH_QUERIES") and config.PEXELS_SEARCH_QUERIES else ["nature", "abstract", "technology"]
     
+    import random
+    random.shuffle(local)
+    local_pool = list(local)
+    
     for i in range(n_clips_needed):
         if forced_bg and i == 0:
             chosen_paths.append(forced_bg)
+            continue
+            
+        if local_pool:
+            chosen_paths.append(local_pool.pop(0))
             continue
             
         # Proviamo da pexels

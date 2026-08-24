@@ -56,21 +56,32 @@ def main():
     gen_images = [Path(p) for p in args.images] if args.images else []
     
     if gen_images or args.topic:
-        console.print(f"Preparo {n_clips_needed} clip mixando immagini generate e video Pexels...")
+        console.print(f"Preparo {n_clips_needed} clip mixando immagini generate e video Pexels/Locali...")
         
         pexels_vids = []
-        if args.topic and getattr(config, "PEXELS_API_KEY", None):
-            stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per", "tra", "fra", "che", "del", "della", "dei", "delle", "al", "allo", "alla", "ai", "agli", "alle", "nel", "nella", "nei", "nelle", "sul", "sulla", "sui", "sulle", "come", "non", "più"}
-            topic_words = [w for w in args.topic.split() if w.lower() not in stop_words and len(w) > 2]
-            if not topic_words:
-                topic_words = [args.topic] # fallback
-            from modules.video_composer import _download_pexels_video
-            # Scarica più video per evitare ripetizioni variando la keyword
-            for i in range(min(10, n_clips_needed)):
-                query = topic_words[i % len(topic_words)]
-                vid = _download_pexels_video(query, config.BG_DIR)
-                if vid and vid not in pexels_vids:
-                    pexels_vids.append(vid)
+        if args.topic:
+            from modules.video_composer import _list_local_backgrounds
+            import random
+            
+            # 1. Prova prima ad usare i video locali
+            local_vids = _list_local_backgrounds()
+            random.shuffle(local_vids)
+            pexels_vids.extend(local_vids[:n_clips_needed])
+            
+            # 2. Se non bastano, usa Pexels
+            if len(pexels_vids) < min(10, n_clips_needed) and getattr(config, "PEXELS_API_KEY", None):
+                stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per", "tra", "fra", "che", "del", "della", "dei", "delle", "al", "allo", "alla", "ai", "agli", "alle", "nel", "nella", "nei", "nelle", "sul", "sulla", "sui", "sulle", "come", "non", "più"}
+                topic_words = [w for w in args.topic.split() if w.lower() not in stop_words and len(w) > 2]
+                if not topic_words:
+                    topic_words = [args.topic] # fallback
+                from modules.video_composer import _download_pexels_video
+                
+                needed = min(10, n_clips_needed) - len(pexels_vids)
+                for i in range(needed):
+                    query = topic_words[i % len(topic_words)]
+                    vid = _download_pexels_video(query, config.BG_DIR)
+                    if vid and vid not in pexels_vids:
+                        pexels_vids.append(vid)
                     
         pool = []
         img_idx = 0
