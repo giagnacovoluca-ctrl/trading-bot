@@ -22,7 +22,7 @@ def notify_telegram(message: str):
     except Exception as e:
         console.print(f"[dim red]Errore notifica Telegram: {e}[/]")
 
-# Argomenti random se non ne viene fornito uno
+# Argomenti random — lista di fallback se il pick intelligente fallisce
 TOPIC_IDEAS = [
     "energia e digestione",
     "meditazione e stress",
@@ -32,6 +32,32 @@ TOPIC_IDEAS = [
     "frequenze del pensiero",
     "cibo per il cervello"
 ]
+
+def pick_topic_intelligente() -> tuple[str, str]:
+    """Usa il topic picker intelligente del RAG (40+ topic categorizzati con rotazione anti-ripetizione).
+    Ritorna (categoria, topic). Fallback alla lista locale se il modulo non è disponibile.
+    Usa i pesi del feedback loop se disponibili."""
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent))
+        from rag_generator import pick_intelligent_topic, TOPIC_IDEAS as RAG_TOPICS
+        from modules.feedback_loop import get_topic_weights
+        # Applica pesi basati su performance storiche
+        all_cats = list(RAG_TOPICS.keys())
+        weights_map = get_topic_weights(all_cats)
+        cats_sorted = sorted(all_cats, key=lambda c: weights_map.get(c, 1.0), reverse=True)
+        # Selezione pesata: randomizza con bias verso categorie più performanti/meno usate
+        import random as _r
+        weights_list = [weights_map.get(c, 1.0) for c in cats_sorted]
+        chosen_cat = _r.choices(cats_sorted, weights=weights_list, k=1)[0]
+        chosen_topic = _r.choice(RAG_TOPICS[chosen_cat])
+        console.print(f"[dim green]Topic intelligente: {chosen_topic} (cat: {chosen_cat}, peso: {weights_map.get(chosen_cat, 1.0):.2f})[/]")
+        return chosen_cat, chosen_topic
+    except Exception as e:
+        console.print(f"[dim yellow]Fallback topic list ({e})[/]")
+        import random as _r
+        topic = _r.choice(TOPIC_IDEAS)
+        return "Generale", topic
 
 def run_step(command: list[str], step_name: str):
     """Esegue un processo esterno e controlla eventuali errori (OOM, eccezioni)."""
@@ -77,8 +103,8 @@ PROBLEMI: [lista bullet dei problemi principali, max 3]
 
     try:
         result = subprocess.run(
-            ['agy', 'run', '--model', 'flash', '--prompt', prompt],
-            capture_output=True, text=True, timeout=60
+            ['agy', '--dangerously-skip-permissions', '--print', prompt],
+            input='\n', text=True, capture_output=True, timeout=60
         )
         output = result.stdout
         score_match = re.search(r'SCORE:\s*(\d+)', output)
@@ -87,13 +113,49 @@ PROBLEMI: [lista bullet dei problemi principali, max 3]
     except Exception as e:
         return 7, f"Validazione skippata: {e}"  # In caso di errore, procedi
 
+def valida_sicurezza_tiktok(script_text: str) -> tuple[bool, str]:
+    """
+    Simula l'algoritmo di moderazione di TikTok per prevenire ban.
+    Controlla disinformazione medica, allarmismo e contenuti sensazionalistici.
+    Ritorna (True se sicuro, motivazione).
+    """
+    import re
+    prompt = f'''Sei il sistema di moderazione automatica di TikTok. Devi analizzare questo copione e decidere se viola le Linee Guida della Community, in particolare per "Disinformazione Medica", "Contenuti Scioccanti o Allarmistici" o "Sensazionalismo".
+    
+Le regole di TikTok vietano severamente:
+1. Termini come "invasione", "parassiti", "mutazione", "distruggere" associati al corpo umano o al cervello.
+2. Promesse mediche false o affermazioni esagerate sulla salute.
+3. Procurato allarme (fear-mongering) per attirare visualizzazioni.
+
+COPIONE DA ANALIZZARE:
+{script_text[:1500]}
+
+Rispondi SOLO con questo formato:
+SICURO: [SI oppure NO]
+MOTIVO_MODERAZIONE: [Spiega brevemente perché è sicuro o perché verrebbe rimosso]
+'''
+    try:
+        # Use safe subprocess call without shell parsing to avoid backtick/quote errors
+        result = subprocess.run(
+            ['agy', '--dangerously-skip-permissions', '--print', prompt],
+            input='\n', text=True, capture_output=True, timeout=60
+        )
+        output = result.stdout
+        is_safe = False
+        if re.search(r'SICURO:\s*SI', output, re.IGNORECASE):
+            is_safe = True
+        return is_safe, output
+    except Exception as e:
+        return True, f"Validazione sicurezza skippata: {e}"
+
 def main():
     parser = argparse.ArgumentParser(description="Agente Orchestratore TikTok")
     parser.add_argument("--topic", help="Tema del video (opzionale, altrimenti ne pesca uno a caso dai tuoi libri)")
     parser.add_argument("--mode", default="promo", choices=["promo", "virale", "bastian"], help="Modalità video")
     args = parser.parse_args()
 
-    topic = args.topic or random.choice(TOPIC_IDEAS)
+    topic_result = pick_topic_intelligente() if not args.topic else ("Manuale", args.topic)
+    topic_category, topic = topic_result if isinstance(topic_result, tuple) else ("Manuale", topic_result)
     
     console.print(f"[bold blue]🤖 AGENTE TIKTOK INIZIALIZZATO[/]")
     console.print(f"Tema scelto per oggi: [bold yellow]'{topic}'[/]")
@@ -132,42 +194,105 @@ def main():
     step0_cmd = [
         python_exe, "rag_generator.py", 
         "--topic", topic, 
+        "--category", topic_category,
         "--output", script_txt,
         "--mode", args.mode
     ]
     run_step(step0_cmd, "STEP 0: Ricerca e Scrittura Copione (Gemini API)")
 
-    # Recupero forzato delle immagini generate dall'agente RAG (che le salva nella sua cartella artefatti)
-    console.print("[dim]Recupero eventuali immagini generate dall'agente...[/]")
+    # STEP 0.5: Generazione Immagini ad-hoc con AGY
+    console.print(f"\n[bold magenta]▶ AVVIO STEP 0.5: Generazione Immagini AI (AGY)[/]")
+    console.print("[dim]Chiedo all'intelligenza artificiale di disegnare 3 immagini verticali specifiche per il copione...[/dim]")
+    
+    agy_prompt = f"Sei un direttore artistico. DEVI USARE il tuo tool 'generate_image' per creare 3 immagini verticali (AspectRatio: 9:16). Tema centrale: '{topic}'. Stile: altissima qualità, cinematografico, iper-realistico, colori vividi, mozzafiato. NON aggiungere testo. Genera le 3 immagini in sequenza chiamandole img_v_{int(time.time())}_1, img_v_{int(time.time())}_2, img_v_{int(time.time())}_3. Appena fatto, rispondi 'FATTO'."
+    
     try:
-        # Copia i media generati dall'agente
-        subprocess.run(r"find ~/.gemini/antigravity-cli/brain/ -type f -mmin -5 \( -name '*.jpg' -o -name '*.png' \) -exec cp {} assets/backgrounds/ \;", shell=True)
+        # Use safe subprocess call without shell parsing to avoid backtick/quote errors
+        subprocess.run(
+            ['agy', '--dangerously-skip-permissions', '--print', agy_prompt],
+            input='\n', text=True, capture_output=True, timeout=300
+        )
+    except subprocess.TimeoutExpired:
+        console.print("[yellow]AGY ha impiegato troppo tempo per le immagini (timeout 5 min), proseguo.[/]")
+    except Exception as e:
+        console.print(f"[dim red]Errore lancio AGY immagini: {e}[/]")
+
+    console.print("[dim]Recupero le immagini appena generate...[/]")
+    try:
+        # Copia le immagini generate negli ultimi 10 minuti
+        subprocess.run(r"find ~/.gemini/antigravity-cli/brain/ -type f -mmin -10 \( -name '*.jpg' -o -name '*.png' \) -exec cp {} assets/backgrounds/ \;", shell=True)
     except Exception:
         pass
 
     new_bg_files = list(set(bg_dir.glob("*.*")) - old_bg_files)
     
-    # FALLBACK POLLINATIONS se Antigravity ha fallito
+    # FALLBACK HUGGINGFACE se Antigravity ha fallito
     if not new_bg_files:
-        console.print("[yellow]Antigravity non ha generato immagini. Tento fallback con Pollinations...[/]")
+        hf_token = os.getenv("HF_API_KEY")
+        if hf_token:
+            console.print("[yellow]Antigravity fallito. Tento fallback con HuggingFace (SDXL)...[/]")
+            import requests
+            hf_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0"
+            headers = {"Authorization": f"Bearer {hf_token}"}
+            for i in range(3):
+                try:
+                    payload = {
+                        "inputs": f"Beautiful aesthetic background for {topic}, cinematic lighting, highly detailed, vivid colors, 4k, vertical portrait",
+                    }
+                    resp = requests.post(hf_url, headers=headers, json=payload, timeout=40)
+                    if resp.status_code == 503:
+                        console.print(f"[yellow]Modello HF in caricamento... Attendo 15s...[/]")
+                        time.sleep(15)
+                        resp = requests.post(hf_url, headers=headers, json=payload, timeout=40)
+                        
+                    if resp.status_code == 200:
+                        local_path = bg_dir / f"fallback_hf_{int(time.time())}_{i}.jpg"
+                        with open(local_path, "wb") as f:
+                            f.write(resp.content)
+                        new_bg_files.append(local_path)
+                        console.print(f"[green]✓ Immagine HuggingFace {i+1} scaricata: {local_path.name}[/]")
+                    else:
+                        console.print(f"[red]Errore API HuggingFace: {resp.status_code}[/]")
+                except Exception as e:
+                    console.print(f"[red]Errore eccezione HF img {i+1}: {e}[/]")
+                time.sleep(2)
+    
+    # FALLBACK POLLINATIONS se anche HuggingFace (o AGY) ha fallito
+    if len(new_bg_files) < 3:
+        console.print("[yellow]Poche immagini generate. Tento fallback con Pollinations...[/]")
         import urllib.request
         import urllib.parse
-        import time
-        for i in range(3):
+        import urllib.error
+        backoff_delays = [3, 8, 15, 20, 30]  # backoff esponenziale + 429 handling
+        for i in range(5):
+            delay = backoff_delays[min(i, len(backoff_delays) - 1)]
             try:
-                prompt = f"Abstract beautiful highly aesthetic background for {topic}, dark mode, minimalist, vertical 9:16"
+                prompt = f"Abstract beautiful highly aesthetic background for {topic}, dark mode, minimalist, cinematic, vertical 9:16"
                 encoded_prompt = urllib.parse.quote(prompt)
-                bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={int(time.time())+i}"
+                seed = int(time.time()) + i * 137  # seed diversi per immagini diverse
+                bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&nologo=true&seed={seed}"
                 local_path = bg_dir / f"fallback_bg_{int(time.time())}_{i}.jpg"
-                req = urllib.request.Request(bg_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=10) as response, open(local_path, 'wb') as out_file:
+                req = urllib.request.Request(bg_url, headers={'User-Agent': 'Mozilla/5.0 (compatible)'})
+                with urllib.request.urlopen(req, timeout=25) as response, open(local_path, 'wb') as out_file:
                     out_file.write(response.read())
                 new_bg_files.append(local_path)
-                console.print(f"[dim]Scarico immagine fallback {i+1}/3...[/]")
+                console.print(f"[green]✓ Immagine fallback {i+1} scaricata: {local_path.name}[/]")
+                if len(new_bg_files) >= 3:
+                    break  # ne bastano 3
+                time.sleep(2)  # pausa tra download per non triggherare rate limit
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    console.print(f"[yellow]Pollinations 429 (rate limit) per img {i+1}. Attendo {delay}s...[/]")
+                    time.sleep(delay)
+                else:
+                    console.print(f"[red]Errore HTTP {e.code} Pollinations img {i+1}: {e}[/]")
             except Exception as e:
-                console.print(f"[red]Errore fallback Pollinations slide {i}: {e}[/]")
+                console.print(f"[red]Errore fallback Pollinations img {i+1}: {e}. Riprovo tra {delay}s...[/]")
+                time.sleep(delay)
         if new_bg_files:
-            console.print("[green]Fallback Pollinations riuscito per i video![/]")
+            console.print(f"[green]Fallback Pollinations OK: {len(new_bg_files)} immagini scaricate.[/]")
+        else:
+            console.print("[red]Fallback Pollinations completamente fallito. Il video userà sfondi Pexels.[/]")
 
     # Assicurati che lo script esista e non sia vuoto
     script_path = Path(script_txt)
@@ -206,8 +331,27 @@ def main():
     # Sovrascrivi il file pulito senza i metadati (così la voce non li legge)
     script_path.write_text("\n".join(clean_lines).strip(), encoding="utf-8")
 
-    # --- Validazione qualità copione (M10) ---
+    # --- Validazione qualità copione (M10) e Sicurezza TikTok ---
     script_content_clean = script_path.read_text(encoding="utf-8")
+    
+    # 1. Controllo Sicurezza TikTok (Critico)
+    is_safe, safety_report = valida_sicurezza_tiktok(script_content_clean)
+    if not is_safe:
+        console.print(f"[bold red]⛔ ALERT SICUREZZA TIKTOK:[/] Il copione viola potenzialmente le linee guida!")
+        console.print(f"[dim]{safety_report}[/dim]")
+        console.print(f"[yellow]⚠️ Rigenero immediatamente con nuovo topic per evitare ban...[/]")
+        subprocess.run(
+            [python_exe, 'rag_generator.py', '--topic', topic, '--category', topic_category, '--output', script_txt,
+             '--mode', args.mode, '--force-new'],
+            capture_output=False
+        )
+        if script_path.exists() and script_path.stat().st_size > 0:
+            script_content_clean = script_path.read_text(encoding="utf-8")
+        else:
+            console.print("[red]Errore critico: impossibile generare un copione sicuro.[/]")
+            sys.exit(1)
+            
+    # 2. Controllo Qualità e Watch-time
     quality_score, quality_report = valida_qualita_copione(script_content_clean)
     console.print(f"[{'green' if quality_score >= 7 else 'red'}]📊 Quality Score: {quality_score}/10[/]")
 
@@ -215,7 +359,7 @@ def main():
         console.print(f"[yellow]⚠️ Copione sotto soglia ({quality_score}/10). Rigenero con nuovo topic...[/]")
         # Re-run rag_generator con flag --force-new per cambiare topic
         subprocess.run(
-            [python_exe, 'rag_generator.py', '--topic', topic, '--output', script_txt,
+            [python_exe, 'rag_generator.py', '--topic', topic, '--category', topic_category, '--output', script_txt,
              '--mode', args.mode, '--force-new'],
             capture_output=False
         )
@@ -226,7 +370,7 @@ def main():
             console.print(f"[cyan]📊 Quality Score (secondo tentativo): {quality_score}/10[/]")
         else:
             console.print("[red]Rigenero fallito: uso il copione originale.[/]")
-    # --- Fine M10 ---
+    # --- Fine M10 e Sicurezza ---
 
     # Salva la vera fonte nello storico per non ripetere la notizia
     if fonte_notizia and "Errore" not in fonte_notizia:
@@ -303,36 +447,28 @@ def main():
             
         try:
             run_step(step4_cmd, "STEP 4: Generazione Metadata e Upload TikTok")
-            import json
-            import datetime
-            Path("output").mkdir(exist_ok=True)
-            with open("output/upload_log.json", "a", encoding="utf-8") as f:
-                json.dump({
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "video_file": video_finale,
-                    "mode": args.mode,
-                    "hook_title": hook_title,
-                    "fonte_notizia": fonte_notizia,
-                    "quality_score": quality_score,
-                    "success": True
-                }, f)
-                f.write("\n")
-        except SystemExit as e:
-            import json
-            import datetime
-            Path("output").mkdir(exist_ok=True)
-            with open("output/upload_log.json", "a", encoding="utf-8") as f:
-                json.dump({
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "video_file": video_finale,
-                    "mode": args.mode,
-                    "hook_title": hook_title,
-                    "fonte_notizia": fonte_notizia,
-                    "quality_score": quality_score,
-                    "success": False,
-                    "error": "Errore durante upload TikTok"
-                }, f)
-                f.write("\n")
+            from modules.feedback_loop import log_upload
+            log_upload(
+                video_file=video_finale,
+                hook_title=hook_title,
+                category=topic_category,
+                mode=args.mode,
+                quality_score=quality_score,
+                fonte=fonte_notizia,
+                success=True,
+            )
+            notify_telegram(f"✅ Video pubblicato: '{hook_title}' (score {quality_score}/10)")
+        except SystemExit:
+            from modules.feedback_loop import log_upload
+            log_upload(
+                video_file=video_finale,
+                hook_title=hook_title,
+                category=topic_category,
+                mode=args.mode,
+                quality_score=quality_score,
+                fonte=fonte_notizia,
+                success=False,
+            )
             raise
     else:
         console.print("\n[dim]Salto la pubblicazione automatica: né 'chrome_profile' né 'cookies.txt' trovati.[/]")
