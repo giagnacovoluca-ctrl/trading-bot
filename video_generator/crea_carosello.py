@@ -4,7 +4,6 @@ import json
 import random
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
-from google import genai
 from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
 import subprocess
 from rich.console import Console
