@@ -150,14 +150,15 @@ def generate_dynamic_captions(audio_path: str, video_w: int, video_h: int):
     captions = []
     MAX_WORDS_PER_LINE = 3
     
-    for segment in result.get("segments", []):
+    segments = result.get("segments", [])
+    for segment_idx, segment in enumerate(segments):
         words = segment.get("words", [])
         if not words: continue
         
         # Dividiamo i segmenti lunghi in blocchi di 4 parole massimo
         chunks = [words[i:i + MAX_WORDS_PER_LINE] for i in range(0, len(words), MAX_WORDS_PER_LINE)]
         
-        for chunk in chunks:
+        for chunk_idx, chunk in enumerate(chunks):
             chunk_texts = [w["text"].strip().upper() for w in chunk]
             
             # Per ogni blocco di 4 parole, generiamo le singole frame animate
@@ -168,13 +169,21 @@ def generate_dynamic_captions(audio_path: str, video_w: int, video_h: int):
                 # Renderizza l'immagine con solo la parola `i` evidenziata
                 img_np = _render_word_highlight(chunk_texts, i, video_w)
                 
-                # Se c'è spazio vuoto tra una parola e l'altra, espandiamo la durata
-                # per evitare che il testo "lampeggi" o scompaia.
                 if i < len(chunk) - 1:
                     end = max(end, chunk[i+1]["start"])
-                elif chunk == chunks[-1] and segment != result["segments"][-1]:
-                    # Se è l'ultima parola del segmento, teniamo per un decimo di sec extra
-                    end += 0.1
+                else:
+                    # Ultima parola del chunk corrente
+                    if chunk_idx < len(chunks) - 1:
+                        end = max(end, chunks[chunk_idx + 1][0]["start"])
+                    else:
+                        # Ultima parola del segmento, controlliamo se c'è un segmento successivo
+                        if segment_idx < len(segments) - 1:
+                            next_seg = segments[segment_idx + 1]
+                            if next_seg.get("words"):
+                                # Estendiamo fino all'inizio della parola successiva, ma max 1.5s
+                                end = min(next_seg["words"][0]["start"], end + 1.5)
+                        else:
+                            end += 1.0
                 
                 clip = (
                     ImageClip(img_np, transparent=True)

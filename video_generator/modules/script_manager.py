@@ -47,6 +47,16 @@ class ParsedScript:
 
 def _clean_text(raw: str) -> str:
     """Rimuove commenti Markdown, link, tag HTML e spazi multipli."""
+    # 1. Estrai SOLO la parte relativa al TESTO (ignorando conversazioni, titolo e fonti)
+    testo_match = re.search(r'TESTO:(.*?)(FONTE_NOTIZIA:|EBOOK_FILE:|$)', raw, re.DOTALL | re.IGNORECASE)
+    if testo_match:
+        raw = testo_match.group(1)
+
+    # 2. Rimuovi le etichette degli atti come "ATTO 1 - HOOK" (ignorando case)
+    # Rimuove sia "ATTO 1 - HOOK:" che "**ATTO 1 — HOOK**"
+    raw = re.sub(r'(?i)\*{0,2}ATTO\s+\d+.*?[\-—:]\s*[a-zA-Z\s]+(?:\(.*?parole.*?\))?\*{0,2}[:]*', '', raw)
+
+    # 3. Pulizia standard Markdown/HTML
     raw = re.sub(r"<!--.*?-->", "", raw, flags=re.DOTALL)
     raw = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", raw)
     raw = re.sub(r"<[^>]+>", "", raw)
