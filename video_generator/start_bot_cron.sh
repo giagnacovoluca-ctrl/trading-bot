@@ -1,4 +1,7 @@
 #!/bin/bash
+set -euo pipefail
+exec 9>/tmp/video_generator_pipeline.lock
+flock -n 9 || { echo "Pipeline già in esecuzione: salto questo run"; exit 0; }
 # Script automatico per avviare la generazione e caricamento del video tramite Antigravity in background
 
 export DISPLAY=:0

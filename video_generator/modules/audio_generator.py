@@ -134,7 +134,7 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
 
     # Pulizia testo per evitare balbettii e problemi di clonazione
     clean_tts_text = text.replace('"', '').replace('*', '').replace('(', '').replace(')', '').replace('-', ' ')
-    
+
     # Sostituiamo la punteggiatura forte con a capo (il modello a volte legge "punto" a voce alta)
     clean_tts_text = clean_tts_text.replace('.', '\n').replace('!', '\n').replace('?', '\n')
     lines = [line.strip() for line in clean_tts_text.split('\n') if len(line.strip()) > 2]
@@ -211,37 +211,48 @@ def get_audio_duration(path: Path) -> float:
 # ── Ambient Mix ───────────────────────────────────────────────────────────────
 
 def _find_ambient_track(script_text: str = "") -> Path | None:
-    """Cerca un file audio nella cartella ambient (mp3/wav/ogg/flac). 
-    Sceglie una sottocartella in base alle parole chiave del testo."""
+    """Cerca un file audio nella cartella ambient (mp3/wav/ogg/flac).
+    Sceglie una sottocartella in base alle parole chiave del testo usando BGM_MOOD_MAP da config."""
     exts = ("*.mp3", "*.wav", "*.ogg", "*.flac", "*.m4a")
-    
-    # Smart BGM Logic
+
     text_lower = script_text.lower()
     mood = ""
-    if any(k in text_lower for k in ["meditazione", "zen", "calma", "respiro", "mente", "stress"]):
-        mood = "zen"
-    elif any(k in text_lower for k in ["scienza", "fisica", "universo", "spazio", "quantistica", "dna"]):
-        mood = "scienza"
-    elif any(k in text_lower for k in ["energia", "fuoco", "soldi", "motivazione", "successo"]):
-        mood = "energica"
-        
+
+    # Usa BGM_MOOD_MAP da config se disponibile, altrimenti fallback hardcoded
+    mood_map = getattr(config, "BGM_MOOD_MAP", {
+        "zen":      ["meditazione", "zen", "calma", "respiro", "mente", "stress", "ansia", "sonno"],
+        "scienza":  ["scienza", "fisica", "universo", "spazio", "quantistica", "dna", "neuroni", "cervello"],
+        "energica": ["energia", "fuoco", "motivazione", "successo", "crescita", "forza"],
+    })
+
+    best_mood = ""
+    best_score = 0
+    for m, keywords in mood_map.items():
+        score = sum(1 for k in keywords if k in text_lower)
+        if score > best_score:
+            best_score = score
+            best_mood = m
+
+    if best_mood and best_score > 0:
+        mood = best_mood
+        console.print(f"[cyan]Smart BGM:[/] Rilevato mood '[bold]{mood}[/]' (score={best_score}).")
+
     search_dirs = []
     if mood:
         mood_dir = config.AMBIENT_DIR / mood
         if mood_dir.exists():
             search_dirs.append(mood_dir)
-            console.print(f"[cyan]Smart BGM:[/] Rilevato mood '{mood}'.")
-            
-    # Fallback to general ambient directory
+
+    # Fallback alla directory ambient generale
     search_dirs.append(config.AMBIENT_DIR)
-    
+
     candidates: list[Path] = []
     for s_dir in search_dirs:
         for pattern in exts:
-            candidates.extend(s_dir.glob(pattern))
-        if candidates: 
-            break # if we found tracks in the preferred dir, stop
-            
+            candidates.extend(p for p in s_dir.glob(pattern) if p.is_file())
+        if candidates:
+            break
+
     if not candidates:
         return None
     return random.choice(candidates)

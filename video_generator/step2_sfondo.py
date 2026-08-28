@@ -68,15 +68,15 @@ def main():
             random.shuffle(local_vids)
             pexels_vids.extend(local_vids[:n_clips_needed])
             
-            # 2. Se non bastano, usa Pexels
-            if len(pexels_vids) < min(10, n_clips_needed) and getattr(config, "PEXELS_API_KEY", None):
+            # 2. Usa Pexels SOLO se non ci sono abbastanza video locali
+            needed = n_clips_needed - len(pexels_vids)
+            if needed > 0 and getattr(config, "PEXELS_API_KEY", None):
                 stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per", "tra", "fra", "che", "del", "della", "dei", "delle", "al", "allo", "alla", "ai", "agli", "alle", "nel", "nella", "nei", "nelle", "sul", "sulla", "sui", "sulle", "come", "non", "più"}
                 topic_words = [w for w in args.topic.split() if w.lower() not in stop_words and len(w) > 2]
                 if not topic_words:
                     topic_words = [args.topic] # fallback
                 from modules.video_composer import _download_pexels_video
                 
-                needed = min(10, n_clips_needed) - len(pexels_vids)
                 for i in range(needed):
                     query = topic_words[i % len(topic_words)]
                     vid = _download_pexels_video(query, config.BG_DIR)

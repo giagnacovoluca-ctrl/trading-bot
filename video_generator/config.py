@@ -81,6 +81,14 @@ CAPTION_STROKE_WIDTH = 3
 CAPTION_POSITION    = ("center", 0.75) # (x, y_fraction) – basso/centro
 CAPTION_MAX_CHARS   = 45              # caratteri per riga prima di andare a capo
 CAPTION_FADE_DUR    = 0.15            # secondi di fade-in/out di ogni caption
+HOOK_DURATION       = 8.0             # secondi di durata visualizzazione titolo
+
+# ── Smart BGM Mood Mapping ────────────────────────────────────────────────────
+BGM_MOOD_MAP = {
+    "zen":      ["meditazione", "zen", "calma", "respiro", "mente", "stress", "ansia", "sonno", "relax"],
+    "scienza":  ["scienza", "fisica", "universo", "spazio", "quantistica", "dna", "neuroni", "cervello", "ricerca", "studio", "biologia"],
+    "energica": ["energia", "fuoco", "motivazione", "successo", "crescita", "forza", "potere"],
+}
 
 # ── Pexels (fallback se non ci sono bg locali) ────────────────────────────────
 PEXELS_SEARCH_QUERIES = [
