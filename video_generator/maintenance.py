@@ -18,18 +18,28 @@ def old_files(directory: Path, days: int):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--days", type=int, default=30)
+    parser.add_argument("--days", type=int, default=30, help="Retention dei file temporanei")
+    parser.add_argument("--output-days", type=int, default=30, help="Retention dei video in output")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    if args.days < 7:
+    if args.days < 7 or args.output_days < 7:
         parser.error("La retention minima consentita è 7 giorni")
 
-    targets = old_files(ROOT / "temp", args.days)
-    print(f"Artefatti temporanei oltre {args.days} giorni: {len(targets)}")
-    for path in targets:
-        print(path.relative_to(ROOT))
-        if args.apply:
-            path.unlink()
+    groups = [
+        ("temporanei", ROOT / "temp", args.days),
+        ("output", ROOT / "output", args.output_days),
+    ]
+    for label, directory, days in groups:
+        targets = old_files(directory, days)
+        total_bytes = sum(path.stat().st_size for path in targets)
+        print(
+            f"Artefatti {label} oltre {days} giorni: {len(targets)} "
+            f"({total_bytes / 1024 / 1024:.1f} MiB)"
+        )
+        for path in targets:
+            print(path.relative_to(ROOT))
+            if args.apply:
+                path.unlink()
     return 0
 
 

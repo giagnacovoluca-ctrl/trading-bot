@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from dotenv import load_dotenv
 from modules.media_server import TemporaryMediaServer
+from modules.meta_config import graph_url
 
 console = Console()
 load_dotenv()
@@ -15,7 +16,7 @@ IG_USER_ID = os.getenv("IG_USER_ID")
 IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
 def create_carousel_item(image_path: Path, image_url: str) -> str:
 
-    url_media = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
+    url_media = graph_url(f"{IG_USER_ID}/media")
     payload = {
         "image_url": image_url,
         "is_carousel_item": "true",
@@ -48,7 +49,7 @@ def publish_carousel(image_paths: list[Path], caption: str, media_server: Tempor
         time.sleep(2) # Pausa tra un upload e l'altro
 
     console.print("\n[dim]2/4 Creazione container CAROSELLO...[/]")
-    url_media = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media"
+    url_media = graph_url(f"{IG_USER_ID}/media")
     payload = {
         "media_type": "CAROUSEL",
         "children": ",".join(item_ids),
@@ -68,7 +69,7 @@ def publish_carousel(image_paths: list[Path], caption: str, media_server: Tempor
     console.print(f"[green]Container CAROSELLO creato! ID: {carousel_id}[/]")
 
     console.print("\n[dim]3/4 Attesa elaborazione lato Meta...[/]")
-    url_status = f"https://graph.facebook.com/v20.0/{carousel_id}"
+    url_status = graph_url(carousel_id)
     status_params = {
         "fields": "status_code",
         "access_token": IG_ACCESS_TOKEN
@@ -98,7 +99,7 @@ def publish_carousel(image_paths: list[Path], caption: str, media_server: Tempor
         return False
 
     console.print("\n[dim]4/4 Invio comando di pubblicazione...[/]")
-    url_publish = f"https://graph.facebook.com/v20.0/{IG_USER_ID}/media_publish"
+    url_publish = graph_url(f"{IG_USER_ID}/media_publish")
     publish_payload = {
         "creation_id": carousel_id,
         "access_token": IG_ACCESS_TOKEN

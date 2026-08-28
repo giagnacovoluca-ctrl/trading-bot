@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920, initial-scale=1.0">
+    <title>IG Aesthetic Reel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color-1: #0a0a0a;
+            --bg-color-2: #1a1a1a;
+            --text-color: #ffffff;
+            --accent-color: #f0e6d2; /* Panna/Oro */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 1080px;
+            height: 1920px;
+            background: linear-gradient(135deg, var(--bg-color-1), var(--bg-color-2));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Playfair Display', serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Effetto grana molto sottile */
+        .noise {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('data:image/svg+xml;utf8,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            opacity: 0.15;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Bagliore centrale per dare profondità */
+        .glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 70%);
+            z-index: 2;
+        }
+
+        .content {
+            z-index: 10;
+            text-align: center;
+            width: 850px;
+            display: flex;
+            flex-direction: column;
+            gap: 60px;
+            padding: 40px;
+        }
+
+        .quote {
+            color: var(--text-color);
+            font-size: 72px;
+            line-height: 1.4;
+            font-weight: 600;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            letter-spacing: -1px;
+        }
+
+        .quote-marks {
+            color: var(--accent-color);
+            font-size: 120px;
+            line-height: 0;
+            opacity: 0.4;
+            vertical-align: bottom;
+            font-style: italic;
+        }
+
+        .brand {
+            margin-top: 40px;
+            font-family: 'Inter', sans-serif;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 6px;
+            color: var(--accent-color);
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        /* Linea di separazione elegante */
+        .divider {
+            width: 100px;
+            height: 2px;
+            background: var(--accent-color);
+            margin: 0 auto;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="noise"></div>
+    <div class="glow"></div>
+
+    <div class="content">
+        <div class="quote" id="text-container">
+            <span class="quote-marks">"</span>
+            <span id="main-text">La genetica carica la pistola, ma è il tuo stile di vita a premere il grilletto.</span>
+            <span class="quote-marks">"</span>
+        </div>
+        <div class="divider"></div>
+        <div class="brand">L'ALTRA VERITÀ</div>
+    </div>
+
+    <script>
+        function setContent(text, category) {
+            document.getElementById('main-text').textContent = text;
+
+            // Colori in base alla categoria
+            const root = document.documentElement;
+            if (category === 'cibo_salute' || category === 'integratori') {
+                // Verde scuro terra / Muschio
+                root.style.setProperty('--bg-color-1', '#05130b');
+                root.style.setProperty('--bg-color-2', '#0a2113');
+                root.style.setProperty('--accent-color', '#d4e0ce');
+            }
+            else if (category === 'nervo_vago' || category === 'meditazione') {
+                // Blu abisso / Indaco scuro
+                root.style.setProperty('--bg-color-1', '#040b16');
+                root.style.setProperty('--bg-color-2', '#08172b');
+                root.style.setProperty('--accent-color', '#c4d6ee');
+            }
+            else if (category === 'acqua_idratazione') {
+                // Ciano/Teal scuro profondo
+                root.style.setProperty('--bg-color-1', '#031416');
+                root.style.setProperty('--bg-color-2', '#062629');
+                root.style.setProperty('--accent-color', '#bfe2e4');
+            }
+            else if (category === 'epigenetica') {
+                // Viola scuro / Prugna profondo
+                root.style.setProperty('--bg-color-1', '#120516');
+                root.style.setProperty('--bg-color-2', '#210a28');
+                root.style.setProperty('--accent-color', '#e2cbeb');
+            }
+            else {
+                // Default: Antracite / Oro (Mindset / Bastian)
+                root.style.setProperty('--bg-color-1', '#0f0f0f');
+                root.style.setProperty('--bg-color-2', '#1a1a1a');
+                root.style.setProperty('--accent-color', '#f0e6d2');
+            }
+        }
+    </script>
+</body>
+</html>

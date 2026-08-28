@@ -103,7 +103,7 @@ def crea_immagini(slides, output_dir):
             image_paths.append(jpg_path)
     return image_paths
 
-def main():
+def main(no_publish: bool = False):
     console.print("[cyan]1. Generazione Testi per il Carosello...[/]")
     slides = genera_testi_carosello()
 
@@ -152,6 +152,10 @@ def main():
     script_path = config.SCRIPTS_DIR / "script_carosello.txt"
     script_path.write_text(" ".join(slides), encoding="utf-8")
 
+    if no_publish:
+        console.print("[bold yellow]Modalità --no-publish: carosello generato senza upload.[/]")
+        return
+
     console.print("[cyan]4. Pubblicazione su TikTok...[/]")
     import sys
 
@@ -187,4 +191,7 @@ def main():
     console.print("[bold green]Tutte le pubblicazioni (Video e Carosello Foto) completate![/bold green]")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-publish", action="store_true")
+    main(no_publish=parser.parse_args().no_publish)

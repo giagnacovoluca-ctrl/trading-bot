@@ -29,7 +29,10 @@ __pycache__/
 
 # video_generator — sessione browser e file sensibili
 video_generator/chrome_profile/
+video_generator/chrome_profile_ig/
 video_generator/cookies.txt
+video_generator/client_secrets.json
+video_generator/youtube_token.pickle
 video_generator/temp/
 video_generator/output/
 video_generator/assets/backgrounds/fallback_bg_*.jpg
