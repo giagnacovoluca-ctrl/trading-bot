@@ -1,4 +1,6 @@
 #!/bin/bash
+exec 9>/tmp/video_generator_pipeline.lock
+flock -n 9 || { echo "Pipeline già in esecuzione: salto questo run"; exit 0; }
 export DISPLAY=:0
 export XAUTHORITY=/home/ubuntu/.Xauthority
 export PATH=$PATH:/home/ubuntu/.local/bin:/usr/local/bin

@@ -33,15 +33,21 @@ video_generator/cookies.txt
 video_generator/temp/
 video_generator/output/
 video_generator/assets/backgrounds/fallback_bg_*.jpg
+video_generator/assets/backgrounds/pexels_*
+video_generator/assets/backgrounds/pollinations_*
 video_generator/assets/carousels/
+video_generator/assets/voices/*.wav
 video_generator/tiktok_*.png
 video_generator/tiktok_*.html
 video_generator/frame_test_*.jpg
 video_generator/debug_log.txt
+video_generator/used_news_history.jsonl
 video_generator/scripts/script_generato.txt
 video_generator/scripts/script_carosello.txt
 video_generator/scripts/slides_carosello.json
 video_generator/scripts/tiktok_caption.txt
+video_generator/scripts/ig_caption.txt
+video_generator/scripts/temp_*.txt
 video_generator/scripts/analytics.json
 
 # Ignore environment variables

@@ -25,7 +25,7 @@ Come agente, il mio compito è orchestrare l'esecuzione manuale o automatizzata 
 
 ## Pubblicazione Automatica (Playwright)
 La pubblicazione automatica (`step4_pubblica.py`) non usa più i cookie testuali (`cookies.txt`), ma si affida a una **sessione browser persistente** sempre attiva salvata nella cartella `chrome_profile`. 
-*   **Caroselli:** `python crea_carosello.py` genera testi con Gemini, 5 slide e crea un MP4. `step4_pubblica.py` carica il carosello/video usando Playwright bypassando i limiti API.
+*   **Caroselli:** `python crea_carosello.py` genera i testi tramite AGY CLI, crea 5 slide e produce un MP4. `step4_pubblica.py` carica il carosello/video usando Playwright.
 *   **Gestione Sessione:** `agente_tiktok.py` rileva la cartella `chrome_profile` per lanciare la pubblicazione. Se la sessione scade, basta rieseguire `setup_tiktok_login.sh` per aggiornarla.
 
 ## Automazione (Cronjob)
@@ -42,7 +42,7 @@ Tutti questi script bash richiamano internamente Antigravity CLI utilizzando la 
 **Gestione Metadati (Novità)**: La descrizione (caption) dei video viene generata dinamicamente e in tempo reale all'interno di `step4_pubblica.py` tramite CLI se manca, eliminando completamente i bug di disallineamento (caption miste tra caroselli e video).
 
 ## Novità Architetturali Recenti (Ricerca Web & Tematiche)
-Il vecchio e instabile `viral_news.py` è stato **deprecato**. Adesso il sistema si affida interamente alle capacità native dell'agente (Antigravity `search_web` API) per esplorare internet in tempo reale alla ricerca delle ultime notizie.
+Il vecchio e instabile `viral_news.py` è stato **deprecato**. Adesso il sistema si affida interamente ad AGY CLI locale e alle sue capacità di ricerca per individuare le notizie. Non è richiesta una chiave API LLM.
 
 ### Direttive Fondamentali Aggiunte:
 1. **Focus di Nicchia Espanso:** Oltre a mente e salute, i prompt ora abbracciano tematiche curiose e affascinanti (scienza, spazio, storia, tecnologia, paradossi) per stimolare maggiormente la curiosità.
@@ -158,3 +158,65 @@ Prima di ogni pubblicazione, il copione viene valutato con score 0-10:
 - Originalità: 25%
 - Se score < 7: rigenera automaticamente con `rag_generator.py --force-new` (max 1 retry)
 - Il `quality_score` viene loggato in `output/upload_log.json` per ogni pubblicazione
+
+---
+
+## 9. AGGIORNAMENTO 2026-08-25: Self-Healing, Sottotitoli Ininterrotti e Validazione Titolo
+
+### 🚨 Risoluzione Bug e Miglioramenti Resilienza
+Il workflow andava in crash per errori imprevisti durante i passaggi chiave o produceva risultati esteticamente errati. Sono state implementate diverse patch correttive:
+
+#### Sottotitoli Ininterrotti (`modules/whisper_captions.py`)
+- **Fix "sottotitoli mancanti":** Precedentemente, l'ultima parola di una frase svaniva dopo 0.1 secondi, lasciando lo schermo vuoto durante le pause parlate. Ora la durata dell'ultima parola viene estesa fino all'inizio della parola successiva (con un cap di 1.5 secondi) per mantenere il testo sempre a schermo.
+
+#### Estrazione Titolo Avanzata (`agente_tiktok.py` & `agente_autonomo.py`)
+- **Fix regex Titolo:** L'AI a volte formattava il titolo con markdown (es. `**TITOLO:**` o `# TITOLO:`). Il vecchio `startswith("TITOLO:")` falliva e ripiegava erroneamente sulle prime 5 parole del video. Ora l'estrazione usa espressioni regolari (regex) robuste in grado di pulire e catturare sempre il vero titolo (Hook).
+
+#### Auto-Riparazione Live / Self-Healing (`agente_tiktok.py` & `agente_autonomo.py`)
+Invece di usare `sys.exit()` in caso di fallimenti nei sub-processi, i passi di rendering ora catturano l'errore e tentano fallback automatici:
+- **Step 1 (Voce):** Se `xtts` fallisce o il file audio generato è corrotto (< 1000 bytes), scatta in automatico il fallback su `edge-tts`.
+- **Step 2 (Sfondo):** Se la composizione fallisce, viene ripetuta la generazione senza immagini custom (solo sfondi locali sicuri).
+- **Step 3 (Sottotitoli):** Se `whisper_timestamped` crasha o il file finale è troppo piccolo, il sistema riprova in fallback base.
+- **Step 0.5 (Pollinations):** Se Pexels restituisce meno di 3 immagini o va in timeout, il sistema genera gli sfondi mancanti utilizzando **Pollinations AI** (modello `flux` verticale e ottimizzato per l'estetica TikTok).
+
+#### Validazione Qualità Estesa al Titolo (`agente_tiktok.py`)
+- **`valida_qualita_copione` aggiornato:** Prima il validatore Gemini leggeva *solo* il copione, ignorando l'hook a schermo (Titolo). Ora riceve nel prompt anche l'`hook_title` e il peso del prompt è stato ridistribuito (30% assegnato specificamente al potenziale "ipnotico" del Titolo). Se il titolo non è d'impatto, viene bocciato e rigenerato.
+
+## 10. AGGIORNAMENTO 2026-08-25: Instagram API, Orchestratore Caroselli e Reel Estetici
+
+### 📸 Pubblicazione Diretta su Instagram (API Ufficiali)
+Il caricamento su Instagram ora è completamente slegato dall'automazione fragile del browser (Playwright) e avviene nativamente tramite le **API Graph di Meta** (`step4_pubblica_ig_api.py`).
+- **Nessun limite di sicurezza:** Meta accetta nativamente i file serviti tramite un mini web-server Python temporaneo (su porta dinamica locale).
+- **Integrazione Caroselli & Reels:** Tutti i video generati dal bot (inclusi i caroselli `crea_carosello.py`) vengono ora caricati automaticamente sia su TikTok (via Playwright) sia su Instagram (via API).
+
+### 🤖 Agente Direttore per Caroselli (`agente_carosello.py`)
+I vecchi script bash "ciechi" (`carousel_promo.sh`, `carousel_virale.sh`, ecc.) sono stati sostituiti dal nuovo **Agente Direttore Python** (`agente_carosello.py`).
+- **Live Review (Revisore JSON):** Prima di renderizzare le immagini, l'agente esamina il testo prodotto da AGY CLI per assicurarsi che:
+  1. Il file JSON sia formattato correttamente.
+  2. Le slide non abbiano "muri di testo" ma frasi brevi (max 15 parole).
+  3. Il testo sia logicamente collegato dalla slide 1 alla 6, garantendo un'esperienza di lettura fluida senza audio.
+- **Gestione Errori:** Se l'AI hallucina, l'agente cancella il JSON rotto e lo fa rigenerare fino a 3 volte.
+
+### 🎭 Nuovo Format: Reel Estetici (Quiet Luxury)
+Aggiunta la modalità `--mode aesthetic` per Instagram.
+- **Magia CSS:** Invece di usare API per generare sfondi o sprecare limiti di scaricamento, il sistema usa Playwright per renderizzare un **Template HTML/CSS premium** (`ig_aesthetic.html`) con gradienti scuri in movimento e tipografia elegante.
+- **Ken Burns Cinematico:** L'immagine generata viene animata tramite `FFMPEG` con uno zoom lentissimo (dal 100% al 110% in 6 secondi) combinato a musica lo-fi o drammatica.
+- **Palettes Dinamiche:** Il codice CSS si adatta in base all'argomento del Reel (verde per cibo, blu profondo per mente, ecc.).
+- **Strategia Anti-Spam:** Programmati nel Crontab per le 11:00, 16:00 e 22:30, per un totale di 6 contenuti giornalieri ottimizzati per l'algoritmo Reels di Instagram.
+
+## 11. AGGIORNAMENTO 2026-08-27: Ecosistema Instagram Nativi, Storie e Conscia-Mente
+
+### 🚀 Nuovo Ecosistema Instagram Nativi
+- **Caroselli Immagini (Nativi):** Creato `step4_pubblica_ig_carousel_api.py`. Invece di limitarci ai Reel MP4, il sistema carica automaticamente le grafiche generate come Caroselli Fotografici Nativi tramite le API Graph di Meta, aumentando le probabilità di Salvataggio.
+- **Storie Giornaliere Automatizzate:** Creato `agente_story.py`. Genera sfondi dark aesthetic verticali, estrae da AGY una mini-frase ad altissimo impatto (max 6 parole) e stampa un finto "bottone CTA". Utilizza Pillow con ancoraggio centrale perfetto (`anchor="mm"`) e calcolo delle zone sicure (safe zones) per evitare l'intersezione con la UI di Instagram.
+
+### 🤖 CTA Automatizzate per ManyChat
+- Modificati i prompt core in `agente_carosello.py` e negli script aesthetic. Eliminata la dicitura "Link in bio" (per IG) in favore di CTA mirate ai DM: *"Commenta GUIDA e te lo mando nei DM"*. Questo favorisce l'intervento di bot esterni (es. ManyChat) che moltiplicano l'engagement.
+
+### 🔮 Funnel Conscia-Mente (Oracolo & Numerologia)
+- **Agente Dedicato:** Creato `agente_cosciamente.py`. Genera contenuti esoterici per i due pillar del sito Conscia-Mente.
+- **Cross-Platform Ibrido:** Se indirizzato a TikTok, pubblica un Video MP4 con musica. Se indirizzato a Instagram, sfrutta le nuove API pubblicando un Carosello Fotografico Swipeabile nativo.
+- **Crontab Intelligente:** `cron_cosciamente.sh` controlla il giorno dell'anno. Nei giorni Pari: TikTok->Oracolo, IG->Numerologia. Nei giorni Dispari l'inverso.
+
+### ⚖️ Spaziatura Crontab Definitiva
+- **Risoluzione Sovraccarico VPS:** I rendering video TTS + Playwright consumano enormi risorse. Il crontab è stato completamente riscritto garantendo una finestra *minima* di 45-60 minuti tra l'avvio di qualsiasi processo pesante e l'altro, prevenendo crash `OOM` (Out Of Memory) ed evitando i filtri anti-spam dei social.
