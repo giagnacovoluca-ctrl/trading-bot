@@ -25,6 +25,22 @@ node scripts/generate-article.mjs "Titolo"
 node scripts/generate-article.mjs --topic "Titolo"
 ```
 
+## Contratto qualitativo dei copioni
+
+Ogni copione AGY sviluppa un solo concetto e termina con quattro metadati:
+
+```text
+FATTO_CENTRALE: affermazione verificabile
+TIPO_EVIDENZA: studio, revisione, dato istituzionale o fatto consolidato
+LIMITE_EVIDENZA: cosa il dato non dimostra
+ANGOLO_NARRATIVO: prospettiva scelta e non ancora usata
+```
+
+Prima del rendering, `modules/script_quality.py` controlla fonte, lunghezza,
+frasi, CTA, promesse sanitarie assolute e presenza dei metadati. Un controllo
+fallito interrompe il job. `used_news_history.jsonl` conserva anche questi
+campi, così i prompt successivi possono evitare gli stessi angoli narrativi.
+
 ## Sicurezza dei media Meta
 
 `modules/media_server.py` copia soltanto i media necessari in una directory

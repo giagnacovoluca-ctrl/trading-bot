@@ -10,6 +10,7 @@ from pathlib import Path
 from rich.console import Console
 
 from modules.site_integration import parse_generated_manifest
+from modules.script_quality import extract_metadata, validate_script
 
 console = Console()
 
@@ -311,6 +312,11 @@ def main():
         # Rimuovi eventuale "TESTO:" rimasto
         script_text = re.sub(r'(?i)\**TESTO:?\**\s*', '', script_text)
 
+        # I metadati editoriali restano nel file per il controllo qualità, ma
+        # non devono mai essere letti dalla voce sintetica.
+        for field in ("FATTO_CENTRALE", "TIPO_EVIDENZA", "LIMITE_EVIDENZA", "ANGOLO_NARRATIVO"):
+            script_text = re.sub(rf'(?im)^\s*{field}:.*(?:\n|$)', '', script_text)
+
         c_lines = []
         for line in script_text.splitlines():
             # Rimuovi etichette ATTO
@@ -327,6 +333,7 @@ def main():
         return h_title, f_notizia, e_file, "\n".join(c_lines).strip()
 
     script_content = script_path.read_text(encoding="utf-8")
+    editorial_metadata = extract_metadata(script_content)
     hook_title, fonte_notizia, ebook_filename, script_content_clean = extract_and_clean_script(script_content)
 
     if "Errore" in hook_title or hook_title == "SCOPERTA SHOCK":
@@ -353,6 +360,7 @@ def main():
         )
         if script_path.exists() and script_path.stat().st_size > 0:
             script_content = script_path.read_text(encoding="utf-8")
+            editorial_metadata = extract_metadata(script_content)
             hook_title, fonte_notizia, ebook_filename, script_content_clean = extract_and_clean_script(script_content)
             script_path.write_text(script_content_clean, encoding="utf-8")
             is_safe, safety_report = valida_sicurezza_tiktok(script_content_clean)
@@ -380,6 +388,7 @@ def main():
         # Ricarica e ripulisci il copione rigenerato
         if script_path.exists() and script_path.stat().st_size > 0:
             script_content = script_path.read_text(encoding="utf-8")
+            editorial_metadata = extract_metadata(script_content)
             hook_title, fonte_notizia, ebook_filename, script_content_clean = extract_and_clean_script(script_content)
             script_path.write_text(script_content_clean, encoding="utf-8")
             is_safe, safety_report = valida_sicurezza_tiktok(script_content_clean)
@@ -397,6 +406,14 @@ def main():
         else:
             console.print("[red]Rigenero fallito: uso il copione originale.[/]")
     # --- Fine M10 e Sicurezza ---
+
+    local_quality = validate_script(hook_title, script_content_clean, editorial_metadata)
+    if not local_quality.ok:
+        details = "; ".join(local_quality.issues)
+        notify_telegram(f"ERRORE: controllo editoriale locale fallito ({details})")
+        console.print(f"[bold red]✖ Controllo editoriale locale fallito:[/] {details}")
+        sys.exit(1)
+    console.print(f"[green]✓ Controllo editoriale locale: {local_quality.score}/10[/]")
 
     # Salva la vera fonte nello storico per non ripetere la notizia
     if Path("used_news_history.txt").exists():

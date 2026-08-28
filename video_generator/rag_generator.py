@@ -8,6 +8,7 @@ from pathlib import Path
 from rich.console import Console
 import docx2txt
 from dotenv import load_dotenv
+from modules.script_quality import extract_metadata
 
 load_dotenv()
 
@@ -220,6 +221,19 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
     else:
         history_text = "Nessuna notizia usata finora"
 
+    angles_path = Path("used_news_history.jsonl")
+    recent_angles: list[str] = []
+    if angles_path.exists():
+        for line in angles_path.read_text(encoding="utf-8").splitlines()[-12:]:
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            angle = str(entry.get("angolo_narrativo", "")).strip()
+            if angle and angle.upper() not in {"SKIP", "N/A"}:
+                recent_angles.append(angle)
+    angles_text = "\n".join(f"- {angle}" for angle in recent_angles[-8:]) or "Nessun angolo recente"
+
     # REGOLE COMUNI ANTI-DISINFORMAZIONE E SICUREZZA TIKTOK
     anti_misinfo_rules = """
         REGOLE ANTI-DISINFORMAZIONE E VERIDICITÀ (CRITICHE E IMPERATIVE):
@@ -233,6 +247,16 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ANTI-SENSAZIONALISMO nel TITOLO: Il titolo DEVE essere una frase affascinante ma accurata (max 5 parole), NON un titolo click-bait spaventoso.
         Esempi BUONI: 'Come il cervello si ripara', 'La luce solare e l'energia'.
         Esempi VIETATI: 'Invasione segreta nel tuo cervello', 'Stai mutando senza saperlo', 'Il tuo corpo sta marcendo'.
+    """
+
+    editorial_contract = """
+        CONTRATTO EDITORIALE OBBLIGATORIO:
+        Il copione deve sviluppare UN SOLO concetto centrale. Dopo FONTE_NOTIZIA aggiungi sempre, su righe separate:
+        FATTO_CENTRALE: una frase verificabile, senza promesse
+        TIPO_EVIDENZA: studio, revisione, dato istituzionale o fatto consolidato
+        LIMITE_EVIDENZA: cosa non dimostra il dato e quale cautela serve
+        ANGOLO_NARRATIVO: l'angolo originale scelto per raccontarlo
+        La CTA deve proporre una sola azione concreta, coerente con il contenuto.
     """
 
     # Prepara il prompt
@@ -257,7 +281,11 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         CONCETTI GIA' TRATTATI RECENTEMENTE (EVITA DI RIPETERLI):
         {history_text}
 
+        ANGOLI NARRATIVI GIÀ USATI (SCEGLI UNA PROSPETTIVA DIVERSA):
+        {angles_text}
+
         {anti_misinfo_rules}
+        {editorial_contract}
 
         REGOLE ANTI-ALLUCINAZIONE (FONDAMENTALI):
         - DEVI basarti STRETTAMENTE sull'estratto dell'ebook fornito. Non inventare cure o terapie.
@@ -278,6 +306,10 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 3: Svela una conseguenza sorprendente o un colpo di scena che riguarda la vita di chi guarda.
         ATTO 4: CTA finale breve (max 10 parole).
         FONTE_NOTIZIA: <nome dell'ebook (max 1 riga)>
+        FATTO_CENTRALE: <fatto verificabile tratto dall'estratto>
+        TIPO_EVIDENZA: <estratto del libro, revisione o dato consolidato>
+        LIMITE_EVIDENZA: <cosa il contenuto non dimostra>
+        ANGOLO_NARRATIVO: <angolo specifico scelto>
 
         ATTENZIONE CRITICA: LA TUA RISPOSTA DEVE INIZIARE DIRETTAMENTE CON LA PAROLA "TITOLO:".
         NON INSERIRE NESSUN COMMENTO, NESSUNA INTRODUZIONE, NIENTE.
@@ -290,12 +322,16 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):
         {history_text}
 
+        ANGOLI NARRATIVI GIÀ USATI (SCEGLI UNA PROSPETTIVA DIVERSA):
+        {angles_text}
+
         MODALITA' VIRALE MIGLIORATA:
         STEP 1: Scegli una notizia VERA, recente e verificabile sul tema, tratta dal tuo database interno. Cerca eventi reali.
         STEP 2: Verifica mentalmente che la fonte sia credibile (es. Nature, Science, università accreditate, giornali scientifici. NO blog o tabloid).
         STEP 3: Scegli una notizia verificabile e concreta.
 
         {anti_misinfo_rules}
+        {editorial_contract}
 
         REGOLE ANTI-ALLUCINAZIONE AGGIUNTIVE (CRITICHE):
         - VIETATO combinare istituzioni o studi da domini DIVERSI in una singola fonte fittizia (es. non dire "studio NASA sulla dieta" o "ricerca Harvard-ESA sull'intestino"). Ogni istituzione fa ricerca nel suo dominio.
@@ -320,6 +356,10 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 4 — COLPO DI SCENA (15-20 parole MAX): L'implicazione inaspettata che nessuno aveva considerato.
         ATTO 5 — CTA (10-15 parole MAX): Azione specifica che l'utente può fare ORA. Non 'seguimi'.
         FONTE_NOTIZIA: <nome della fonte verificata. Se hai usato un fatto consolidato scrivi "Letteratura scientifica su [argomento]">
+        FATTO_CENTRALE: <una sola affermazione verificabile>
+        TIPO_EVIDENZA: <studio, revisione o fatto consolidato>
+        LIMITE_EVIDENZA: <cosa il dato non dimostra>
+        ANGOLO_NARRATIVO: <prospettiva originale, non clickbait>
 
         ATTENZIONE CRITICA: LA TUA RISPOSTA DEVE INIZIARE DIRETTAMENTE CON LA PAROLA "TITOLO:".
         NON INSERIRE NESSUN COMMENTO, NESSUNA INTRODUZIONE, NIENTE. RISPONDI SOLO CON IL COPIONE NEL FORMATO ESATTO RICHIESTO.
@@ -332,11 +372,15 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         NOTIZIE GIA' TRATTATE RECENTEMENTE (IGNORA ASSOLUTAMENTE QUESTE E TROVA ALTRO):
         {history_text}
 
+        ANGOLI NARRATIVI GIÀ USATI (SCEGLI UNA PROSPETTIVA DIVERSA):
+        {angles_text}
+
         MODALITA' BASTIAN CONTRARIO:
         STEP 1: Scegli una notizia VERA, recente e dibattuta sul tema, tratta dal tuo database interno.
         STEP 2: Assicurati che la fonte sia credibile e che la notizia sia verificabile.
 
         {anti_misinfo_rules}
+        {editorial_contract}
 
         STEP 4: Scrivi un copione TikTok di circa 130 parole in italiano usando la tecnica del "Bastian Contrario" (Angolo Contrariano).
         Analizza la notizia e proponi una visione impopolare, scomoda o contro-intuitiva, ma supportata da una logica ferrea e dati precisi.
@@ -356,6 +400,10 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 4 — COLPO DI SCENA (15-20 parole): L'implicazione inaspettata che nessuno aveva considerato. La parte che fa venire voglia di condividere.
         ATTO 5 — CTA (10-15 parole): Azione specifica che l'utente può fare ORA. Non 'seguimi', ma qualcosa di concreto.
         FONTE_NOTIZIA: <nome della fonte verificata della notizia reale (max 1 riga)>
+        FATTO_CENTRALE: <una sola affermazione verificabile>
+        TIPO_EVIDENZA: <studio, revisione o fatto consolidato>
+        LIMITE_EVIDENZA: <cosa il dato non dimostra>
+        ANGOLO_NARRATIVO: <prospettiva contraria ma corretta>
 
         ATTENZIONE CRITICA: LA TUA RISPOSTA DEVE INIZIARE DIRETTAMENTE CON LA PAROLA "TITOLO:".
         NON INSERIRE NESSUN COMMENTO, NESSUNA INTRODUZIONE, NIENTE. RISPONDI SOLO CON IL COPIONE NEL FORMATO ESATTO RICHIESTO.
@@ -457,8 +505,18 @@ def save_history(category: str, script_text: str):
     else:
         fonte = "SKIP"
 
+    metadata = extract_metadata(script_text)
+
     timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    entry = {"timestamp": timestamp, "category": category, "fonte_notizia": fonte}
+    entry = {
+        "timestamp": timestamp,
+        "category": category,
+        "fonte_notizia": fonte,
+        "fatto_centrale": metadata.get("FATTO_CENTRALE", ""),
+        "tipo_evidenza": metadata.get("TIPO_EVIDENZA", ""),
+        "limite_evidenza": metadata.get("LIMITE_EVIDENZA", ""),
+        "angolo_narrativo": metadata.get("ANGOLO_NARRATIVO", ""),
+    }
     with open("used_news_history.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     # Compatibilità con i prompt e gli script cron esistenti.
