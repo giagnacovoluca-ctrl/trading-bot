@@ -1,4 +1,6 @@
 #!/bin/bash
+exec 9>/tmp/video_generator_pipeline.lock
+flock -n 9 || { echo "Pipeline già in esecuzione: salto questo run"; exit 0; }
 # Script automatico per avviare la generazione e caricamento del carosello
 # in background
 

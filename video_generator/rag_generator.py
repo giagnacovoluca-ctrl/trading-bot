@@ -9,6 +9,7 @@ from rich.console import Console
 import docx2txt
 from dotenv import load_dotenv
 from modules.script_quality import extract_metadata
+from modules.ebook_catalog import ebook_to_rag, get_ebook, load_ebook_catalog
 
 load_dotenv()
 
@@ -17,44 +18,7 @@ console = Console()
 # ── 1. Database degli eBook Reali (su disco esterno) ────────────────
 EBOOKS_DIR = Path("/home/ubuntu/ebooks")
 
-EBOOKS_DB = [
-    {
-        "titolo": "Come usare il cibo per correggere energia, umore e digestione",
-        "file": EBOOKS_DIR / "Come usare il cibo - Edizione Ottimizzata.docx",
-        "argomenti": ["cibo", "alimentazione", "energia", "umore", "digestione", "salute"],
-        "pitch": "Scopri come usare il cibo per ritrovare energia e bilanciare il tuo umore leggendo il mio manuale."
-    },
-    {
-        "titolo": "Meditazione per chiunque",
-        "file": EBOOKS_DIR / "Meditazione per chiunque.docx",
-        "argomenti": ["meditazione", "mente", "stress", "consapevolezza", "spiritualità", "pace"],
-        "pitch": "Inizia a trasformare la tua mente oggi stesso con la guida pratica Meditazione per Chiunque."
-    },
-    {
-        "titolo": "Integratori Naturali: Guida Scientifica",
-        "file": EBOOKS_DIR / "INTEGRATORI NATURALI GUIDA SCIENTIFICA.docx",
-        "argomenti": ["integratori", "scienza", "vitamine", "salute", "benessere", "corpo", "integrazione"],
-        "pitch": "Scopri come supportare il tuo corpo al meglio leggendo la mia guida scientifica sugli integratori naturali."
-    },
-    {
-        "titolo": "Il potere curativo dell'Acqua",
-        "file": EBOOKS_DIR / "Libro_Completo_Formato_Amazon.docx",
-        "argomenti": ["acqua", "idratazione", "benessere", "salute", "energia", "purezza", "depurazione"],
-        "pitch": "Scopri i segreti dell'idratazione profonda e della purificazione cellulare leggendo il mio nuovo manuale sull'Acqua."
-    },
-    {
-        "titolo": "Epigenetica: Riprogramma il tuo DNA",
-        "file": EBOOKS_DIR / "Epigenetica_Libro_Completo_Amazon.docx",
-        "argomenti": ["epigenetica", "dna", "genetica", "biologia", "salute", "evoluzione", "longevità", "riprogrammazione"],
-        "pitch": "Scopri come il tuo stile di vita può modificare l'espressione dei tuoi geni leggendo il mio nuovo manuale sull'Epigenetica."
-    },
-    {
-        "titolo": "Attiva il Nervo Vago",
-        "file": EBOOKS_DIR / "Nervo_Vago_Libro_Completo_Amazon.docx",
-        "argomenti": ["nervo vago", "stress", "calma", "sistema nervoso", "rilassamento", "respiro", "psicologia", "ansia"],
-        "pitch": "Impara le tecniche per attivare il nervo vago e sconfiggere ansia e stress leggendo il mio nuovo manuale dedicato."
-    }
-]
+EBOOKS_DB = [ebook_to_rag(book) for book in load_ebook_catalog()]
 
 # ── 2. Nuova Lista Argomenti (Diversità Tematica, min 40 topic, categorie bilanciate) ────────────────
 TOPIC_IDEAS = {
@@ -128,29 +92,132 @@ TOPIC_IDEAS = {
         "Le foreste interconnesse dalle reti di funghi micorrizici",
         "La fisica dei cambiamenti climatici",
         "Il ripristino di ecosistemi degradati",
-        "Il potere curativo dell'acqua e l'idratazione cellulare profonda",
-        "I segreti dell'acqua e la memoria dei fluidi in natura",
-        "L'importanza dell'acqua per il mantenimento dell'energia vitale"
+        "Come la disidratazione influenza attenzione e prestazioni cognitive",
+        "Il ruolo degli oceani nell'assorbimento del calore globale",
+        "Come le zone umide proteggono dalle alluvioni"
     ],
     "Medicina/Salute basata su evidenze": [
         "La crisi della resistenza agli antibiotici",
         "I successi dell'immunoterapia oncologica",
         "La tecnologia e il potenziale dei vaccini a mRNA",
         "La scienza dietro il digiuno intermittente",
-        "L'epigenetica e come lo stile di vita riprogramma il DNA",
-        "Come stimolare il nervo vago per ridurre ansia e stress",
-        "L'attivazione del nervo vago e i benefici sul sistema nervoso"
+        "Cosa sappiamo davvero del nervo vago e della risposta allo stress",
+        "Perché il sonno influenza il sistema immunitario",
+        "Come l'esercizio fisico modifica il metabolismo"
     ],
     "Sociologia/Antropologia": [
         "L'evoluzione e l'origine del linguaggio umano",
         "Le strutture familiari nelle società antiche",
         "L'effetto spettatore nelle dinamiche sociali",
         "Come i social network alterano l'antropologia moderna"
+    ],
+    "Alimentazione/Combinazioni di cibi": [
+        "Vitamina C e ferro vegetale nello stesso pasto",
+        "Legumi e cereali nella tradizione mediterranea",
+        "Curcuma e pepe nero tra cucina ed evidenze",
+        "Grassi alimentari e assorbimento delle vitamine liposolubili",
+        "Fermentati e fibre in un'alimentazione varia",
+        "Pomodoro cotto e biodisponibilità del licopene",
+        "Tè e assorbimento del ferro durante i pasti",
+        "Come costruire un pasto saziante con proteine fibre e grassi"
+    ],
+    "Superfood/Nutrizione pratica": [
+        "Che cosa significa davvero superfood",
+        "Frutti di bosco e antociani senza promesse miracolose",
+        "Cacao amaro tra nutrienti e quantità reali",
+        "Semi di lino e fonti vegetali di omega tre",
+        "Legumi economici rispetto ai superfood di moda",
+        "Spezie tradizionali tra gusto e ricerca nutrizionale",
+        "Verdure crucifere nella cucina quotidiana",
+        "Come leggere le promesse nutrizionali sui social"
+    ],
+    "Biografie/Abitudini di grandi personaggi": [
+        "Il metodo di lavoro di Leonardo da Vinci nei suoi taccuini",
+        "La routine creativa documentata di Maya Angelou",
+        "Come Benjamin Franklin organizzava le sue giornate",
+        "Le passeggiate nel metodo di lavoro di Charles Darwin",
+        "La disciplina di Marie Curie tra laboratorio e studio",
+        "Il sistema di appunti e lettura di Umberto Eco",
+        "Le abitudini di scrittura documentate di Stephen King",
+        "Come Nelson Mandela allenò pazienza e autocontrollo"
+    ],
+    "Grandi imperi/Storia sociale": [
+        "Come le strade sostenevano l'Impero romano",
+        "Il sistema postale dell'Impero persiano achemenide",
+        "Commercio e amministrazione nell'Impero del Mali",
+        "Le reti di messaggeri dell'Impero inca",
+        "La gestione multiculturale dell'Impero mongolo",
+        "Acqua e organizzazione urbana nell'Impero Khmer",
+        "Biblioteche e traduzioni nell'età abbaside",
+        "Perché alcuni grandi imperi persero coesione"
+    ],
+    "Rituali/Popoli antichi": [
+        "Il simposio nella società dell'antica Grecia",
+        "Riti di passaggio nella Roma antica",
+        "Il significato del tè nelle tradizioni dell'Asia orientale",
+        "Calendari agricoli e rituali stagionali antichi",
+        "Riti funerari egizi e idea della memoria",
+        "Il ruolo sociale dei racconti orali nelle culture antiche",
+        "Feste del raccolto nel Mediterraneo antico",
+        "Purificazione e ospitalità nelle società del passato"
+    ],
+    "Culture vive/Civiltà contemporanee": [
+        "La gestione comunitaria dell'acqua nelle Ande",
+        "Tradizioni di longevità a Okinawa senza mitizzazioni",
+        "La cultura Sámi tra allevamento e modernità",
+        "Conoscenze ecologiche dei popoli aborigeni australiani",
+        "Le comunità matrilineari Minangkabau in Indonesia",
+        "La tradizione Māori del legame con il territorio",
+        "Nomadismo pastorale e adattamento in Mongolia",
+        "Come le lingue minoritarie mantengono viva una cultura"
+    ],
+    "Esoterismo/Storia delle idee": [
+        "L'alchimia come antenata simbolica della chimica",
+        "Origine storica dei tarocchi prima dell'uso divinatorio",
+        "Ermetismo nel Rinascimento europeo",
+        "Astrologia e potere nelle corti antiche",
+        "Il simbolismo dei labirinti nelle diverse culture",
+        "Numerologia nella storia delle religioni",
+        "Oracoli antichi tra rituale e decisione politica",
+        "Come distinguere simbolismo spirituale e prova scientifica"
     ]
 }
 
+
+CATEGORY_EDITORIAL_GUIDANCE = {
+    "Alimentazione/Combinazioni di cibi": "Offri un contenuto pratico basato su fonti nutrizionali affidabili. Indica quantità e limiti quando rilevanti; niente cure o superpoteri alimentari.",
+    "Superfood/Nutrizione pratica": "Smonta il marketing senza demonizzare gli alimenti. Parla di nutrienti, contesto della dieta e porzioni; niente promesse miracolose.",
+    "Biografie/Abitudini di grandi personaggi": "Racconta una sola abitudine documentata da biografie, lettere, interviste o archivi. Non affermare che quell'abitudine abbia causato il successo e non inventare routine.",
+    "Grandi imperi/Storia sociale": "Racconta un meccanismo concreto di governo, commercio, logistica o vita quotidiana usando una fonte storica o museale autorevole. Non presentarlo come scoperta recente se non lo è.",
+    "Rituali/Popoli antichi": "Descrivi significato, contesto e funzione sociale del rituale con rispetto. Evita misteri inventati, sensazionalismo e generalizzazioni sui popoli.",
+    "Culture vive/Civiltà contemporanee": "Parla di comunità tuttora esistenti al presente, senza definirle primitive o congelate nel passato. Usa fonti antropologiche o istituzionali e riconosci la varietà interna.",
+    "Esoterismo/Storia delle idee": "Tratta credenze, simboli e pratiche come storia culturale. Distingui esplicitamente tradizione e interpretazione da effetti scientificamente dimostrati.",
+}
+
+EDITORIAL_FAMILIES = {
+    "Neuroscienze/Mente": "Mente e comportamento",
+    "Psicologia/Comportamento": "Mente e comportamento",
+    "Economia comportamentale": "Mente e comportamento",
+    "Filosofia/Esistenzialismo": "Mente e comportamento",
+    "Alimentazione/Combinazioni di cibi": "Alimentazione",
+    "Superfood/Nutrizione pratica": "Alimentazione",
+    "Medicina/Salute basata su evidenze": "Alimentazione",
+    "Biografie/Abitudini di grandi personaggi": "Persone e abitudini",
+    "Storia/Archeologia/Misteri storici": "Storia culture e simboli",
+    "Grandi imperi/Storia sociale": "Storia culture e simboli",
+    "Rituali/Popoli antichi": "Storia culture e simboli",
+    "Culture vive/Civiltà contemporanee": "Storia culture e simboli",
+    "Esoterismo/Storia delle idee": "Storia culture e simboli",
+    "Sociologia/Antropologia": "Storia culture e simboli",
+    "Fisica/Spazio/Astronomia": "Scienza e natura",
+    "Biologia/Evoluzione": "Scienza e natura",
+    "Tecnologia/IA/Futuro": "Scienza e natura",
+    "Matematica/Paradossi logici": "Scienza e natura",
+    "Ambiente/Clima/Natura": "Scienza e natura",
+}
+
 def pick_intelligent_topic() -> tuple[str, str]:
-    """Sceglie un argomento evitando categorie già trattate di recente (ultimi 3 usati)."""
+    """Sceglie prima una famiglia editoriale, poi una categoria e un topic."""
     history_path = Path("used_news_history.txt")
     recent_categories = []
     if history_path.exists():
@@ -165,10 +232,26 @@ def pick_intelligent_topic() -> tuple[str, str]:
             if len(recent_categories) >= 3:
                 break
 
-    available_cats = [c for c in TOPIC_IDEAS.keys() if c not in recent_categories]
+    recent_families = {
+        EDITORIAL_FAMILIES.get(category, category) for category in recent_categories[:2]
+    }
+    available_families = [
+        family for family in dict.fromkeys(EDITORIAL_FAMILIES.values())
+        if family not in recent_families
+    ]
+    if not available_families:
+        available_families = list(dict.fromkeys(EDITORIAL_FAMILIES.values()))
+    chosen_family = random.choice(available_families)
+    available_cats = [
+        category for category in TOPIC_IDEAS
+        if EDITORIAL_FAMILIES.get(category) == chosen_family
+        and category not in recent_categories
+    ]
     if not available_cats:
-        # Fallback se tutte le categorie sono state usate (improbabile con tante, ma safe)
-        available_cats = list(TOPIC_IDEAS.keys())
+        available_cats = [
+            category for category in TOPIC_IDEAS
+            if EDITORIAL_FAMILIES.get(category) == chosen_family
+        ]
 
     chosen_cat = random.choice(available_cats)
     chosen_topic = random.choice(TOPIC_IDEAS[chosen_cat])
@@ -185,11 +268,45 @@ def find_best_ebook(topic: str) -> dict:
 
     # Fallback quando non ci sono argomenti pertinenti
     return {
+        "id": "",
         "titolo": "Generico",
         "file": None,
         "argomenti": [],
         "pitch": "Se ti interessano argomenti simili, fai un salto sul mio profilo."
     }
+
+
+def find_ebook_by_id(ebook_id: str) -> dict:
+    return ebook_to_rag(get_ebook(ebook_id))
+
+
+def pick_promo_ebook_topic() -> tuple[str, str, str]:
+    """Sceglie prima il prodotto e poi un concetto realmente pertinente."""
+    ebooks = EBOOKS_DB
+    recent_ids: list[str] = []
+    try:
+        from modules.feedback_loop import get_recent_published
+        recent_ids = [
+            entry.get("resource_id", "")
+            for entry in get_recent_published(30)
+            if entry.get("platform") == "tiktok"
+            and entry.get("mode") == "promo"
+            and entry.get("resource_id")
+        ][-12:]
+    except (ImportError, OSError, ValueError):
+        recent_ids = []
+
+    last_id = recent_ids[-1] if recent_ids else ""
+    weights = []
+    for ebook in ebooks:
+        uses = recent_ids.count(ebook["id"])
+        diversity = max(0.4, 1.0 - uses * 0.16)
+        if ebook["id"] == last_id:
+            diversity *= 0.15
+        weights.append(ebook["social_weight"] * diversity)
+    ebook = random.choices(ebooks, weights=weights, k=1)[0]
+    topic = random.choice(ebook["promo_topics"])
+    return f"Ebook/{ebook['id']}", topic, ebook["id"]
 
 def estrai_testo_docx(file_path: Path) -> str:
     """Estrae il testo da un file .docx."""
@@ -259,6 +376,11 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         La CTA deve proporre una sola azione concreta, coerente con il contenuto.
     """
 
+    category_guidance = CATEGORY_EDITORIAL_GUIDANCE.get(
+        category,
+        "Racconta il tema con una fonte verificabile e senza trasformarlo per forza in una scoperta recente.",
+    )
+
     # Prepara il prompt
     if mode == "promo":
         contenuto_libro = estrai_testo_docx(ebook["file"])
@@ -289,6 +411,9 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
 
         REGOLE ANTI-ALLUCINAZIONE (FONDAMENTALI):
         - DEVI basarti STRETTAMENTE sull'estratto dell'ebook fornito. Non inventare cure o terapie.
+        - La risorsa collegata è di tipo {ebook.get('delivery_type', 'non specificato')} e la sua pagina è {ebook.get('landing_path', '/links')}.
+        - La CTA finale deve essere ESATTAMENTE: {ebook.get('cta_tiktok', 'Scopri di più dal link in bio.')}
+        - Non chiamare PDF una risorsa che è soltanto un'anteprima online e non promettere l'invio di messaggi nei DM.
 
         Scrivi uno script TikTok di circa 130 parole in italiano.
         DEVE SUONARE NATURALE, UMANO E COLLOQUIALE. Elimina il tono robotico o troppo impostato. Parla come se stessi svelando un segreto affascinante a un amico.
@@ -304,7 +429,7 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 1: Un hook diretto, curioso e conversazionale. Niente formule noiose. Arriva subito al punto (max 20 parole).
         ATTO 2: Spiega il concetto principale estratto dal libro in modo estremamente semplice e visivo.
         ATTO 3: Svela una conseguenza sorprendente o un colpo di scena che riguarda la vita di chi guarda.
-        ATTO 4: CTA finale breve (max 10 parole).
+        ATTO 4: CTA finale esatta indicata sopra (max 10 parole).
         FONTE_NOTIZIA: <nome dell'ebook (max 1 riga)>
         FATTO_CENTRALE: <fatto verificabile tratto dall'estratto>
         TIPO_EVIDENZA: <estratto del libro, revisione o dato consolidato>
@@ -325,10 +450,13 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ANGOLI NARRATIVI GIÀ USATI (SCEGLI UNA PROSPETTIVA DIVERSA):
         {angles_text}
 
-        MODALITA' VIRALE MIGLIORATA:
-        STEP 1: Scegli una notizia VERA, recente e verificabile sul tema, tratta dal tuo database interno. Cerca eventi reali.
-        STEP 2: Verifica mentalmente che la fonte sia credibile (es. Nature, Science, università accreditate, giornali scientifici. NO blog o tabloid).
-        STEP 3: Scegli una notizia verificabile e concreta.
+        MODALITA' VIRALE EDITORIALE:
+        STEP 1: Sviluppa esattamente il tema assegnato. Può essere un fatto storico, una pratica culturale, una biografia, un consiglio alimentare o un risultato scientifico: NON deve essere per forza una scoperta o una notizia recente.
+        STEP 2: Usa una fonte verificabile adatta al tema: studio o ente scientifico per la scienza, libro o archivio autorevole per le biografie, museo o opera storiografica per la storia, fonte antropologica o istituzionale per culture e rituali.
+        STEP 3: Non cambiare il tema per renderlo più scioccante e non inventare collegamenti causali con successo, salute o poteri soprannaturali.
+
+        INDICAZIONE SPECIFICA DELLA CATEGORIA:
+        {category_guidance}
 
         {anti_misinfo_rules}
         {editorial_contract}
@@ -336,9 +464,9 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         REGOLE ANTI-ALLUCINAZIONE AGGIUNTIVE (CRITICHE):
         - VIETATO combinare istituzioni o studi da domini DIVERSI in una singola fonte fittizia (es. non dire "studio NASA sulla dieta" o "ricerca Harvard-ESA sull'intestino"). Ogni istituzione fa ricerca nel suo dominio.
         - VIETATO inventare nomi di riviste, università, o studi. Se non sei certo della fonte, scrivi "ricercatori dell'Università di [paese reale]" o "uno studio su [journal reale]".
-        - REGOLA FONDAMENTALE: Se dopo 3 ricerche non trovi una notizia recente verificabile, usa invece un FATTO SCIENTIFICO BEN STABILITO e documentato (non deve essere "recente", deve essere VERO). In questo caso FONTE_NOTIZIA = "Letteratura scientifica consolidata su [argomento]".
+        - REGOLA FONDAMENTALE: Se non puoi sostenere il contenuto con una fonte verificabile adatta alla categoria, non inventarlo. Scegli un fatto documentato sullo stesso tema e indica ente, opera, archivio, documento o studio e, quando disponibile, autore e anno. Sono vietate fonti generiche come "letteratura scientifica consolidata".
 
-        STEP 4: Scrivi un copione TikTok di circa 130 parole in italiano basato su questa notizia. Il copione deve essere ACCATTIVANTE ma profondamente ACCURATO.
+        STEP 4: Scrivi un copione TikTok di circa 130 parole in italiano basato su questo contenuto. Deve essere coinvolgente ma accurato.
 
         REGOLE FONDAMENTALI PER LA VOCE E IL TESTO:
         - Usa frasi incisive, brevi, come un dialogo intimo e rivelatore.
@@ -355,7 +483,7 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 3 — RIVELAZIONE (40-50 parole MAX): Il dato/studio con fonte verificata e COERENTE col dominio della ricerca. Usa 'Secondo uno studio dell'[istituzione reale nel settore]...' — NON trasformare correlazioni in causalità.
         ATTO 4 — COLPO DI SCENA (15-20 parole MAX): L'implicazione inaspettata che nessuno aveva considerato.
         ATTO 5 — CTA (10-15 parole MAX): Azione specifica che l'utente può fare ORA. Non 'seguimi'.
-        FONTE_NOTIZIA: <nome della fonte verificata. Se hai usato un fatto consolidato scrivi "Letteratura scientifica su [argomento]">
+        FONTE_NOTIZIA: <ente e documento o studio verificabile; mai una fonte generica>
         FATTO_CENTRALE: <una sola affermazione verificabile>
         TIPO_EVIDENZA: <studio, revisione o fatto consolidato>
         LIMITE_EVIDENZA: <cosa il dato non dimostra>
@@ -375,15 +503,24 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ANGOLI NARRATIVI GIÀ USATI (SCEGLI UNA PROSPETTIVA DIVERSA):
         {angles_text}
 
-        MODALITA' BASTIAN CONTRARIO:
-        STEP 1: Scegli una notizia VERA, recente e dibattuta sul tema, tratta dal tuo database interno.
-        STEP 2: Assicurati che la fonte sia credibile e che la notizia sia verificabile.
+        MODALITA' PROSPETTIVA INASPETTATA:
+        STEP 1: Parti da un luogo comune reale sul tema e aggiungi una sfumatura documentata che normalmente viene trascurata.
+        STEP 2: Usa il tipo di fonte adatto al contenuto. Non inventare controversie, nemici, bugie collettive o complotti.
+
+        INDICAZIONE SPECIFICA DELLA CATEGORIA:
+        {category_guidance}
 
         {anti_misinfo_rules}
         {editorial_contract}
 
-        STEP 4: Scrivi un copione TikTok di circa 130 parole in italiano usando la tecnica del "Bastian Contrario" (Angolo Contrariano).
-        Analizza la notizia e proponi una visione impopolare, scomoda o contro-intuitiva, ma supportata da una logica ferrea e dati precisi.
+        STEP 4: Scrivi un copione TikTok di circa 130 parole usando una prospettiva inaspettata, equilibrata e utile.
+        Lo spettatore deve pensare "non l'avevo considerato", non sentirsi attaccato o ingannato. La conclusione deve aggiungere contesto, non capovolgere artificialmente il fatto iniziale.
+
+        TONO OBBLIGATORIO:
+        - Calmo, intelligente, curioso e rispettoso.
+        - Vietati: "ti hanno mentito", "tutti sbagliano", "enorme bugia", "la scienza è rotta", "peggiore della tua vita", insulti, paura e superiorità morale.
+        - Non usare parole come "distrugge", "annienta", "spietato" o "sconvolgente" per rendere forte un'affermazione debole.
+        - Non attribuire a una singola abitudine il successo di una persona.
 
         REGOLE FONDAMENTALI PER LA VOCE E IL TESTO:
         - Usa frasi incisive, brevi.
@@ -394,16 +531,16 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         STRUTTURA OBBLIGATORIA DEL COPIONE (5 ATTI — RISPETTA QUESTA STRUTTURA ESATTA):
         TITOLO: <il tuo titolo accurato qui (max 5 parole)>
         TESTO:
-        ATTO 1 — HOOK (15-20 parole MAX): Un fatto contro-intuitivo o domanda destabilizzante che rompe le aspettative. NON iniziare mai con formule prefabbricate. Niente "Sapevi che", niente "Quello che pensi". Vai dritto al punto con una dichiarazione forte o un ragionamento controcorrente, usando ogni volta una struttura logica nuova.
-        ATTO 2 — CONTESTO (25-30 parole): Perché questo è rilevante per la vita quotidiana di chi guarda. Connetti il dato scientifico all'esperienza personale.
-        ATTO 3 — RIVELAZIONE (40-50 parole): Il dato/studio con fonte verificata. Usa 'Secondo uno studio dell'[università/journal]...' — NON trasformare correlazioni in causalità.
-        ATTO 4 — COLPO DI SCENA (15-20 parole): L'implicazione inaspettata che nessuno aveva considerato. La parte che fa venire voglia di condividere.
-        ATTO 5 — CTA (10-15 parole): Azione specifica che l'utente può fare ORA. Non 'seguimi', ma qualcosa di concreto.
+        ATTO 1 — HOOK (15-20 parole MAX): Un dettaglio inaspettato o una domanda magnetica che blocca lo scroll. VIETATO INIZIARE CON "Pensiamo spesso che", "Tutti credono che" o formule simili.
+        ATTO 2 — CONTESTO (25-30 parole): Presenta rapidamente il luogo comune in modo visivo e diretto.
+        ATTO 3 — PROSPETTIVA (40-50 parole): Introduci la sfumatura con una fonte verificata adatta alla categoria. NON trasformare correlazioni in causalità.
+        ATTO 4 — CONSEGUENZA (15-20 parole): Spiega cosa cambia nella comprensione del tema, senza dichiarare falso tutto ciò che precede.
+        ATTO 5 — CTA (10-15 parole): Azione specifica da fare ORA. INIZIA SEMPRE con uno di questi verbi: Prova, Scopri, Leggi, Salva, Commenta, Usa.
         FONTE_NOTIZIA: <nome della fonte verificata della notizia reale (max 1 riga)>
         FATTO_CENTRALE: <una sola affermazione verificabile>
         TIPO_EVIDENZA: <studio, revisione o fatto consolidato>
         LIMITE_EVIDENZA: <cosa il dato non dimostra>
-        ANGOLO_NARRATIVO: <prospettiva contraria ma corretta>
+        ANGOLO_NARRATIVO: <sfumatura inaspettata, documentata e non aggressiva>
 
         ATTENZIONE CRITICA: LA TUA RISPOSTA DEVE INIZIARE DIRETTAMENTE CON LA PAROLA "TITOLO:".
         NON INSERIRE NESSUN COMMENTO, NESSUNA INTRODUZIONE, NIENTE. RISPONDI SOLO CON IL COPIONE NEL FORMATO ESATTO RICHIESTO.
@@ -446,11 +583,11 @@ def ab_test_hook(topic: str, script_text: str) -> str:
     hook_a = hook_match.group(1).strip()
 
     # Genera una variante B con angolo diverso
-    ab_prompt = f"""Hai questo ATTO 1 (hook) per un video TikTok scientifico sul tema '{topic}':
+    ab_prompt = f"""Hai questo ATTO 1 (hook) per un video TikTok divulgativo sul tema '{topic}':
 HOOK A: {hook_a}
 
 Scrivi UNA SOLA frase alternativa di 15-20 parole massimo per l'ATTO 1, con un angolo completamente diverso.
-NON iniziare MAI con 'Sapevi che', 'Quello che pensi', o formule noiose. Usa un tono narrativo, affascinante e diretto, calando subito lo spettatore nell'azione o nel paradosso.
+NON iniziare MAI con 'Sapevi che', 'Quello che pensi', o formule noiose. Usa un tono narrativo, accurato e diretto. Non trasformare il tema in una nuova scoperta, un segreto o un paradosso se il contenuto originale non lo è.
 Rispondi SOLO con la frase hook, nient'altro."""
 
     try:
@@ -523,12 +660,31 @@ def save_history(category: str, script_text: str):
     with open("used_news_history.txt", "a", encoding="utf-8") as f:
         f.write(f"CAT: {category} | FONTE_NOTIZIA: {fonte}\n")
 
+
+def save_published_history(category: str, topic: str, fonte: str, metadata: dict) -> None:
+    """Registra nello storico anti-ripetizione soltanto un video pubblicato."""
+    entry = {
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "category": category,
+        "topic": topic,
+        "fonte_notizia": fonte,
+        "fatto_centrale": metadata.get("FATTO_CENTRALE", ""),
+        "tipo_evidenza": metadata.get("TIPO_EVIDENZA", ""),
+        "limite_evidenza": metadata.get("LIMITE_EVIDENZA", ""),
+        "angolo_narrativo": metadata.get("ANGOLO_NARRATIVO", ""),
+    }
+    with open("used_news_history.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    with open("used_news_history.txt", "a", encoding="utf-8") as f:
+        f.write(f"CAT: {category} | TOPIC: {topic} | FONTE_NOTIZIA: {fonte}\n")
+
 def main():
     parser = argparse.ArgumentParser(description="RAG Script Generator per TikTok (Gemini API)")
     parser.add_argument("--topic", default="auto", help="Argomento specifico, oppure 'auto' per scegliere automaticamente")
     parser.add_argument("--category", default="Manuale", help="Categoria del topic (se nota)")
     parser.add_argument("--output", default="scripts/script_generato.txt", help="Dove salvare lo script")
     parser.add_argument("--mode", default="promo", choices=["promo", "virale", "bastian"], help="Modalità video")
+    parser.add_argument("--ebook-id", default="", help="Ebook canonico da usare in modalità promo")
     parser.add_argument("--force-new", action="store_true", help="Forza rigenerazione")
     args = parser.parse_args()
 
@@ -540,7 +696,7 @@ def main():
         category = args.category
 
     # 1. Recupero (Retrieval) dell'ebook giusto
-    ebook = find_best_ebook(topic)
+    ebook = find_ebook_by_id(args.ebook_id) if args.ebook_id else find_best_ebook(topic)
 
     # 2. Generazione (Augmented Generation)
     script_text = generate_tiktok_script(topic, category, ebook, args.mode)
@@ -550,10 +706,8 @@ def main():
         console.print("[cyan]⚡ A/B Hook Test in corso...[/]")
         script_text = ab_test_hook(topic, script_text)
 
-    # 3. Salvataggio della history intelligente
-    save_history(category, script_text)
-
-    # 4. Salvataggio su file del copione
+    # 3. Salvataggio su file del copione. Lo storico viene aggiornato soltanto
+    # dopo che agente_tiktok conferma la pubblicazione.
     out_path = Path(args.output)
     out_path.parent.mkdir(exist_ok=True, parents=True)
 

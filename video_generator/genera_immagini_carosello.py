@@ -29,6 +29,8 @@ async def generate_carousel_images(json_path: str, mode: str = 'default', bg_dir
     # Pulizia vecchia generazione
     for old_file in out_dir.glob("slide_*.png"):
         old_file.unlink()
+    for old_file in out_dir.glob("bg_slide_*.jpg"):
+        old_file.unlink()
 
     # Template selection based on mode
     _mode = mode.lower().strip()
@@ -73,6 +75,10 @@ async def generate_carousel_images(json_path: str, mode: str = 'default', bg_dir
             bg_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1920&model=flux&enhance=true&nologo=true&private=true&seed={int(time.time())+i}"
 
             local_bg_path = out_dir / f"bg_slide_{current}.jpg"
+
+            # Ogni slide deve nascere in questo run. Un file residuo farebbe
+            # sembrare riuscito un fallback fallito, mescolando caroselli diversi.
+            local_bg_path.unlink(missing_ok=True)
 
             success = False
 

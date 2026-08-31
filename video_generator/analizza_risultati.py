@@ -2,8 +2,20 @@ import asyncio
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 from playwright.async_api import async_playwright
+from modules.feedback_loop import update_recent_tiktok_views
+
+
+def parse_view_count(value: str) -> int:
+    normalized = value.strip().upper().replace(",", ".")
+    match = re.match(r"([0-9]+(?:\.[0-9]+)?)([KMB]?)", normalized)
+    if not match:
+        return 0
+    number = float(match.group(1))
+    multiplier = {"": 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[match.group(2)]
+    return int(number * multiplier)
 
 async def get_views(username, limit=10):
     async with async_playwright() as p:
@@ -60,6 +72,9 @@ async def get_views(username, limit=10):
                 views_data.append(text.strip())
                 
             print(f"Visualizzazioni trovate per gli ultimi {len(views_data)} video: {views_data}")
+            numeric_views = [parse_view_count(value) for value in views_data]
+            updated = update_recent_tiktok_views(numeric_views)
+            print(f"Metriche collegate a {updated} pubblicazioni TikTok tracciate.")
             
             # Save to JSON
             out_dir = Path("scripts")
@@ -69,6 +84,8 @@ async def get_views(username, limit=10):
             data_to_save = {
                 "username": username,
                 "latest_views": views_data
+                ,"latest_views_numeric": numeric_views,
+                "matched_uploads": updated,
             }
             
             with open(out_file, "w", encoding="utf-8") as f:

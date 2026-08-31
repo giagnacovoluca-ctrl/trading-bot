@@ -25,7 +25,7 @@ def _caption_font_path() -> str:
         return str(p)
     return "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
 
-def _render_word_highlight(words: list[str], current_word_index: int, video_w: int, font_size: int = 78):
+def _render_word_highlight(words: list[str], current_word_index: int, video_w: int, font_size: int | None = None):
     """
     Renderizza una riga di testo, colorando di GIALLO solo la parola corrente
     e di BIANCO le altre (Hormozi style). Aggiunge emoji in automatico.
@@ -38,6 +38,7 @@ def _render_word_highlight(words: list[str], current_word_index: int, video_w: i
         "VITA": "🌱", "SCIENZA": "🔬", "FISICA": "⚛️", "QUANTISTICA": "⚛️"
     }
     
+    font_size = font_size or config.CAPTION_FONTSIZE
     font_path = _caption_font_path()
     try:
         font = ImageFont.truetype(font_path, font_size)
@@ -66,8 +67,15 @@ def _render_word_highlight(words: list[str], current_word_index: int, video_w: i
     bbox = dummy_draw.textbbox((0, 0), line_str, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-    padding_x, padding_y = 50, 30
-    box_w = int(min(video_w - 60, tw + padding_x * 2))
+    padding_x, padding_y = 40, 24
+    safe_text_width = video_w - 160
+    while tw > safe_text_width and font_size > 42:
+        font_size -= 2
+        font = ImageFont.truetype(font_path, font_size)
+        bbox = dummy_draw.textbbox((0, 0), line_str, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    box_w = int(min(video_w - 80, tw + padding_x * 2))
     box_h = int(th + padding_y * 2)
 
     img = Image.new("RGBA", (box_w, box_h), (0, 0, 0, 0))

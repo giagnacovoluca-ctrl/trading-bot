@@ -1,5 +1,8 @@
 # 🤖 Antigravity Video Orchestrator Guide
 
+> Prima di modificare funnel, CTA, tracking o cron leggere anche
+> `ECOSYSTEM_MEMORY.md`, memoria operativa condivisa con il sito ConsciaMente.
+
 Questo documento contiene le direttive architetturali per l'automazione della generazione video su TikTok tramite l'agente (Antigravity).
 
 ## Architettura a 3 Step
@@ -83,7 +86,7 @@ Un video è stato rimosso da TikTok per disinformazione. L'analisi ha rivelato c
 #### `agente_tiktok.py` — Aggiornato
 - **Hook title di fallback**: più generico e neutro (non più "SCOPERTA SHOCK")
 - **Cleanup immagini background**: elimina immagini generate dinamicamente dai run precedenti (prefissi `fallback_bg_`, `pexels_`) prima di ogni run, evitando il riuso di sfondi vecchi e ripetitivi
-- **Notifiche Telegram**: funzione `notify_telegram()` invia alert su errori critici del cron (richiede `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` nel `.env`)
+- **Notifiche email**: `notify_email()` invia esiti ed errori critici dei cron usando le credenziali Gmail già configurate in Conscia-Mente
 - **Log upload JSON**: ogni pubblicazione viene loggata in `output/upload_log.json` con timestamp, filename, mode, fonte_notizia, esito
 
 #### `genera_immagini_carosello.py` — Aggiornato

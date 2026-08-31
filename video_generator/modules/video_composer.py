@@ -11,6 +11,7 @@ Pipeline:
 
 from __future__ import annotations
 import math
+import os
 import random
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,7 +50,7 @@ def _list_local_backgrounds() -> list[Path]:
 
 def _download_pexels_video(keyword: str, dest_dir: Path) -> Path | None:
     """Scarica il primo video trovato su Pexels per la query data."""
-    if not config.PEXELS_API_KEY:
+    if not config.PEXELS_API_KEY or os.getenv("PEXELS_DISABLED") == "1":
         console.print("[yellow]⚠[/] PEXELS_API_KEY mancante, skip download Pexels")
         return None
 
@@ -72,6 +73,8 @@ def _download_pexels_video(keyword: str, dest_dir: Path) -> Path | None:
         import random
         random.shuffle(videos)
     except Exception as e:
+        if getattr(getattr(e, "response", None), "status_code", None) in (401, 403):
+            os.environ["PEXELS_DISABLED"] = "1"
         console.print(f"[red]Pexels API error:[/] {e}")
         return None
 

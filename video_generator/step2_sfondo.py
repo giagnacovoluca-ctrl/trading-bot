@@ -146,6 +146,8 @@ def main():
             fps=config.VIDEO_FPS, 
             codec=config.VIDEO_CODEC, 
             bitrate=config.VIDEO_BITRATE,
+            preset=config.VIDEO_PRESET,
+            threads=config.VIDEO_THREADS,
             audio=False,
             logger=None
         )

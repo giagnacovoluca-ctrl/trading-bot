@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import subprocess
 from modules.media_server import TemporaryMediaServer
 from modules.meta_config import graph_url
+from modules.content_tracking import prepare_tracked_caption
 
 console = Console()
 load_dotenv()
@@ -142,6 +143,10 @@ def main():
         script_text = script_path.read_text(encoding="utf-8")
 
     caption = genera_metadata_ig(script_text, args.mode)
+    caption, campaign = prepare_tracked_caption(
+        caption, "instagram", script_text, args.mode
+    )
+    console.print(f"[dim]Campagna tracciata: {campaign['campaign_id']}[/]")
 
     console.print("[bold green]Descrizione IG (Caption):[/]")
     console.print(caption)

@@ -4,27 +4,48 @@ import time
 import random
 import argparse
 import subprocess
-import requests
 import shutil
 from pathlib import Path
 from rich.console import Console
 
 from modules.site_integration import parse_generated_manifest
 from modules.script_quality import extract_metadata, validate_script
+from modules.email_notifications import notify_email
 
 console = Console()
 
-def notify_telegram(message: str):
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        console.print("[dim yellow]Telegram notify skipped (missing env variables)[/]")
-        return
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": message})
-    except Exception as e:
-        console.print(f"[dim red]Errore notifica Telegram: {e}[/]")
+AGY_VALIDATION_ATTEMPTS = 3
+AGY_VALIDATION_BACKOFF_SECONDS = (5, 15)
+
+
+def _run_agy_validator(prompt: str) -> subprocess.CompletedProcess:
+    """Esegue un validatore AGY ritentando gli errori temporanei del servizio."""
+    last_result = None
+    for attempt in range(1, AGY_VALIDATION_ATTEMPTS + 1):
+        try:
+            result = subprocess.run(
+                ['agy', '--dangerously-skip-permissions', '--print', prompt],
+                input='\n', text=True, capture_output=True, timeout=60,
+            )
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            result = subprocess.CompletedProcess(
+                args=['agy'], returncode=1, stdout='', stderr=str(exc),
+            )
+
+        last_result = result
+        if result.returncode == 0:
+            return result
+
+        if attempt < AGY_VALIDATION_ATTEMPTS:
+            delay = AGY_VALIDATION_BACKOFF_SECONDS[attempt - 1]
+            console.print(
+                f"[yellow]Validatore AGY temporaneamente non disponibile "
+                f"(tentativo {attempt}/{AGY_VALIDATION_ATTEMPTS}); "
+                f"nuovo tentativo tra {delay}s.[/]"
+            )
+            time.sleep(delay)
+
+    return last_result
 
 # Argomenti random — lista di fallback se il pick intelligente fallisce
 TOPIC_IDEAS = [
@@ -43,18 +64,48 @@ def pick_topic_intelligente() -> tuple[str, str]:
     Usa i pesi del feedback loop se disponibili."""
     try:
         import sys
+        import random as _r
         sys.path.insert(0, str(Path(__file__).parent))
-        from rag_generator import pick_intelligent_topic, TOPIC_IDEAS as RAG_TOPICS
-        from modules.feedback_loop import get_topic_weights
+        from rag_generator import EDITORIAL_FAMILIES, TOPIC_IDEAS as RAG_TOPICS
+        from modules.feedback_loop import get_recent_published, get_topic_weights
         # Applica pesi basati su performance storiche
         all_cats = list(RAG_TOPICS.keys())
         weights_map = get_topic_weights(all_cats)
-        cats_sorted = sorted(all_cats, key=lambda c: weights_map.get(c, 1.0), reverse=True)
-        # Selezione pesata: randomizza con bias verso categorie più performanti/meno usate
-        import random as _r
+        recent_published = get_recent_published(30)
+        recent_categories = [e.get("category") for e in recent_published[-4:] if e.get("category")]
+        recent_topics = {e.get("topic", "").strip().casefold() for e in recent_published if e.get("topic")}
+
+        # Prima ruota equamente le famiglie editoriali. Così una famiglia con
+        # molte sottocategorie scientifiche non domina quelle più piccole.
+        recent_families = {
+            EDITORIAL_FAMILIES.get(cat, cat) for cat in recent_categories[-2:]
+        }
+        all_families = list(dict.fromkeys(EDITORIAL_FAMILIES.get(cat, cat) for cat in all_cats))
+        eligible_families = [family for family in all_families if family not in recent_families]
+        if not eligible_families:
+            eligible_families = all_families
+        chosen_family = _r.choice(eligible_families)
+
+        # Quattro pubblicazioni di distanza tra categorie, salvo esaurimento.
+        eligible_cats = [
+            cat for cat in all_cats
+            if EDITORIAL_FAMILIES.get(cat, cat) == chosen_family
+            and cat not in recent_categories
+        ]
+        if not eligible_cats:
+            eligible_cats = [
+                cat for cat in all_cats
+                if EDITORIAL_FAMILIES.get(cat, cat) == chosen_family
+            ]
+        cats_sorted = sorted(eligible_cats, key=lambda c: weights_map.get(c, 1.0), reverse=True)
+
+        # Selezione pesata con bias verso categorie performanti e non recenti.
         weights_list = [weights_map.get(c, 1.0) for c in cats_sorted]
         chosen_cat = _r.choices(cats_sorted, weights=weights_list, k=1)[0]
-        chosen_topic = _r.choice(RAG_TOPICS[chosen_cat])
+        eligible_topics = [t for t in RAG_TOPICS[chosen_cat] if t.casefold() not in recent_topics]
+        if not eligible_topics:
+            eligible_topics = RAG_TOPICS[chosen_cat]
+        chosen_topic = _r.choice(eligible_topics)
         console.print(f"[dim green]Topic intelligente: {chosen_topic} (cat: {chosen_cat}, peso: {weights_map.get(chosen_cat, 1.0):.2f})[/]")
         return chosen_cat, chosen_topic
     except Exception as e:
@@ -77,7 +128,7 @@ def run_step(command: list[str], step_name: str):
     except subprocess.CalledProcessError as e:
         console.print(f"\n[bold red]✖ ERRORE FATALE IN {step_name}[/]")
         console.print(f"Codice di uscita: {e.returncode}")
-        notify_telegram(f"ERRORE FATALE IN {step_name} (Exit code: {e.returncode})")
+        notify_email(f"ERRORE FATALE IN {step_name} (Exit code: {e.returncode})")
         sys.exit(1)
 
     durata = time.time() - start_time
@@ -90,12 +141,15 @@ def valida_qualita_copione(hook_title: str, script_text: str) -> tuple[int, str]
     Score < 7 → rigenera con topic diverso.
     """
     import re
-    prompt = f'''Sei un critico editoriale esperto di TikTok e contenuti scientifici virali.
-Valuta questo copione e il suo titolo con uno score da 0 a 10 basandoti su:
-- Qualità del Titolo (Hook): Il titolo è ipnotico? Invoglia immediatamente a fermare lo scroll? (peso 30%)
-- Accuratezza scientifica (no esagerazioni, no trasformazioni correlazione→causalità): peso 25%
-- Potenziale watch-time (struttura narrativa, colpo di scena): peso 25%
-- Originalità (evita cliché, argomento fresco, non ripetitivo): peso 20%
+    prompt = f'''Sei un critico editoriale.
+Valuta questo copione e il suo titolo con uno score da 0 a 10.
+ATTENZIONE: Questo è un canale di divulgazione "soft". NON PENALIZZARE un tono calmo, discorsivo o leggermente accademico. È VIETATO pretendere titoli acchiappaclick o colpi di scena esagerati. Un hook semplice e pulito va benissimo.
+
+Criteri:
+- Qualità del Titolo (Hook): Il titolo è chiaro e introduce bene il tema? (peso 30%)
+- Accuratezza scientifica: (peso 25%)
+- Fluidità narrativa: (peso 25%)
+- Originalità dell'aneddoto: (peso 20%)
 
 TITOLO:
 {hook_title}
@@ -110,18 +164,25 @@ PROBLEMI: [lista bullet dei problemi principali, max 3]
 '''
 
     try:
-        result = subprocess.run(
-            ['agy', '--dangerously-skip-permissions', '--print', prompt],
-            input='\n', text=True, capture_output=True, timeout=60
-        )
+        result = _run_agy_validator(prompt)
         if result.returncode != 0:
             return 0, f"Validazione fallita: {result.stderr.strip()}"
         output = result.stdout
-        score_match = re.search(r'SCORE:\s*(\d+)', output)
-        score = int(score_match.group(1)) if score_match else 5
-        return score, output
+        return parse_quality_result(output)
     except Exception as e:
         return 0, f"Validazione fallita: {e}"
+
+
+def parse_quality_result(output: str) -> tuple[int, str]:
+    """Estrae score e diagnosi dalla risposta AGY senza interpretazioni ambigue."""
+    import re
+    score_match = re.search(r"^\s*SCORE\s*:\s*(\d{1,2})(?:\s*/\s*10)?\b", output or "", re.IGNORECASE | re.MULTILINE)
+    score = max(0, min(10, int(score_match.group(1)))) if score_match else 5
+    relevant = []
+    for line in (output or "").splitlines():
+        if re.match(r"\s*(MOTIVAZIONE|PROBLEMI)\s*:", line, re.IGNORECASE) or line.lstrip().startswith("-"):
+            relevant.append(line.strip())
+    return score, " ".join(relevant[:6])
 
 def valida_sicurezza_tiktok(script_text: str) -> tuple[bool, str]:
     """
@@ -145,11 +206,7 @@ SICURO: [SI oppure NO]
 MOTIVO_MODERAZIONE: [Spiega brevemente perché è sicuro o perché verrebbe rimosso]
 '''
     try:
-        # Use safe subprocess call without shell parsing to avoid backtick/quote errors
-        result = subprocess.run(
-            ['agy', '--dangerously-skip-permissions', '--print', prompt],
-            input='\n', text=True, capture_output=True, timeout=60
-        )
+        result = _run_agy_validator(prompt)
         if result.returncode != 0:
             return False, f"Validazione sicurezza fallita: {result.stderr.strip()}"
         output = result.stdout
@@ -168,8 +225,15 @@ def main():
     parser.add_argument("--no-site", action="store_true", help="Non generare articolo o deploy su Conscia-Mente")
     args = parser.parse_args()
 
-    topic_result = pick_topic_intelligente() if not args.topic else ("Manuale", args.topic)
-    topic_category, topic = topic_result if isinstance(topic_result, tuple) else ("Manuale", topic_result)
+    ebook_id = ""
+    if args.topic:
+        topic_category, topic = "Manuale", args.topic
+    elif args.mode == "promo":
+        from rag_generator import pick_promo_ebook_topic
+        topic_category, topic, ebook_id = pick_promo_ebook_topic()
+    else:
+        topic_result = pick_topic_intelligente()
+        topic_category, topic = topic_result if isinstance(topic_result, tuple) else ("Manuale", topic_result)
 
     console.print(f"[bold blue]🤖 AGENTE TIKTOK INIZIALIZZATO[/]")
     console.print(f"Tema scelto per oggi: [bold yellow]'{topic}'[/]")
@@ -212,69 +276,32 @@ def main():
         "--output", script_txt,
         "--mode", args.mode
     ]
+    if ebook_id:
+        step0_cmd.extend(["--ebook-id", ebook_id])
     run_step(step0_cmd, "STEP 0: Ricerca e Scrittura Copione (AGY CLI)")
 
-    # STEP 0.5: Download Immagini (Pexels / Pollinations Fallback)
-    console.print(f"\n[bold magenta]▶ AVVIO STEP 0.5: Download Immagini[/]")
-
-    new_bg_files = []
-    if os.getenv("PEXELS_API_KEY"):
-        try:
-            console.print("[dim]Cerco immagini su Pexels...[/dim]")
-            import urllib.request
-            import urllib.parse
-            import json
-
-            headers = {"Authorization": os.getenv("PEXELS_API_KEY")}
-            stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per"}
-            topic_words = [w for w in topic.split() if w.lower() not in stop_words]
-            search_query = " ".join(topic_words) if topic_words else "aesthetic"
-
-            url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(search_query)}&per_page=6&orientation=portrait&size=large"
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read())
-
-            photos = data.get("photos", [])
-            for i, p in enumerate(photos[:3]):
-                img_url = p["src"]["large2x"]
-                local_path = bg_dir / f"pexels_img_{int(time.time())}_{i}.jpg"
-
-                req_img = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req_img, timeout=10) as img_resp, open(local_path, 'wb') as out_file:
-                    out_file.write(img_resp.read())
-                new_bg_files.append(local_path)
-                console.print(f"[green]✓ Immagine {i+1} scaricata da Pexels[/]")
-        except Exception as e:
-            console.print(f"[red]Errore Pexels images: {e}[/]")
-    else:
-        console.print("[yellow]PEXELS_API_KEY mancante, passo a Pollinations.[/]")
-
-    # FALLBACK SU POLLINATIONS SE PEXELS FALLISCE O MANCANO IMMAGINI
-    if len(new_bg_files) < 3:
-        console.print("[yellow]⚠️ Uso Pollinations AI per generare immagini mancanti...[/]")
-        import urllib.parse
-        import urllib.request
-        for i in range(len(new_bg_files), 3):
-            prompt = f"Abstract atmospheric vertical background for {topic}, cinematic lighting, highly detailed, minimalist"
-            pollinations_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?width=1080&height=1920&model=flux&enhance=true&nologo=true&private=true&seed={int(time.time())+i}"
-            local_path = bg_dir / f"pollinations_img_{int(time.time())}_{i}.jpg"
-
-            # Simple retry loop for rate limits
-            for attempt in range(3):
-                try:
-                    req_img = urllib.request.Request(pollinations_url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req_img, timeout=20) as img_resp, open(local_path, 'wb') as out_file:
-                        out_file.write(img_resp.read())
-                    new_bg_files.append(local_path)
-                    console.print(f"[green]✓ Immagine {i+1} generata con Pollinations AI[/]")
-                    time.sleep(3) # Pausa per evitare HTTP 429 Too Many Requests
-                    break
-                except Exception as e:
-                    console.print(f"[yellow]Tentativo {attempt+1} Pollinations fallito: {e}[/]")
-                    time.sleep(4)
-            else:
-                console.print(f"[red]Errore definitivo Pollinations per immagine {i+1}[/]")
+    # Preflight prima delle immagini: non consumare Pollinations/Pexels se il
+    # testo è già chiaramente sotto soglia. Il controllo completo viene
+    # ripetuto più avanti dopo la normalizzazione dei metadati.
+    preflight_raw = Path(script_txt).read_text(encoding="utf-8") if Path(script_txt).exists() else ""
+    preflight_title_match = __import__("re").search(r"(?i)\**TITOLO:?\**\s*(.*?)(?=\n|$)", preflight_raw)
+    preflight_title = preflight_title_match.group(1).replace("**", "").strip() if preflight_title_match else hook_title if 'hook_title' in locals() else ""
+    preflight_text = __import__("re").sub(r"(?im)^\s*(?:FONTE_NOTIZIA|FATTO_CENTRALE|TIPO_EVIDENZA|LIMITE_EVIDENZA|ANGOLO_NARRATIVO):.*(?:\n|$)", "", preflight_raw)
+    preflight_score, preflight_report = valida_qualita_copione(preflight_title, preflight_text)
+    console.print(f"[{'green' if preflight_score >= 6 else 'red'}]📋 Preflight qualità: {preflight_score}/10[/]")
+    if preflight_report:
+        console.print(f"[dim]Diagnosi preflight: {preflight_report[:500]}[/]")
+    if preflight_score == 0 and preflight_report.startswith("Validazione fallita"):
+        sys.exit(74)
+    if preflight_score < 6:
+        console.print("[yellow]↻ Preflight insufficiente: scarto prima di generare immagini.[/]")
+        sys.exit(75)
+    preflight_safe, preflight_safety_report = valida_sicurezza_tiktok(preflight_text)
+    if not preflight_safe:
+        if preflight_safety_report.startswith("Validazione sicurezza fallita"):
+            sys.exit(74)
+        console.print("[yellow]↻ Preflight sicurezza insufficiente: scarto prima delle immagini.[/]")
+        sys.exit(75)
 
     # Assicurati che lo script esista e non sia vuoto
     script_path = Path(script_txt)
@@ -310,7 +337,7 @@ def main():
             script_text = script_text[:e_match.start()] + script_text[e_match.end():]
 
         # Rimuovi eventuale "TESTO:" rimasto
-        script_text = re.sub(r'(?i)\**TESTO:?\**\s*', '', script_text)
+        script_text = re.sub(r'(?im)^\s*\**TESTO:?\**\s*', '', script_text)
 
         # I metadati editoriali restano nel file per il controllo qualità, ma
         # non devono mai essere letti dalla voce sintetica.
@@ -337,7 +364,7 @@ def main():
     hook_title, fonte_notizia, ebook_filename, script_content_clean = extract_and_clean_script(script_content)
 
     if "Errore" in hook_title or hook_title == "SCOPERTA SHOCK":
-        notify_telegram(f"ERRORE FATALE: hook_title invalido ({hook_title})")
+        notify_email(f"ERRORE FATALE: hook_title invalido ({hook_title})")
         console.print(f"[bold red]✖ ERRORE FATALE:[/] hook_title invalido ({hook_title}). Processo interrotto per evitare la pubblicazione del video errato.")
         sys.exit(1)
 
@@ -352,9 +379,15 @@ def main():
         console.print(f"[bold red]⛔ ALERT SICUREZZA TIKTOK:[/] Il copione viola potenzialmente le linee guida!")
         console.print(f"[dim]{safety_report}[/dim]")
         console.print(f"[yellow]⚠️ Rigenero immediatamente con nuovo topic per evitare ban...[/]")
+        regeneration_cmd = [
+            python_exe, 'rag_generator.py', '--topic', topic,
+            '--category', topic_category, '--output', script_txt,
+            '--mode', args.mode, '--force-new',
+        ]
+        if ebook_id:
+            regeneration_cmd.extend(['--ebook-id', ebook_id])
         subprocess.run(
-            [python_exe, 'rag_generator.py', '--topic', topic, '--category', topic_category, '--output', script_txt,
-             '--mode', args.mode, '--force-new'],
+            regeneration_cmd,
             capture_output=False,
             check=True,
         )
@@ -365,7 +398,7 @@ def main():
             script_path.write_text(script_content_clean, encoding="utf-8")
             is_safe, safety_report = valida_sicurezza_tiktok(script_content_clean)
             if not is_safe:
-                notify_telegram("ERRORE: anche il secondo copione non supera la validazione sicurezza")
+                notify_email("ERRORE: anche il secondo copione non supera la validazione sicurezza")
                 console.print(f"[bold red]⛔ Secondo copione non sicuro:[/] {safety_report}")
                 sys.exit(1)
         else:
@@ -374,14 +407,25 @@ def main():
 
     # 2. Controllo Qualità e Watch-time
     quality_score, quality_report = valida_qualita_copione(hook_title, script_content_clean)
-    console.print(f"[{'green' if quality_score >= 7 else 'red'}]📊 Quality Score: {quality_score}/10[/]")
+    if quality_score == 0 and quality_report.startswith("Validazione fallita"):
+        console.print("[yellow]↻ Valutatore non disponibile: riprovo il job senza pubblicare.[/]")
+        sys.exit(74)
+    console.print(f"[{'green' if quality_score >= 6 else 'red'}]📊 Quality Score: {quality_score}/10[/]")
+    if quality_report:
+        console.print(f"[dim]Diagnosi valutatore: {quality_report[:500]}[/]")
 
-    if quality_score < 7:
+    if quality_score < 6:
         console.print(f"[yellow]⚠️ Copione o titolo sotto soglia ({quality_score}/10). Rigenero un nuovo copione per lo stesso argomento...[/]")
         # Re-run rag_generator per generare un testo migliore sullo STESSO topic
+        regeneration_cmd = [
+            python_exe, 'rag_generator.py', '--topic', topic,
+            '--category', topic_category, '--output', script_txt,
+            '--mode', args.mode, '--force-new',
+        ]
+        if ebook_id:
+            regeneration_cmd.extend(['--ebook-id', ebook_id])
         subprocess.run(
-            [python_exe, 'rag_generator.py', '--topic', topic, '--category', topic_category, '--output', script_txt,
-             '--mode', args.mode, '--force-new'],
+            regeneration_cmd,
             capture_output=False,
             check=True,
         )
@@ -393,16 +437,25 @@ def main():
             script_path.write_text(script_content_clean, encoding="utf-8")
             is_safe, safety_report = valida_sicurezza_tiktok(script_content_clean)
             if not is_safe:
-                notify_telegram("ERRORE: copione rigenerato per qualità non supera la sicurezza")
+                notify_email("ERRORE: copione rigenerato per qualità non supera la sicurezza")
                 console.print(f"[bold red]⛔ Copione rigenerato non sicuro:[/] {safety_report}")
                 sys.exit(1)
 
             quality_score, quality_report = valida_qualita_copione(hook_title, script_content_clean)
+            if quality_score == 0 and quality_report.startswith("Validazione fallita"):
+                console.print("[yellow]↻ Valutatore non disponibile nel retry: riprovo il job.[/]")
+                sys.exit(74)
             console.print(f"[cyan]📊 Quality Score (secondo tentativo): {quality_score}/10[/]")
-            if quality_score < 7:
-                notify_telegram(f"ERRORE: copione sotto soglia dopo il retry ({quality_score}/10)")
-                console.print("[bold red]✖ Pubblicazione interrotta: qualità ancora sotto soglia.[/]")
-                sys.exit(1)
+            if quality_report:
+                console.print(f"[dim]Diagnosi valutatore: {quality_report[:500]}[/]")
+            if quality_score < 6:
+                console.print(
+                    "[bold yellow]↻ Copione scartato: qualità ancora sotto soglia. "
+                    "L'orchestratore ripartirà con un nuovo argomento.[/]"
+                )
+                # EX_TEMPFAIL: distingue un contenuto da rigenerare da un vero
+                # errore tecnico. run_agent_until_publish.sh intercetta il 75.
+                sys.exit(75)
         else:
             console.print("[red]Rigenero fallito: uso il copione originale.[/]")
     # --- Fine M10 e Sicurezza ---
@@ -410,9 +463,8 @@ def main():
     local_quality = validate_script(hook_title, script_content_clean, editorial_metadata)
     if not local_quality.ok:
         details = "; ".join(local_quality.issues)
-        notify_telegram(f"ERRORE: controllo editoriale locale fallito ({details})")
-        console.print(f"[bold red]✖ Controllo editoriale locale fallito:[/] {details}")
-        sys.exit(1)
+        console.print(f"[bold yellow]↻ Contenuto scartato dal controllo editoriale:[/] {details}")
+        sys.exit(75)
     console.print(f"[green]✓ Controllo editoriale locale: {local_quality.score}/10[/]")
 
     # Salva la vera fonte nello storico per non ripetere la notizia
@@ -428,6 +480,85 @@ def main():
     safe_title = re.sub(r"_+", "_", safe_title)
     if not safe_title: safe_title = "video"
     video_finale = f"output/video_{safe_title}.mp4"
+
+    # STEP 0.5: Download Immagini (Pexels / Pollinations Fallback)
+    console.print(f"\n[bold magenta]▶ AVVIO STEP 0.5: Download Immagini[/]")
+
+    new_bg_files = []
+    if os.getenv("PEXELS_API_KEY"):
+        try:
+            console.print("[dim]Cerco immagini su Pexels...[/dim]")
+            import urllib.request
+            import urllib.parse
+            import json
+
+            headers = {"Authorization": os.getenv("PEXELS_API_KEY")}
+            stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per"}
+            topic_words = [w for w in topic.split() if w.lower() not in stop_words]
+            search_query = " ".join(topic_words) if topic_words else "aesthetic"
+
+            url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(search_query)}&per_page=6&orientation=portrait&size=large"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read())
+
+            photos = data.get("photos", [])
+            for i, p in enumerate(photos[:3]):
+                img_url = p["src"]["large2x"]
+                local_path = bg_dir / f"pexels_img_{int(time.time())}_{i}.jpg"
+
+                req_img = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req_img, timeout=10) as img_resp, open(local_path, 'wb') as out_file:
+                    out_file.write(img_resp.read())
+                new_bg_files.append(local_path)
+                console.print(f"[green]✓ Immagine {i+1} scaricata da Pexels[/]")
+        except Exception as e:
+            error_code = getattr(e, "code", None)
+            if error_code in (401, 403):
+                # Evita ulteriori chiamate Pexels nello step 2 dello stesso run.
+                os.environ["PEXELS_DISABLED"] = "1"
+                console.print(
+                    "[yellow]Pexels ha rifiutato la chiave (HTTP "
+                    f"{error_code}); lo disabilito per questo run e passo subito al fallback.[/]"
+                )
+            else:
+                console.print(f"[red]Errore Pexels images: {e}[/]")
+    else:
+        console.print("[yellow]PEXELS_API_KEY mancante, passo a Pollinations.[/]")
+
+    # FALLBACK SU POLLINATIONS SE PEXELS FALLISCE O MANCANO IMMAGINI
+    if len(new_bg_files) < 3:
+        console.print("[yellow]⚠️ Uso Pollinations AI per generare immagini mancanti...[/]")
+        import urllib.parse
+        import urllib.request
+        for i in range(len(new_bg_files), 3):
+            prompt = f"Abstract atmospheric vertical background for {topic}, cinematic lighting, highly detailed, minimalist"
+            pollinations_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?width=1080&height=1920&model=flux&enhance=true&nologo=true&private=true&seed={int(time.time())+i}"
+            local_path = bg_dir / f"pollinations_img_{int(time.time())}_{i}.jpg"
+
+            retry_delays = (0, 5, 12)
+            for attempt, retry_delay in enumerate(retry_delays, start=1):
+                try:
+                    if retry_delay:
+                        time.sleep(retry_delay)
+                    req_img = urllib.request.Request(pollinations_url, headers={'User-Agent': 'Mozilla/5.0'})
+                    partial_path = local_path.with_suffix(".part")
+                    with urllib.request.urlopen(req_img, timeout=45) as img_resp, open(partial_path, 'wb') as out_file:
+                        out_file.write(img_resp.read())
+                    if partial_path.stat().st_size < 10_000:
+                        raise ValueError("risposta immagine troppo piccola")
+                    partial_path.replace(local_path)
+                    new_bg_files.append(local_path)
+                    console.print(f"[green]✓ Immagine {i+1} generata con Pollinations AI[/]")
+                    time.sleep(2) # Pausa breve per evitare HTTP 429
+                    break
+                except Exception as e:
+                    partial_path = local_path.with_suffix(".part")
+                    if partial_path.exists():
+                        partial_path.unlink()
+                    console.print(f"[yellow]Tentativo {attempt}/3 Pollinations fallito: {e}[/]")
+            else:
+                console.print(f"[red]Errore definitivo Pollinations per immagine {i+1}[/]")
 
     # Usa XTTS v2 (Modello Locale Open Source) per una voce super performante gratuita
     provider = "xtts"
@@ -492,6 +623,10 @@ def main():
         run_step(step3_fallback, "STEP 3: Fallback Sottotitoli")
 
     # STEP 4: Pubblicazione Automatica (Opzionale)
+    resource_data = None
+    if ebook_id:
+        from modules.ebook_catalog import get_ebook
+        resource_data = get_ebook(ebook_id)
     profile_path = Path("chrome_profile")
     cookies_path = Path("cookies.txt")
     if args.no_publish:
@@ -518,8 +653,19 @@ def main():
                 quality_score=quality_score,
                 fonte=fonte_notizia,
                 success=True,
+                topic=topic,
+                platform="tiktok",
+                resource_id=ebook_id,
+                delivery_type=resource_data["deliveryType"] if resource_data else "",
             )
-            notify_telegram(f"✅ Video pubblicato: '{hook_title}' (score {quality_score}/10)")
+            from rag_generator import save_published_history
+            save_published_history(
+                category=topic_category,
+                topic=topic,
+                fonte=fonte_notizia,
+                metadata=editorial_metadata,
+            )
+            notify_email(f"✅ Video pubblicato: '{hook_title}' (score {quality_score}/10)")
         except SystemExit:
             from modules.feedback_loop import log_upload
             log_upload(
@@ -530,6 +676,10 @@ def main():
                 quality_score=quality_score,
                 fonte=fonte_notizia,
                 success=False,
+                topic=topic,
+                platform="tiktok",
+                resource_id=ebook_id,
+                delivery_type=resource_data["deliveryType"] if resource_data else "",
             )
             raise
     else:
@@ -584,7 +734,7 @@ def main():
             console.print(f"[bold red]✖ Errore nell'integrazione sito Conscia-Mente: {e}[/]")
             if copied_video and copied_video.exists() and not site_commit_created:
                 copied_video.unlink()
-            notify_telegram(f"ERRORE integrazione Conscia-Mente: {e}")
+            notify_email(f"ERRORE integrazione Conscia-Mente: {e}")
             raise SystemExit(1) from e
 
     console.print("\n" + "="*60)

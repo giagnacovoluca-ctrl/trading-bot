@@ -10,9 +10,13 @@ from rich.console import Console
 from dotenv import load_dotenv
 import random
 import json
+import re
 from PIL import Image, ImageDraw, ImageFont
 from modules.media_server import TemporaryMediaServer
 from modules.meta_config import graph_url
+from modules.content_tracking import create_campaign, save_campaign
+from modules.feedback_loop import log_upload
+from modules.ebook_catalog import load_ebook_catalog
 
 console = Console()
 load_dotenv()
@@ -47,40 +51,79 @@ def wrap_text(text, font, max_width, draw):
         lines.append(" ".join(current_line))
     return lines
 
-def generate_story_image() -> Path:
+def validate_story_content(data: object) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("La storia deve essere un oggetto JSON")
+    fields = {key: str(data.get(key, "")).strip() for key in ("titolo", "insight", "azione")}
+    if not 4 <= len(fields["titolo"].split()) <= 9:
+        raise ValueError("Il titolo deve contenere da 4 a 9 parole")
+    if not 18 <= len(fields["insight"].split()) <= 38:
+        raise ValueError("L'insight deve contenere da 18 a 38 parole")
+    if not 7 <= len(fields["azione"].split()) <= 18:
+        raise ValueError("L'azione deve contenere da 7 a 18 parole")
+    combined = " ".join(fields.values()).lower()
+    risky_patterns = (
+        r"\bnon (?:idrata|funziona|serve|fa bene|fa male)\b",
+        r"\b(?:cura|guarisce|previene|elimina|disintossica|detox)\w*\b",
+        r"\b(?:tessuti|cellule|organismo)\b.{0,45}\b(?:assimila|assorbe|regola)\w*\b",
+        r"\b(?:attiva|stimola|riequilibra)\s+(?:il|gli|la)\s+(?:nervo|ormoni|metabolismo)\b",
+    )
+    if any(re.search(pattern, combined) for pattern in risky_patterns):
+        raise ValueError("La storia contiene una spiegazione fisiologica troppo categorica")
+    return fields
+
+
+def generate_story_image() -> tuple[Path, str, str]:
     console.print("[cyan]1. Generazione testi per la Storia via AGY...[/]")
 
-    EBOOKS = ["Cibo/Salute", "Meditazione", "Nervo Vago/Stress", "Epigenetica/DNA", "Acqua/Idratazione"]
-    ebook = random.choice(EBOOKS)
+    ebooks = load_ebook_catalog()
+    ebook_data = random.choices(
+        ebooks,
+        weights=[float(book["socialWeight"]) for book in ebooks],
+        k=1,
+    )[0]
+    ebook = ebook_data["title"]
+    delivery_note = (
+        "un PDF gratuito inviato via email"
+        if ebook_data["deliveryType"] == "pdf_email"
+        else "un'anteprima gratuita leggibile subito online"
+    )
 
     prompt = f"""
-Sei un social media manager. Crea un testo d'impatto per una Storia di Instagram (formato verticale) per promuovere l'ebook: '{ebook}'.
-La storia deve avere:
-1. 'titolo': una domanda o affermazione che cattura subito (max 6 parole, es. "Ti senti sempre stanco?").
-2. 'sottotitolo': una call to action per i DM usando ManyChat (es. "Rispondi GUIDA a questa storia per ricevere il manuale.").
+Sei un editor esperto di benessere per ConsciaMente. Crea UNA Storia Instagram utile e concreta sul tema '{ebook}'.
+La risorsa collegata è {delivery_note}; non descriverla in modo diverso.
+Non scrivere una frase motivazionale generica: insegna una piccola idea applicabile oggi.
+La storia deve avere una progressione completa:
+1. "titolo": hook specifico da 4 a 9 parole, senza allarmismo.
+2. "insight": spiegazione divulgativa da 18 a 38 parole, chiara e prudente; descrivi un'abitudine o uno spunto di osservazione, non meccanismi fisiologici e non superiorità assolute.
+3. "azione": esercizio o domanda pratica da 7 a 18 parole, flessibile e senza quantità/orari rigidi.
+Usa formule prudenti come "può aiutarti a osservare". Non affermare che una pratica cura, previene, attiva organi/nervi, regola ormoni o viene assimilata meglio.
+Non inserire URL, hashtag, richieste di DM o la CTA finale: viene aggiunta graficamente dal sistema.
 
 Restituisci SOLO un file JSON valido:
 {{
   "titolo": "...",
-  "sottotitolo": "..."
+  "insight": "...",
+  "azione": "..."
 }}
 """
-    raw_json = call_agy(prompt)
-    import re
-    match = re.search(r'\{.*\}', raw_json, re.DOTALL)
+    last_error = "risposta assente"
+    for attempt in range(1, 4):
+        raw_json = call_agy(prompt)
+        match = re.search(r'\{.*\}', raw_json, re.DOTALL)
+        try:
+            if match is None:
+                raise ValueError("JSON assente")
+            story = validate_story_content(json.loads(match.group(0)))
+            titolo, insight, azione = story["titolo"], story["insight"], story["azione"]
+            break
+        except (json.JSONDecodeError, KeyError, AttributeError, ValueError) as exc:
+            last_error = str(exc)
+            console.print(f"[yellow]Testo storia non valido ({attempt}/3): {last_error}[/]")
+    else:
+        raise RuntimeError(f"AGY non ha prodotto una storia valida: {last_error}")
 
-    if match is None:
-        raise RuntimeError("AGY non ha restituito JSON per la storia")
-    try:
-        data = json.loads(match.group(0))
-        titolo = data['titolo'].strip()
-        sottotitolo = data['sottotitolo'].strip()
-    except (json.JSONDecodeError, KeyError, AttributeError) as e:
-        raise RuntimeError(f"JSON storia non valido: {e}") from e
-    if not titolo or len(titolo.split()) > 6 or not sottotitolo:
-        raise RuntimeError("Testo storia fuori dai limiti richiesti")
-
-    console.print(f"[bold]Titolo:[/] {titolo}\n[bold]Sottotitolo:[/] {sottotitolo}")
+    console.print(f"[bold]Titolo:[/] {titolo}\n[bold]Insight:[/] {insight}\n[bold]Azione:[/] {azione}")
 
     out_dir = Path("temp/stories")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -114,14 +157,18 @@ Restituisci SOLO un file JSON valido:
     font_path = Path("assets/fonts/Montserrat-Bold.ttf")
     try:
         font_titolo = ImageFont.truetype(str(font_path), 80)
-        font_sub = ImageFont.truetype(str(font_path), 45)
+        font_body = ImageFont.truetype(str(font_path), 43)
+        font_action = ImageFont.truetype(str(font_path), 39)
+        font_cta = ImageFont.truetype(str(font_path), 38)
     except:
         font_titolo = ImageFont.load_default()
-        font_sub = ImageFont.load_default()
+        font_body = ImageFont.load_default()
+        font_action = ImageFont.load_default()
+        font_cta = ImageFont.load_default()
 
     # Disegna Titolo (Centro alto)
     lines_titolo = wrap_text(titolo, font_titolo, 850, draw)
-    y_text = 450
+    y_text = 330
     for line in lines_titolo:
         # Usa l'ancoraggio centrale 'mm' per il bounding box e il disegno
         bbox = draw.textbbox((1080/2, y_text), line, font=font_titolo, anchor="mm")
@@ -133,25 +180,30 @@ Restituisci SOLO un file JSON valido:
 
         y_text += (bbox[3] - bbox[1]) + 25
 
-    # Disegna CTA (Centro Basso, alzato per stare nella Safe Zone di Instagram)
-    y_sub = 1150
-    lines_sub = wrap_text(sottotitolo, font_sub, 800, draw)
-    for line in lines_sub:
-        bbox = draw.textbbox((1080/2, y_sub), line, font=font_sub, anchor="mm")
+    # Insight centrale: abbastanza ricco da offrire valore, ma leggibile.
+    y_body = 690
+    for line in wrap_text(insight, font_body, 840, draw):
+        draw.text((540, y_body), line, font=font_body, fill=(240, 240, 245), anchor="mm")
+        y_body += 62
 
-        # Sfondo per la CTA
-        padding = 35
-        draw.rounded_rectangle(
-            [bbox[0] - padding, bbox[1] - padding, bbox[2] + padding, bbox[3] + padding],
-            radius=20, fill=(200, 40, 40, 255)
-        )
-        draw.text((1080/2, y_sub), line, font=font_sub, fill="white", anchor="mm")
+    # Azione pratica in una card distinta.
+    action_lines = wrap_text(azione, font_action, 760, draw)
+    card_top, card_bottom = 1040, 1040 + max(190, len(action_lines) * 60 + 90)
+    draw.rounded_rectangle([105, card_top, 975, card_bottom], radius=32, fill=(42, 34, 65, 225), outline=(168, 85, 247), width=3)
+    draw.text((540, card_top + 48), "PROVA OGGI", font=font_cta, fill=(196, 181, 253), anchor="mm")
+    y_action = card_top + 112
+    for line in action_lines:
+        draw.text((540, y_action), line, font=font_action, fill="white", anchor="mm")
+        y_action += 58
 
-        y_sub += (bbox[3] - bbox[1]) + 30
+    # CTA realmente eseguibile: il collegamento cliccabile è nella bio.
+    draw.rounded_rectangle([155, 1480, 925, 1605], radius=62, fill=(74, 222, 128, 245))
+    draw.text((540, 1542), ebook_data["storyCta"], font=font_cta, fill=(2, 44, 34), anchor="mm")
+    draw.text((540, 1680), "ConsciaMente", font=font_cta, fill=(220, 220, 230), anchor="mm")
 
     img.save(out_path, quality=90)
     console.print(f"[green]Immagine storia salvata in: {out_path}[/]")
-    return out_path
+    return out_path, ebook_data["id"], f"{titolo} {insight} {azione}"
 
 def publish_story(image_path: Path, image_url: str) -> bool:
     console.print("\n[cyan]4. Pubblicazione su Instagram Stories API...[/]")
@@ -211,13 +263,22 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-publish", action="store_true")
     args = parser.parse_args()
-    image_path = generate_story_image()
+    image_path, ebook_id, story_text = generate_story_image()
     if args.no_publish:
         console.print("[yellow]Modalità --no-publish: storia generata senza upload.[/]")
         return
+    ebook_data = next(book for book in load_ebook_catalog() if book["id"] == ebook_id)
+    campaign = create_campaign("instagram", f"{ebook_data['title']} {story_text}", "story")
+    save_campaign(campaign)
     with TemporaryMediaServer([image_path]) as media_server:
         if not publish_story(image_path, media_server.url_for(image_path)):
             raise SystemExit(1)
+    log_upload(
+        video_file=str(image_path), hook_title=story_text.split(".", 1)[0],
+        category=ebook_data["category"], mode="story", quality_score=8, fonte="", success=True,
+        topic=ebook_data["title"], platform="instagram", resource_id=ebook_id,
+        delivery_type=ebook_data["deliveryType"],
+    )
 
 if __name__ == "__main__":
     main()

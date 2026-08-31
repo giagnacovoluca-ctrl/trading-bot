@@ -54,7 +54,7 @@ def upload_con_profilo_ig(video_path: Path, description: str, headless: bool = T
                 create_btn.click(force=True)
             except Exception as e:
                 console.print(f"[yellow]Pulsante 'Crea' non trovato al primo colpo, cerco il testo...[/]")
-                page.locator("span:has-text('Crea'), span:has-text('Create')").click()
+                page.locator("span:text-is('Crea'), span:text-is('Create')").first.click()
 
             time.sleep(2)
 

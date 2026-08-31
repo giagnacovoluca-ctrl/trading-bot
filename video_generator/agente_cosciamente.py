@@ -7,6 +7,7 @@ import subprocess
 import json
 from pathlib import Path
 from rich.console import Console
+from modules.email_notifications import notify_email
 
 console = Console()
 
@@ -59,11 +60,13 @@ def genera_contenuto(prodotto: str, piattaforma: str) -> dict:
 Devi creare un carosello video (5-6 slide) per {piattaforma} per promuovere il prodotto: {prodotto.upper()}.
 
 Regole per il Copy:
-- Spiega una curiosità affascinante sulla {prodotto} (es. significato dei numeri maestri, oppure come l'oracolo risponde alle energie dell'universo).
-- Tono: Misterioso, spirituale, ma autorevole.
+- Se il prodotto è ORACOLO: promuovilo NON in modo troppo aereo o spirituale, ma presentalo come una "Chat IA gratuita per il tuo benessere e miglioramento personale".
+- Se il prodotto è NUMEROLOGIA: integra e promuovi il fatto che offriamo un "Check per l'affinità di coppia" e un "Profilo individuale completo con Numeri del Destino, dell'Anima, della Personalità e della Maturità".
+- Spiega brevemente un concetto utile legato al {prodotto}, poi aggancialo immediatamente ai nostri strumenti gratuiti.
+- Tono: Motivazionale, pratico e orientato al miglioramento personale (meno esoterico e più incentrato sul benessere concreto).
 - Nelle slide, l'utente leggerà SOLO 'overlay_text' (massimo 15-20 parole per slide).
-- NELL'ULTIMA SLIDE fai la Call to Action: invita l'utente a provare {prodotto} e i TEST GRATUITI sul sito Conscia-Mente.
-- Per Instagram usa la strategia dei commenti (es. "Commenta TEST e ti mando il link"). Per TikTok dì "Link in bio per provare i test".
+- NELL'ULTIMA SLIDE fai la Call to Action forte: invita l'utente a provare i nostri strumenti gratuiti legati a {prodotto} sul sito Conscia-Mente.
+- Per Instagram e TikTok usa una CTA realmente eseguibile: "Prova gratis dal link in bio". Non promettere risposte o invii automatici nei DM.
 
 Restituisci ESATTAMENTE questo JSON:
 {{
@@ -141,20 +144,15 @@ def main():
     if args.piattaforma == "tiktok":
         subprocess.run([sys.executable, "step4_pubblica.py", "--video", str(out_video), "--script", "scripts/script_carosello.txt", "--mode", "virale"], check=True)
     elif args.piattaforma == "ig":
-        # Pubblicazione IG nativa come Carosello Immagini Swipeabile (molto meglio per oroscopi/numerologia)
-        console.print("[cyan]Caricamento come Carosello Immagini Nativo su IG...[/]")
-
-        # Per IG, dobbiamo copiare le slide_X.png in slide_X.jpg temporaneamente (come fa crea_carosello)
-        temp_dir = Path("temp/carousel")
-        temp_dir.mkdir(parents=True, exist_ok=True)
-        for p in image_paths:
-            from PIL import Image
-            img = Image.open(p).convert("RGB")
-            img.save(temp_dir / f"{p.stem}.jpg")
-
-        subprocess.run([sys.executable, "step4_pubblica_ig_carousel_api.py", "--dir", str(temp_dir)], check=True)
+        # Pubblicazione IG nativa come Reel video
+        console.print("[cyan]Caricamento come Reel Video su IG...[/]")
+        subprocess.run([sys.executable, "step4_pubblica_ig_api.py", "--video", str(out_video), "--script", "scripts/script_carosello.txt", "--mode", "virale"], check=True)
 
     console.print(f"[bold green]Operazione completata per {args.prodotto} su {args.piattaforma}[/]")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        notify_email(f"ERRORE job social Conscia-Mente: {type(exc).__name__}: {exc}")
+        raise

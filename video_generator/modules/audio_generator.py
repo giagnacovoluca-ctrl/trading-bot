@@ -96,6 +96,10 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
         import torchaudio
         import transformers.utils.import_utils as tu
         import transformers.pytorch_utils as pu
+        from transformers.utils import logging as transformers_logging
+
+        # Gli avvisi sui token GPT non riguardano XTTS e riempivano inutilmente i log.
+        transformers_logging.set_verbosity_error()
 
         if not hasattr(pu, 'isin_mps_friendly'):
             pu.isin_mps_friendly = lambda elements, test_elements: torch.isin(elements, test_elements)
@@ -129,6 +133,12 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
     console.print(f"[bold cyan]XTTS v2 (Clonazione Vocale)[/] → speaker: [bold]{speaker_sample.name}[/]")
     import torch
     use_gpu = torch.cuda.is_available()
+    if not use_gpu:
+        torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            pass
 
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
 
@@ -148,23 +158,25 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
             os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
         wav_temp = output_path.with_suffix(".temp.wav")
-        tts.tts_to_file(
-            text=clean_tts_text,
-            speaker_wav=str(speaker_sample),
-            language="it",
-            file_path=str(wav_temp),
-        )
+        with torch.inference_mode():
+            tts.tts_to_file(
+                text=clean_tts_text,
+                speaker_wav=str(speaker_sample),
+                language="it",
+                file_path=str(wav_temp),
+            )
         sound = AudioSegment.from_wav(str(wav_temp))
         sound.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
         if wav_temp.exists():
             wav_temp.unlink()
     else:
-        tts.tts_to_file(
-            text=clean_tts_text,
-            speaker_wav=str(speaker_sample),
-            language="it",
-            file_path=str(output_path),
-        )
+        with torch.inference_mode():
+            tts.tts_to_file(
+                text=clean_tts_text,
+                speaker_wav=str(speaker_sample),
+                language="it",
+                file_path=str(output_path),
+            )
 
     # Free memory to prevent OOM during video generation
     del tts

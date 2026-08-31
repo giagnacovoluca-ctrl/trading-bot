@@ -1,6 +1,6 @@
 import unittest
 
-from modules.script_quality import extract_metadata, validate_script
+from modules.script_quality import extract_metadata, validate_publication_text, validate_script
 
 
 VALID_METADATA = {
@@ -39,6 +39,37 @@ class ScriptQualityTest(unittest.TestCase):
         report = validate_script("Un fatto interessante", text, {"FONTE_NOTIZIA": "Nature"})
         self.assertFalse(report.ok)
         self.assertTrue(any("metadato" in issue for issue in report.issues))
+
+    def test_rejects_misinformation_style_absolutes(self):
+        issues = validate_publication_text(
+            "Questa è la prova definitiva del cambiamento climatico che non ti dicono."
+        )
+        self.assertTrue(any("assoluta" in issue for issue in issues))
+
+    def test_rejects_unsourced_nuclear_bomb_analogy(self):
+        issues = validate_publication_text(
+            "Gli oceani assorbono l'energia di cinque esplosioni nucleari al secondo."
+        )
+        self.assertTrue(any("analogia quantitativa" in issue for issue in issues))
+
+    def test_rejects_aggressive_contrarian_rhetoric(self):
+        issues = validate_publication_text(
+            "Ti hanno mentito: la matematica è rotta e tutti sbagliano."
+        )
+        self.assertTrue(any("contrariana aggressiva" in issue for issue in issues))
+
+    def test_rejects_generic_scientific_source(self):
+        metadata = dict(VALID_METADATA)
+        metadata["FONTE_NOTIZIA"] = "Letteratura scientifica consolidata sulla termodinamica"
+        text = (
+            "Il clima si studia osservando molti segnali diversi. "
+            "Le temperature atmosferiche cambiano in modo diverso con la quota. "
+            "I dati vanno interpretati insieme e non come una singola dimostrazione. "
+            "Condividi il video per discuterne con calma. " * 3
+        )
+        report = validate_script("Temperature e atmosfera", text, metadata)
+        self.assertFalse(report.ok)
+        self.assertTrue(any("fonte troppo generica" in issue for issue in report.issues))
 
 
 if __name__ == "__main__":

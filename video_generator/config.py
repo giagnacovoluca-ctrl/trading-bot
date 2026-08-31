@@ -70,11 +70,13 @@ VIDEO_FPS     = 30
 VIDEO_CODEC   = "libx264"
 VIDEO_BITRATE = "4000k"
 AUDIO_CODEC   = "aac"
+VIDEO_PRESET  = os.getenv("VIDEO_PRESET", "veryfast")
+VIDEO_THREADS = max(1, min(4, os.cpu_count() or 1))
 
 # ── Caption Style ─────────────────────────────────────────────────────────────
 CAPTION_FONT        = str(FONTS_DIR / "Montserrat-Bold.ttf")
 CAPTION_FALLBACK    = "Arial"          # usato se il font custom non esiste
-CAPTION_FONTSIZE    = 72               # px su 1080p (ridotto proporzionalmente)
+CAPTION_FONTSIZE    = 62               # px su 1080p; area sicura per display verticali
 CAPTION_COLOR       = "white"
 CAPTION_STROKE_COLOR = "black"
 CAPTION_STROKE_WIDTH = 3

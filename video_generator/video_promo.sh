@@ -10,4 +10,4 @@ cd /home/ubuntu/GIT/video_generator
 
 echo "---" >> cron_agy.log
 echo "Avvio CRON: agente_tiktok.py in modalità: promo" >> cron_agy.log
-venv_video/bin/python agente_tiktok.py --mode promo >> cron_agy.log 2>&1
+./run_agent_until_publish.sh promo >> cron_agy.log 2>&1

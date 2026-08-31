@@ -57,7 +57,8 @@ tramite tunnel SSH, senza esporre la porta direttamente su Internet.
 - `META_GRAPH_VERSION` (default verificato: `v24.0`)
 - `IG_USER_ID`, `IG_ACCESS_TOKEN`
 - `PEXELS_API_KEY` (opzionale)
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (opzionali)
+- `EMAIL_ENV_FILE` (default: `/home/ubuntu/conscia-mente/.env`), oppure
+  `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `NOTIFICATION_EMAIL` per gli avvisi email
 
 ## Verifiche senza pubblicazione
 

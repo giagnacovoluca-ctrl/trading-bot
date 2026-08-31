@@ -9,6 +9,11 @@ cd /home/ubuntu/GIT/video_generator
 
 PYTHON=/home/ubuntu/GIT/video_generator/venv_video/bin/python
 LOG_FILE=/home/ubuntu/GIT/video_generator/cron_cosciamente.log
+RUN_MODE=${1:-both}
+if [ "$RUN_MODE" != "both" ] && [ "$RUN_MODE" != "--ig-only" ]; then
+    echo "Uso: $0 [--ig-only]" >&2
+    exit 2
+fi
 trap 'status=$?; echo "ERRORE job Conscia-Mente (exit $status) - $(date)" >> "$LOG_FILE"; exit $status' ERR
 
 # Ottieni il giorno dell'anno (1-365)
@@ -20,11 +25,11 @@ echo "Avvio job Conscia-Mente (Giorno dell'anno: $DAY_OF_YEAR) - $(date)" >> "$L
 if [ "$IS_EVEN" -eq 0 ]; then
     echo "Giorno PARI: TikTok -> Oracolo | IG -> Numerologia" >> "$LOG_FILE"
 
-    # 1. TikTok: Oracolo
-    "$PYTHON" agente_cosciamente.py --prodotto oracolo --piattaforma tiktok >> "$LOG_FILE" 2>&1
-
-    # Pausa antispam
-    sleep 60
+    if [ "$RUN_MODE" = "both" ]; then
+        # 1. TikTok: Oracolo
+        "$PYTHON" agente_cosciamente.py --prodotto oracolo --piattaforma tiktok >> "$LOG_FILE" 2>&1
+        sleep 60
+    fi
 
     # 2. Instagram: Numerologia
     "$PYTHON" agente_cosciamente.py --prodotto numerologia --piattaforma ig >> "$LOG_FILE" 2>&1
@@ -32,11 +37,11 @@ if [ "$IS_EVEN" -eq 0 ]; then
 else
     echo "Giorno DISPARI: TikTok -> Numerologia | IG -> Oracolo" >> "$LOG_FILE"
 
-    # 1. TikTok: Numerologia
-    "$PYTHON" agente_cosciamente.py --prodotto numerologia --piattaforma tiktok >> "$LOG_FILE" 2>&1
-
-    # Pausa antispam
-    sleep 60
+    if [ "$RUN_MODE" = "both" ]; then
+        # 1. TikTok: Numerologia
+        "$PYTHON" agente_cosciamente.py --prodotto numerologia --piattaforma tiktok >> "$LOG_FILE" 2>&1
+        sleep 60
+    fi
 
     # 2. Instagram: Oracolo
     "$PYTHON" agente_cosciamente.py --prodotto oracolo --piattaforma ig >> "$LOG_FILE" 2>&1

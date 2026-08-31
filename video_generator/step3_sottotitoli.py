@@ -73,6 +73,8 @@ def main():
         codec=config.VIDEO_CODEC,
         bitrate=config.VIDEO_BITRATE,
         audio_codec=config.AUDIO_CODEC,
+        preset=config.VIDEO_PRESET,
+        threads=config.VIDEO_THREADS,
         logger="bar"
     )
     console.print(f"[green]Step 3 Completato! Video FINALE pronto in {out_path}[/]")

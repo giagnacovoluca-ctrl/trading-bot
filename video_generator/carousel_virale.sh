@@ -1,9 +1,14 @@
 #!/bin/bash
+exec 9>/tmp/video_generator_pipeline.lock
+flock -n 9 || { echo "Pipeline già in esecuzione: salto questo run"; exit 0; }
 export DISPLAY=:0
 export XAUTHORITY=/home/ubuntu/.Xauthority
 export PATH=$PATH:/home/ubuntu/.local/bin
 cd /home/ubuntu/GIT/video_generator
 source venv_video/bin/activate
+
+# Cancella i vecchi file per non riciclare caroselli passati in caso di errore
+rm -f scripts/slides_carosello.json scripts/tiktok_caption.txt
 
 HISTORY=$(tail -n 20 used_news_history.txt 2>/dev/null || echo "Nessuna notizia usata finora")
 
@@ -35,8 +40,10 @@ ANTI-DISINFORMAZIONE: Verifica che la notizia provenga da una fonte credibile (N
 DIVIETO ESPLICITO: Vietati titoli clickbait falsi, esagerazioni di studi scientifici, trasformare correlazioni in causalità. NON usare 'SCOPERTA ASSURDA', 'SEGRETO NASCOSTO' o altri trigger di ban TikTok.
 
 STEP 1: Usa il tool search_web per cercare su internet una notizia VERA, recente (degli ultimi 7 giorni) e virale sul tema obbligatorio. Non ripetere le notizie già trattate.
-STEP 2: Genera il carosello. Deve essere ESTREMAMENTE ORIGINALE E SENSATO. Trova l'angolo nascosto, spiega in modo logico e affascinante. Usa un hook visivo (senza clickbait). Nell'ultima slide fai una Call To Action forte per chiedere commenti. (Nessun accenno ad Amazon). 
-STEP 3: DEVI usare il tool 'write_to_file' per salvare esattamente un array JSON in scripts/slides_carosello.json. 
+STEP 2: Genera il carosello. Deve essere ESTREMAMENTE ORIGINALE E SENSATO. Trova l'angolo nascosto, spiega in modo logico e affascinante. Usa un hook visivo (senza clickbait).
+ATTENZIONE FONDAMENTALE SULLA SCRITTURA: I caroselli non hanno voce narrante, l'utente leggerà SOLO la chiave 'overlay_text'. L'overlay_text deve formare un discorso logico, coerente e fluido tra le slide, MA DEVE ESSERE BREVE, CONCISO E DI FORTE IMPATTO. Usa un tono molto SERIO, PROFESSIONALE E AUTOREVOLE. Evita "muri di testo" (massimo 15-20 parole per slide). Niente battutine o toni infantili. Spiega concetti complessi in frasi brevi e taglienti.
+Nell'ultima slide fai una Call To Action forte per chiedere commenti. (Nessun accenno ad Amazon).
+STEP 3: DEVI usare il tool 'write_to_file' per salvare esattamente un array JSON in scripts/slides_carosello.json.
 STEP 4: Usa 'write_to_file' per scrivere una description con hashtag in scripts/tiktok_caption.txt.
 STEP 5: Usa run_command o write_to_file per aggiungere in append il titolo o l'argomento della notizia a 'used_news_history.txt'." > cron_carousel.log 2>&1
 

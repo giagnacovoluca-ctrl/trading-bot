@@ -6,6 +6,8 @@ import time
 import tempfile
 from pathlib import Path
 from rich.console import Console
+from modules.script_quality import validate_publication_text
+from modules.content_tracking import prepare_tracked_caption
 
 from dotenv import load_dotenv
 
@@ -16,10 +18,14 @@ console = Console()
 CHROME_PROFILE_DIR = Path(__file__).parent / "chrome_profile"
 
 
-def genera_metadata_tiktok(script_text: str, mode: str = "promo") -> str:
+def genera_metadata_tiktok(
+    script_text: str,
+    mode: str = "promo",
+    use_existing_caption: bool = False,
+) -> str:
     """Legge la descrizione e hashtag per TikTok da file generato da Antigravity."""
     caption_path = Path("scripts/tiktok_caption.txt")
-    if caption_path.exists():
+    if use_existing_caption and caption_path.exists():
         try:
             return caption_path.read_text(encoding="utf-8").strip()
         except Exception as e:
@@ -27,7 +33,11 @@ def genera_metadata_tiktok(script_text: str, mode: str = "promo") -> str:
 
     import subprocess
     console.print("[dim]Nessun file tiktok_caption.txt trovato, lo genero al volo tramite AGY CLI...[/dim]")
-    prompt = f"Sei un social media manager per TikTok. Crea una breve caption per un post basato su questo copione. Usa hashtag virali appropriati. Metti sempre una CTA forte per commentare. Se la modalità è 'promo', INCLUDI ASSOLUTAMENTE la CTA di cliccare il link in bio per scaricare l'ebook. Restituisci SOLO la caption.\n\nMODALITA: {mode}\nCOPIONE:\n{script_text}"
+    prompt = f"""Sei un social media manager per TikTok. Crea una breve caption per un post basato su questo copione. Usa hashtag appropriati. Se la modalità è 'promo', conserva nella caption la CTA finale del copione ESATTAMENTE com'è scritta: non trasformare un'anteprima in PDF o download, non promettere email o DM e non sostituire la destinazione. Mantieni un tono educativo e accurato. Non usare formule come 'prova definitiva', 'inconfutabile', 'che non ti dicono', 'verità nascosta' o altre certezze assolute. Non aggiungere numeri, confronti o fatti che non siano già sostenuti da una fonte precisa nel copione. Restituisci SOLO la caption.
+
+MODALITA: {mode}
+COPIONE:
+{script_text}"""
     try:
         result = subprocess.run(
             ["agy", "--dangerously-skip-permissions", "--print", prompt], 
@@ -226,6 +236,11 @@ def main():
     parser.add_argument("--mode", default="promo", choices=["promo", "virale", "bastian"], help="Modalità video")
     parser.add_argument("--show-browser", action="store_true", help="Mostra il browser durante l'upload")
     parser.add_argument("--force-cookies", action="store_true", help="Forza uso cookies.txt anche se il profilo esiste")
+    parser.add_argument(
+        "--use-existing-caption",
+        action="store_true",
+        help="Usa scripts/tiktok_caption.txt preparata dalla pipeline corrente",
+    )
 
     args = parser.parse_args()
 
@@ -240,7 +255,23 @@ def main():
         script_text = script_path.read_text(encoding="utf-8")
 
     console.print(f"[cyan]Generazione descrizione (Modo: {args.mode.upper()})...[/]")
-    tiktok_caption = genera_metadata_tiktok(script_text, args.mode)
+    tiktok_caption = genera_metadata_tiktok(
+        script_text,
+        args.mode,
+        use_existing_caption=args.use_existing_caption,
+    )
+    tiktok_caption, campaign = prepare_tracked_caption(
+        tiktok_caption, "tiktok", script_text, args.mode
+    )
+    console.print(f"[dim]Campagna tracciata: {campaign['campaign_id']}[/]")
+
+    caption_issues = validate_publication_text(tiktok_caption)
+    if caption_issues:
+        console.print("[bold red]✖ Pubblicazione interrotta: caption a rischio disinformazione.[/]")
+        for issue in caption_issues:
+            console.print(f"[red]- {issue}[/]")
+        console.print("[yellow]Correggi o elimina scripts/tiktok_caption.txt e riprova.[/]")
+        sys.exit(1)
 
     console.print("[bold green]Descrizione generata:[/]")
     console.print(tiktok_caption)

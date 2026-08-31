@@ -14,6 +14,18 @@ import config
 load_dotenv()
 console = Console()
 
+
+def build_instagram_reel_command(python_executable, video_path, script_path, mode):
+    """Costruisce il comando Meta API che pubblica l'MP4 come Instagram Reel."""
+    return [
+        python_executable,
+        "step4_pubblica_ig_api.py",
+        "--video", str(video_path),
+        "--script", str(script_path),
+        "--mode", mode,
+    ]
+
+
 def genera_testi_carosello():
     slides_file = config.SCRIPTS_DIR / "slides_carosello.json"
     if slides_file.exists():
@@ -170,15 +182,15 @@ def main(no_publish: bool = False):
         sys.executable, "step4_pubblica.py",
         "--video", str(out_video),
         "--script", str(script_path),
-        "--mode", mode
+        "--mode", mode,
+        "--use-existing-caption",
     ]
     subprocess.run(cmd, check=True)
 
-    console.print("[cyan]5. Pubblicazione su Instagram (Carosello Nativo Foto)...[/cyan]")
-    cmd_ig = [
-        sys.executable, "step4_pubblica_ig_carousel_api.py",
-        "--dir", str(temp_dir)
-    ]
+    console.print("[cyan]5. Pubblicazione su Instagram come Reel...[/cyan]")
+    cmd_ig = build_instagram_reel_command(
+        sys.executable, out_video, script_path, mode
+    )
     ig_result = subprocess.run(cmd_ig, check=False)
     if ig_result.returncode != 0:
         console.print(
@@ -187,7 +199,7 @@ def main(no_publish: bool = False):
         )
         raise SystemExit(ig_result.returncode)
 
-    console.print("[bold green]Tutte le pubblicazioni (Video e Carosello Foto) completate![/bold green]")
+    console.print("[bold green]Tutte le pubblicazioni TikTok e Instagram Reel completate![/bold green]")
 
 if __name__ == "__main__":
     import argparse
