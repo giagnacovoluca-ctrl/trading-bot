@@ -28,19 +28,33 @@ VPS. Il filesystem di una funzione Vercel non è un database persistente.
 
 ## Pianificazione verificata
 
-Dal 05/09 è attiva la campagna qualità descritta in
-`crontab_quality_20260905.txt`, confrontata con il crontab effettivo:
+Dal 05/09, dopo la richiesta di rialzare la frequenza, il calendario è in
+`crontab_balanced_20260905.txt`. Il precedente calendario ridotto è conservato
+in `crontab_quality_20260905.txt` per consentire il ripristino.
 
-- TikTok: video promo quotidiano alle 17:30; carosello promo alle 11:30 di
-  martedì, giovedì e sabato. Video generalisti e Bastian sospesi per la campagna.
-- Instagram: Reel aesthetic quotidiano alle 10:00, Storia alle 09:30 e
-  pubblicazioni condivise dalle pipeline; Numerologia/Oracolo domenica alle 15:30.
-- Sito: Giornalista Fantasma martedì e venerdì alle 10:15; generazione corsi
+- TikTok: contenuto divulgativo alle 12:00 (carosello martedì, giovedì e sabato;
+  video gli altri giorni), video promo quotidiano alle 20:00. Bastian sospeso.
+- Instagram: Reel aesthetic alle 08:00 e 18:00, Storia alle 10:00 e caroselli
+  condivisi alle 12:00 di martedì, giovedì e sabato. Questi ultimi vengono
+  pubblicati dall'attuale pipeline come Reel, non come caroselli fotografici nativi.
+- Numerologia/Oracolo: domenica alle 15:30 su TikTok e Instagram, slot aggiuntivo
+  conservato. Il comando non usa `--ig-only`.
+- Sito: Giornalista Fantasma martedì e venerdì alle 14:15; generazione corsi
   sospesa; newsletter sabato alle 10:00. Gli articoli associati ai video promo
   restano una produzione aggiuntiva: due è la frequenza degli articoli SEO,
   non un limite assoluto di tutti gli articoli.
 - Analisi alle 23:00 sotto il lock della pipeline, lead ogni ora al minuto 05,
   report domenica alle 22:30. Conservato il cron di manutenzione Vercel.
+
+Orari nel fuso Europe/Rome: indicano l'avvio della generazione. Rendering,
+validazione e upload ritardano l'uscita effettiva. Sono fasce sperimentali,
+non picchi di attività del pubblico già misurati. Ogni job social usa il lock
+condiviso, inclusi i caroselli avviati direttamente da cron.
+
+Gli argomenti SEO sono stati concentrati in dodici tracce su meditazione e
+abitudini. Promo e aesthetic mantengono i sei ebook; video promo e aesthetic
+usano pesi e penalità per ripetizioni. I caroselli promo scelgono fra i sei
+libri senza pesi. I contenuti virali mantengono la rotazione generalista.
 
 Backup precedente: `/home/ubuntu/project_backups/conscia-cron-before-20260905.txt`.
 

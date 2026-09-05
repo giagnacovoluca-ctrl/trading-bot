@@ -1,0 +1,24 @@
+# Calendario social rialzato su richiesta dell'utente, 05/09/2026.
+# Fuso del server: Europe/Rome. Gli orari avviano la produzione, non l'upload.
+# TikTok: due slot al giorno; il carosello sostituisce il video di pranzo.
+0 12 * * 0,1,3,5 /home/ubuntu/GIT/video_generator/video_virale.sh
+0 12 * * 2,4,6 /usr/bin/flock -n /tmp/video_generator_pipeline.lock /home/ubuntu/GIT/video_generator/venv_video/bin/python3 /home/ubuntu/GIT/video_generator/agente_carosello.py --mode virale >> /home/ubuntu/GIT/video_generator/cron_virale.log 2>&1
+0 20 * * * /home/ubuntu/GIT/video_generator/video_promo.sh
+
+# Instagram: due aesthetic al giorno e una Storia; caroselli condivisi mar/gio/sab.
+0 8,18 * * * /home/ubuntu/GIT/video_generator/instagram_aesthetic.sh
+0 10 * * * /home/ubuntu/GIT/video_generator/start_story_cron.sh
+
+# Percorso simbolico settimanale esistente: TikTok e Instagram.
+30 15 * * 0 /home/ubuntu/GIT/video_generator/cron_cosciamente.sh
+
+# Due articoli SEO settimanali; eventuali articoli dei video promo sono aggiuntivi.
+15 14 * * 2,5 /home/ubuntu/conscia-mente/scripts/giornalista_fantasma.sh >> /home/ubuntu/conscia-mente/cron_giornalista.log 2>&1
+# Corsi automatici e Bastian restano sospesi.
+0 10 * * 6 /home/ubuntu/conscia-mente/scripts/newsletter.sh >> /home/ubuntu/conscia-mente/cron_newsletter.log 2>&1
+
+# Analisi e automazioni commerciali conservate.
+0 23 * * * /usr/bin/flock -n /tmp/video_generator_pipeline.lock /home/ubuntu/GIT/video_generator/venv_video/bin/python3 /home/ubuntu/GIT/video_generator/analizza_risultati.py --user lgia888
+5 * * * * /home/ubuntu/conscia-mente/scripts/run_lead_automation.sh >> /home/ubuntu/conscia-mente/cron_leads.log 2>&1
+30 22 * * 0 /usr/bin/python3 /home/ubuntu/conscia-mente/scripts/funnel_report.py >> /home/ubuntu/conscia-mente/cron_funnel_report.log 2>&1
+0 0 * * 0 /usr/bin/python3 /home/ubuntu/scripts/vercel_clean.py >> /home/ubuntu/scripts/cron_vercel_clean.log 2>&1
