@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright
 import subprocess
 import config
 
-def create_aesthetic_reel(text: str, category: str, output_path: str):
+def create_aesthetic_reel(text: str, category: str, output_path: str, cta: str = ""):
     html_path = Path("templates/ig_aesthetic.html").absolute()
     screenshot_path = Path("output/ig_temp.png").absolute()
 
@@ -18,7 +18,7 @@ def create_aesthetic_reel(text: str, category: str, output_path: str):
         page.goto(f"file://{html_path}")
 
         # Passa i dati come argomenti serializzati, senza costruire JavaScript.
-        page.evaluate("([value, kind]) => setContent(value, kind)", [text, category])
+        page.evaluate("([value, kind, action]) => setContent(value, kind, action)", [text, category, cta])
 
         # Attendi il rendering e scatta
         page.wait_for_timeout(500)
@@ -73,7 +73,8 @@ if __name__ == "__main__":
     parser.add_argument("--text", type=str, required=True, help="Testo da mostrare a schermo")
     parser.add_argument("--category", type=str, default="default", help="Categoria per il colore (es: cibo_salute, nervo_vago)")
     parser.add_argument("--out", type=str, default="output/aesthetic_reel.mp4", help="Percorso di output")
+    parser.add_argument("--cta", type=str, default="", help="CTA breve da mostrare nel Reel")
 
     args = parser.parse_args()
 
-    create_aesthetic_reel(args.text, args.category, args.out)
+    create_aesthetic_reel(args.text, args.category, args.out, args.cta)

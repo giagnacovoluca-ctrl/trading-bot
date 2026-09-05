@@ -4,6 +4,7 @@ import os
 import re
 import time
 import tempfile
+import json
 from pathlib import Path
 from rich.console import Console
 from modules.script_quality import validate_publication_text
@@ -16,6 +17,7 @@ console = Console()
 
 # Cartella profilo Chrome persistente — creata da setup_tiktok_login.sh
 CHROME_PROFILE_DIR = Path(__file__).parent / "chrome_profile"
+RECEIPT_PATH = Path(__file__).parent / 'output/tiktok_receipt.json'
 
 
 def genera_metadata_tiktok(
@@ -72,7 +74,7 @@ def normalize_cookies(cookies_path: Path) -> Path:
     return Path(tmp.name)
 
 
-def upload_con_profilo(video_path: Path, description: str, headless: bool = True) -> bool:
+def upload_con_profilo(video_path: Path, description: str, headless: bool = True) -> bool | None:
     """Upload usando il profilo Chrome persistente (metodo principale).
     Ritorna True se successo, False se fallito."""
     from playwright.sync_api import sync_playwright
@@ -81,6 +83,22 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
     console.print(f"[dim]Profilo: {CHROME_PROFILE_DIR}[/]")
 
     upload_url = "https://www.tiktok.com/creator-center/upload?lang=en"
+    submitted = False
+    published_ids = set()
+
+    def capture_publish_response(response):
+        if '/publish' not in response.url or response.status != 200:
+            return
+        try:
+            payload = response.json()
+            if payload.get('status_code', payload.get('statusCode', 0)) not in (0, '0'):
+                return
+            data = payload.get('data') or payload
+            post_id = str(data.get('item_id') or data.get('aweme_id') or '')
+            if re.fullmatch(r'\d{15,25}', post_id):
+                published_ids.add(post_id)
+        except Exception:
+            return
 
     try:
         with sync_playwright() as p:
@@ -101,6 +119,7 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
             )
 
             page = context.new_page()
+            page.on('response', capture_publish_response)
 
             # Vai alla pagina upload
             console.print("[dim]Navigazione alla pagina upload...[/]")
@@ -154,6 +173,7 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
             # Clicca Pubblica
             try:
                 post_btn = container.locator("button:has-text('Post'), button:has-text('Pubblica')").last
+                submitted = True
                 post_btn.evaluate("node => node.click()")
                 console.print("[dim]Pulsante Pubblica cliccato (via JS). Controllo popup di conferma...[/]")
                 time.sleep(5)
@@ -171,17 +191,21 @@ def upload_con_profilo(video_path: Path, description: str, headless: bool = True
             except Exception as e:
                 console.print(f"[yellow]⚠ Pulsante pubblica non trovato: {e}[/]")
                 context.close()
-                return False
+                return None if submitted else False
 
             # Salva i cookie aggiornati (auto-refresh sessione)
             _salva_cookies_aggiornati(context)
-
+            body = page.inner_text('body')
+            confirmed = bool(published_ids) or bool(re.search(r'(?:your video (?:has been|is) (?:uploaded|published)|video (?:pubblicato|caricato) con successo|post published)', body, re.I))
+            if len(published_ids) == 1:
+                RECEIPT_PATH.parent.mkdir(parents=True, exist_ok=True)
+                RECEIPT_PATH.write_text(json.dumps({'media_id': next(iter(published_ids)), 'video_file': str(video_path), 'created_at': time.time()}))
             context.close()
-            return True
+            return True if confirmed else None
 
     except Exception as e:
         console.print(f"[red]Errore upload con profilo: {e}[/]")
-        return False
+        return None if submitted else False
 
 
 def _salva_cookies_aggiornati(context) -> None:
@@ -243,6 +267,7 @@ def main():
     )
 
     args = parser.parse_args()
+    RECEIPT_PATH.unlink(missing_ok=True)
 
     video_path = Path(args.video)
     if not video_path.exists():
@@ -287,6 +312,9 @@ def main():
         success = upload_con_profilo(video_path, tiktok_caption, headless=headless)
     
     # Metodo 2: cookies.txt (fallback)
+    if success is None:
+        console.print('[red]Invio effettuato ma conferma non verificabile. Controllare TikTok prima di riprovare: nessun secondo upload automatico.[/]')
+        sys.exit(2)
     if not success:
         cookies_path = Path(args.cookies)
         if cookies_path.exists():

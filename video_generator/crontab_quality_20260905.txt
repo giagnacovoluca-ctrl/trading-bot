@@ -1,0 +1,32 @@
+# TikTok: promo giornaliero e caroselli tematici tre volte a settimana
+# Campagna ConsciaMente: qualità e meditazione, avvio 05/09/2026
+30 11 * * 2,4,6 /home/ubuntu/GIT/video_generator/venv_video/bin/python3 /home/ubuntu/GIT/video_generator/agente_carosello.py --mode promo >> /home/ubuntu/GIT/video_generator/cron_virale.log 2>&1
+# Secondo video generalista sospeso durante la campagna
+30 17 * * * /home/ubuntu/GIT/video_generator/video_promo.sh
+# Format generalista Bastian sospeso durante la campagna
+# Carosello aggiuntivo serale sospeso durante la campagna
+
+# Instagram: un Reel aesthetic quotidiano, più le pubblicazioni condivise
+0 10 * * * /home/ubuntu/GIT/video_generator/venv_video/bin/python3 /home/ubuntu/GIT/video_generator/agente_carosello.py --mode aesthetic >> /home/ubuntu/GIT/video_generator/cron_aesthetic.log 2>&1
+
+# Conscia-mente Giornalista - invariato
+15 10 * * 2,5 /home/ubuntu/conscia-mente/scripts/giornalista_fantasma.sh >> /home/ubuntu/conscia-mente/cron_giornalista.log 2>&1
+# Articoli: due uscite settimanali, con verifica fonti
+
+# Conscia-mente Corsi & Newsletter - invariato
+# Corsi affiliati: generazione automatica sospesa durante la campagna meditazione
+0 10 * * 6 /home/ubuntu/conscia-mente/scripts/newsletter.sh >> /home/ubuntu/conscia-mente/cron_newsletter.log 2>&1
+
+# Story Instagram; numerologia/oracolo solo Instagram
+30 9 * * * /home/ubuntu/GIT/video_generator/start_story_cron.sh
+30 15 * * 0 /home/ubuntu/GIT/video_generator/cron_cosciamente.sh
+
+# Analisi invariata
+0 23 * * * /usr/bin/flock -n /tmp/video_generator_pipeline.lock /home/ubuntu/GIT/video_generator/venv_video/bin/python3 /home/ubuntu/GIT/video_generator/analizza_risultati.py --user lgia888
+
+# ConsciaMente: archivio lead, follow-up consensuali e report email
+5 * * * * /home/ubuntu/conscia-mente/scripts/run_lead_automation.sh >> /home/ubuntu/conscia-mente/cron_leads.log 2>&1
+30 22 * * 0 /usr/bin/python3 /home/ubuntu/conscia-mente/scripts/funnel_report.py >> /home/ubuntu/conscia-mente/cron_funnel_report.log 2>&1
+
+# Pulizia automatica settimanale dei vecchi deployment Vercel
+0 0 * * 0 /usr/bin/python3 /home/ubuntu/scripts/vercel_clean.py >> /home/ubuntu/scripts/cron_vercel_clean.log 2>&1

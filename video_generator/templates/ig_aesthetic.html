@@ -89,6 +89,21 @@
             text-transform: uppercase;
         }
 
+        .cta {
+            display: none;
+            align-self: center;
+            margin-top: 18px;
+            padding: 18px 34px;
+            border: 2px solid var(--accent-color);
+            border-radius: 999px;
+            color: var(--accent-color);
+            font-family: 'Inter', sans-serif;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
         /* Linea di separazione elegante */
         .divider {
             width: 100px;
@@ -110,12 +125,18 @@
             <span class="quote-marks">"</span>
         </div>
         <div class="divider"></div>
-        <div class="brand">L'ALTRA VERITÀ</div>
+        <div class="brand">CONSCIAMENTE</div>
+        <div class="cta" id="cta-text"></div>
     </div>
 
     <script>
-        function setContent(text, category) {
+        function setContent(text, category, cta) {
             document.getElementById('main-text').textContent = text;
+            const ctaElement = document.getElementById('cta-text');
+            if (cta) {
+                ctaElement.textContent = cta;
+                ctaElement.style.display = 'block';
+            }
 
             // Colori in base alla categoria
             const root = document.documentElement;

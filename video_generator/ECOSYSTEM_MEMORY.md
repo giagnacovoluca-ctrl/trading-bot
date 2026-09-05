@@ -1,6 +1,6 @@
 # Memoria operativa: ecosistema ConsciaMente
 
-Ultimo aggiornamento verificato: **31 agosto 2026**.
+Ultimo aggiornamento verificato: **5 settembre 2026**.
 
 Questa è la memoria di lungo periodo per il collegamento fra generatore video,
 Instagram, TikTok e sito Next.js. Prima di modificare cron, CTA, tracking, lead
@@ -28,14 +28,21 @@ VPS. Il filesystem di una funzione Vercel non è un database persistente.
 
 ## Pianificazione verificata
 
-TikTok: 08:30 video virale; 11:30 carosello virale; 14:30 video virale; 17:30
-video promo; 20:00 Bastian; 21:30 carosello promo.
+Dal 05/09 è attiva la campagna qualità descritta in
+`crontab_quality_20260905.txt`, confrontata con il crontab effettivo:
 
-Instagram: Reel aesthetic alle 07:00, 10:00, 14:00 e 18:00; Storia alle 09:30;
-contenuti condivisi alle 11:30 e 21:30; Numerologia/Oracolo alle 15:30.
+- TikTok: video promo quotidiano alle 17:30; carosello promo alle 11:30 di
+  martedì, giovedì e sabato. Video generalisti e Bastian sospesi per la campagna.
+- Instagram: Reel aesthetic quotidiano alle 10:00, Storia alle 09:30 e
+  pubblicazioni condivise dalle pipeline; Numerologia/Oracolo domenica alle 15:30.
+- Sito: Giornalista Fantasma martedì e venerdì alle 10:15; generazione corsi
+  sospesa; newsletter sabato alle 10:00. Gli articoli associati ai video promo
+  restano una produzione aggiuntiva: due è la frequenza degli articoli SEO,
+  non un limite assoluto di tutti gli articoli.
+- Analisi alle 23:00 sotto il lock della pipeline, lead ogni ora al minuto 05,
+  report domenica alle 22:30. Conservato il cron di manutenzione Vercel.
 
-Sito: Giornalista Fantasma alle 10:15, 11:45, 14:15, 17:45 e 20:15; corso
-affiliato alle 16:15; newsletter sabato alle 10:00.
+Backup precedente: `/home/ubuntu/project_backups/conscia-cron-before-20260905.txt`.
 
 Le pipeline video condividono `/tmp/video_generator_pipeline.lock`; non
 rimuovere il lock senza una protezione equivalente.
@@ -51,13 +58,21 @@ verificata un'automazione ManyChat equivalente.
 - Numerologia/Oracolo: “Prova gratis dal link in bio.”
 - Contenuto virale: domanda pertinente per commenti, senza vendita forzata.
 
-Destinazioni corte raccomandate per le bio (rewrite interno, URL visibile corto):
+Destinazioni corte raccomandate per le bio (landing dedicate, URL visibile corto):
 
 - Instagram: `https://conscia-mente.vercel.app/ig`
 - TikTok: `https://conscia-mente.vercel.app/tt`
 
 `src/lib/analytics.js` riconosce `/ig` e `/tt` e assegna internamente gli stessi
 valori UTM senza mostrare una query lunga all'utente.
+
+Dal 01/09/2026 `/ig` e `/tt` non sono più rewrite dell'hub generale `/links`:
+sono pagine statiche dedicate alla conversione social. Mostrano subito le sei
+risorse gratuite, senza header globale, Oracolo flottante, exit popup o offerte
+Amazon concorrenti. Ogni selezione aggiunge un `utm_content` del tipo
+`profile_<risorsa>`, che misura la risorsa scelta senza fingere di conoscere il
+singolo post di provenienza. Il banner cookie usa la variante compatta anche su
+queste due pagine.
 
 La modifica delle bio è esterna e va verificata sul profilo; il codice non la
 esegue automaticamente.
@@ -135,10 +150,13 @@ Tutte le nuove pubblicazioni TikTok devono avere `platform: "tiktok"` nel log:
 - i Reel solo Instagram non entrano nel registro TikTok.
 
 Alle 23:00 `analizza_risultati.py` legge le view, converte formati come `842`,
-`1.2K` e `3,5M`, poi chiama `update_recent_tiktok_views()`. L'associazione è
-cronologica e limitata alle entry esplicitamente TikTok. `get_topic_weights()`
-usa le view reali quando disponibili. Le vecchie entry senza `platform` non
-vengono retro-associate, per evitare dati falsi.
+`1.2K` e `3,5M`, poi chiama `update_tiktok_metrics()`. L'associazione usa
+esclusivamente l'ID del post: l'ordine della griglia non è affidabile con post
+fissati o rimossi. I percorsi sono assoluti rispetto allo script anche dal cron.
+L'uploader tenta di salvare l'ID dalla risposta di pubblicazione. Le entry senza
+ID restano prive di metriche; un esito ambiguo non attiva un secondo upload.
+Uno snapshot senza metriche è marcato `no_metrics`, non zero visualizzazioni.
+`get_topic_weights()` usa i dati disponibili, inclusi gli insight Instagram.
 
 Dal 30/08/2026 `modules/content_tracking.py` crea per ogni upload TikTok/Reel un
 ID del tipo `stress-tt-a1b2c3d4` e registra internamente ID, piattaforma, focus
@@ -150,6 +168,35 @@ massimo, così le conversioni influenzano la rotazione senza monopolizzarla.
 
 Il link in bio identifica la piattaforma, non il singolo post. Non dichiarare
 una precisione che le piattaforme non offrono.
+
+Dal 01/09/2026 i nuovi ID usano, quando il testo lo permette, la risorsa esatta
+(`meditazione`, `cibo`, `integratori`, `acqua`, `epigenetica`, `nervo-vago`):
+un eventuale `/c/<id>` cliccabile porta direttamente alla landing canonica
+dell'anteprima o del PDF. Gli ID storici `stress`, `energia`, `identita` e
+`risorse` restano supportati. Il normale link in bio continua invece ad avere
+attribuzione onesta a livello di piattaforma e risorsa selezionata.
+
+`analizza_risultati.py` usa per impostazione predefinita `chrome_profile`, lo
+stesso profilo TikTok persistente e autenticato della pubblicazione; solo in sua
+assenza ripiega su browser temporaneo e `cookies.txt`. Il cron delle 23:00 non
+richiede nuovi argomenti. Evitare di eseguire l'analisi mentre è attivo un
+uploader che usa lo stesso profilo.
+
+## CTA video e durata promo
+
+Dal 01/09/2026 la card finale dei video promo non contiene più testo Amazon
+hard-coded. `agente_tiktok.py` legge dal catalogo canonico il tipo di consegna e
+passa a `step3_sottotitoli.py` una delle due promesse corrette:
+
+- `ANTEPRIMA GRATUITA` + `SENZA REGISTRAZIONE` per Meditazione, Cibo e
+  Integratori;
+- `PDF GRATUITO VIA EMAIL` per Acqua, Epigenetica e Nervo Vago.
+
+La destinazione resta `APRI IL LINK IN BIO`. La card dura gli ultimi sette
+secondi e adatta automaticamente il font alla larghezza. I copioni promo sono
+richiesti in 75-90 parole, con obiettivo 25-35 secondi. Anche i Reel aesthetic
+mostrano a schermo `ANTEPRIMA GRATUITA · LINK IN BIO` oppure
+`PDF GRATUITO · LINK IN BIO`, oltre alla CTA coerente in caption.
 
 `agente_story.py` genera una storia editoriale strutturata (hook da 4-9 parole,
 insight da 18-38, azione da 7-18), la rigenera fino a tre volte se non rispetta
@@ -207,6 +254,26 @@ bash -n video_virale.sh video_promo.sh cron_cosciamente.sh start_story_cron.sh
 Prima di dichiarare una pubblicazione riuscita, cercare l'ID/post o la frase di
 successo nel log. La sola presenza dell'MP4 non prova l'upload.
 
+## Completamento qualità e conversione — 05/09/2026
+
+- Landing PDF, anteprime e pagine `/libri/[id]` condividono un layout compatto
+  senza header globale, Oracolo flottante o exit popup. Banner cookie compatto.
+- Tre nuove guide `Guida_*_2026.pdf`, con anteprime e fonti, sono collegate dal
+  catalogo; vecchi PDF e manoscritti conservati. `scripts/render-guides.py` nel
+  sito consente di rigenerarle da `src/data/guides.json`.
+- Le CTA indicano il nome della risorsa da scegliere. Le pipeline promo passano
+  `CONSCIA_RESOURCE_ID` per evitare di indovinare la destinazione dal testo.
+- Nuovi articoli: verifica del testo effettivo delle fonti prima di creare media
+  e pubblicare; bloccati claim non sostenuti. I controlli automatici non sono una
+  revisione medica. Pagina `/metodo-editoriale` e due articoli corretti.
+- Newsletter e follow-up usano l'archivio VPS, ultimo consenso e disiscrizioni
+  con oggetto STOP; follow-up configurati per i sei libri. I test di invio usano
+  simulazioni, non email reali.
+- Tracciamento: scadenza attribuzione a 30 giorni, reset alla nuova sorgente,
+  visite differite fino al consenso e fine anteprima distinta dal clic Amazon.
+- I voti qualità fissi dei caroselli sono stati rimossi. Nessuna metrica o
+  vendita viene inventata quando manca la misurazione.
+
 ## Limiti e prossimi passi
 
 1. Aggiornare le bio social verso gli URL UTM proprietari sopra.
@@ -219,6 +286,7 @@ successo nel log. La sola presenza dell'MP4 non prova l'upload.
 
 - CTA senza promesse DM false: implementate nei generatori attivi.
 - Hub `/links`: collegato da header e footer.
+- Landing `/ig` e `/tt`: dedicate, compatte e orientate alla risorsa promessa.
 - UTM, attribuzione lead ed eventi GA4/Meta: implementati.
 - Clic Amazon sticky: tracciati.
 - Feedback TikTok futuro: collegato alle view reali per entry esplicite.

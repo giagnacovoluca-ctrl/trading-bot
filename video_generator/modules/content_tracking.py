@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,8 +13,12 @@ OUTPUT_DIR = ROOT / "output"
 REGISTRY_PATH = OUTPUT_DIR / "campaign_log.jsonl"
 
 FOCUS_KEYWORDS = {
-    "stress": ("stress", "nervo vago", "ansia", "respiro", "meditazione", "calma", "sonno"),
-    "energia": ("acqua", "idrata", "energia", "stanco", "stanchezza", "cibo", "aliment", "integrator"),
+    "meditazione": ("meditazione", "meditare", "osservare i pensieri"),
+    "integratori": ("integrator", "vitamine", "minerali", "biodisponibil"),
+    "epigenetica": ("epigenet", "espressione genica"),
+    "nervo-vago": ("nervo vago", "sistema nervoso", "regolazione", "respiro"),
+    "acqua": ("acqua", "idrata", "sete"),
+    "cibo": ("cibo", "aliment", "digestione", "pasto"),
     "identita": ("numerolog", "identità", "identita", "personalità", "personalita", "coppia", "destino"),
 }
 PLATFORM_CODES = {"instagram": "ig", "ig": "ig", "tiktok": "tt"}
@@ -26,12 +31,14 @@ def choose_focus(text: str) -> str:
     return winner if scores[winner] else "risorse"
 
 
-def create_campaign(platform: str, text: str, mode: str = "", now: dt.datetime | None = None) -> dict:
+def create_campaign(platform: str, text: str, mode: str = "", now: dt.datetime | None = None, resource_id: str = "") -> dict:
     code = PLATFORM_CODES.get(platform.lower())
     if not code:
         raise ValueError(f"Piattaforma non supportata: {platform}")
     timestamp = now or dt.datetime.now(dt.timezone.utc)
-    focus = choose_focus(text)
+    if resource_id and resource_id not in FOCUS_KEYWORDS:
+        raise ValueError(f"Risorsa non supportata: {resource_id}")
+    focus = resource_id or choose_focus(text)
     digest = hashlib.sha256(f"{platform}|{mode}|{text}|{timestamp.isoformat()}".encode()).hexdigest()[:8]
     campaign_id = f"{focus}-{code}-{digest}"
     return {
@@ -64,8 +71,8 @@ def save_campaign(campaign: dict) -> None:
     current.write_text(json.dumps(campaign, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def prepare_tracked_caption(caption: str, platform: str, source_text: str, mode: str = "") -> tuple[str, dict]:
-    campaign = create_campaign(platform, source_text, mode)
+def prepare_tracked_caption(caption: str, platform: str, source_text: str, mode: str = "", resource_id: str = "") -> tuple[str, dict]:
+    campaign = create_campaign(platform, source_text, mode, resource_id=resource_id or os.environ.get("CONSCIA_RESOURCE_ID", ""))
     save_campaign(campaign)
     return append_tracking(caption, campaign), campaign
 

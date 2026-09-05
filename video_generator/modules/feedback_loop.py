@@ -66,6 +66,7 @@ def get_topic_weights(all_categories: list[str]) -> dict[str, float]:
     category_count: dict[str, int] = defaultdict(int)
     category_views: dict[str, list[int]] = defaultdict(list)
     category_leads: dict[str, int] = defaultdict(int)
+    category_engagement: dict[str, list[float]] = defaultdict(list)
     campaign_leads = _lead_counts_by_campaign()
 
     for entry in recent_entries:
@@ -75,6 +76,14 @@ def get_topic_weights(all_categories: list[str]) -> dict[str, float]:
             views = entry.get("views", 0)
             if views:
                 category_views[cat].append(views)
+                # Salvataggi e condivisioni sono segnali più forti della sola
+                # visualizzazione per i contenuti educativi di Instagram.
+                meaningful_actions = (
+                    entry.get("saved", 0)
+                    + entry.get("shares", 0)
+                    + entry.get("comments", 0)
+                )
+                category_engagement[cat].append(meaningful_actions / views)
             category_leads[cat] += campaign_leads.get(entry.get("campaign_id", ""), 0)
 
     weights: dict[str, float] = {}
@@ -89,6 +98,10 @@ def get_topic_weights(all_categories: list[str]) -> dict[str, float]:
             avg_views = sum(views_list) / len(views_list)
             perf_bonus = min(2.0, avg_views / 10000)  # baseline 10k views
             base_weight *= (1.0 + perf_bonus)
+        engagement = category_engagement.get(cat, [])
+        if engagement:
+            # Un 2% di azioni utili è già un ottimo segnale per un Reel.
+            base_weight *= 1.0 + min(1.5, (sum(engagement) / len(engagement)) / 0.02)
         # Un lead vale più di una view: bonus limitato per evitare che un solo
         # contenuto monopolizzi la rotazione editoriale.
         base_weight *= 1.0 + min(1.5, category_leads.get(cat, 0) * 0.5)
@@ -116,9 +129,19 @@ def log_upload(
     platform: str = "tiktok",
     resource_id: str = "",
     delivery_type: str = "",
+    media_id: str = "",
 ) -> None:
     """Logga un upload con metadati estesi per il feedback loop."""
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if platform == 'tiktok' and not media_id:
+        receipt_path = LOG_PATH.parent / 'tiktok_receipt.json'
+        try:
+            receipt = json.loads(receipt_path.read_text())
+            import time
+            if Path(receipt.get('video_file', '')).name == Path(video_file).name and 0 <= time.time() - receipt['created_at'] < 600:
+                media_id = receipt.get('media_id', '')
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
     entry = {
         "timestamp": datetime.datetime.now().isoformat(),
         "video_file": video_file,
@@ -136,6 +159,7 @@ def log_upload(
         "shares": shares,
         "resource_id": resource_id,
         "delivery_type": delivery_type,
+        "media_id": str(media_id or ""),
     }
     try:
         from modules.content_tracking import current_campaign
@@ -149,6 +173,56 @@ def log_upload(
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         json.dump(entry, f, ensure_ascii=False)
         f.write("\n")
+
+
+def update_instagram_metrics(metrics_by_media_id: dict[str, dict]) -> int:
+    """Aggiorna lo storico Instagram usando l'ID restituito da Meta.
+
+    A differenza di TikTok, l'API Instagram espone metriche affidabili per ogni
+    media. L'ID evita di associare le metriche al Reel sbagliato quando nello
+    stesso giorno vengono pubblicati più contenuti.
+    """
+    entries = _load_upload_log()
+    updated = 0
+    for entry in entries:
+        if entry.get("platform") != "instagram":
+            continue
+        metrics = metrics_by_media_id.get(str(entry.get("media_id", "")))
+        if not metrics:
+            continue
+        for field in ("views", "reach", "likes", "comments", "shares", "saved"):
+            value = metrics.get(field)
+            if isinstance(value, int) and value >= 0:
+                entry[field] = value
+        entry["metrics_updated_at"] = datetime.datetime.now().isoformat()
+        updated += 1
+
+    if updated:
+        temp_path = LOG_PATH.with_suffix(".tmp")
+        with open(temp_path, "w", encoding="utf-8") as output:
+            for entry in entries:
+                json.dump(entry, output, ensure_ascii=False)
+                output.write("\n")
+        temp_path.replace(LOG_PATH)
+    return updated
+
+
+def update_tiktok_metrics(metrics_by_id: dict[str, int]) -> int:
+    entries = _load_upload_log()
+    updated = 0
+    for entry in entries:
+        if entry.get("platform") != "tiktok" or entry.get("success") is not True:
+            continue
+        value = metrics_by_id.get(str(entry.get("media_id") or ""))
+        if isinstance(value, int) and value >= 0:
+            entry["views"] = value
+            entry["metrics_updated_at"] = datetime.datetime.now().isoformat()
+            updated += 1
+    if updated:
+        temp_path = LOG_PATH.with_suffix(".tmp")
+        temp_path.write_text(''.join(json.dumps(row, ensure_ascii=False) + '\n' for row in entries), encoding="utf-8")
+        temp_path.replace(LOG_PATH)
+    return updated
 
 
 def update_recent_tiktok_views(latest_views: list[int]) -> int:

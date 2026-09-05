@@ -354,6 +354,8 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
     # REGOLE COMUNI ANTI-DISINFORMAZIONE E SICUREZZA TIKTOK
     anti_misinfo_rules = """
         REGOLE ANTI-DISINFORMAZIONE E VERIDICITÀ (CRITICHE E IMPERATIVE):
+        - I manoscritti ebook sono contesto editoriale, MAI prova clinica. Verifica i dati con una fonte primaria e indica il relativo URL in FONTE_NOTIZIA. Nessuna percentuale, autore o durata di un beneficio senza riscontro.
+        - Il marchio è ConsciaMente. Preferisci problemi quotidiani, esempi dimostrabili e una piccola azione utile. Le immagini devono mostrare ciò che stai spiegando; evita visual astratti scollegati dal copione.
         - VIETATI ASSOLUTAMENTE TITOLI E FRASI COME: "SCOPERTA ASSURDA", "SEGRETO NASCOSTO", "TI STANNO MENTENDO", "SHOCK".
         - VIETATO l'uso di linguaggio allarmistico legato alla biologia o alla medicina. NON usare MAI parole come "invasione", "mutazione", "parassita", "distruggere", "hackerare" riferite al corpo, al cervello o alla salute.
         - TikTok banna i video che generano "procurato allarme" o "disinformazione medica". Usa un tono EDUCATIVO, CALMO E AFFASCINANTE. Non spaventare l'utente.
@@ -415,20 +417,21 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         - La CTA finale deve essere ESATTAMENTE: {ebook.get('cta_tiktok', 'Scopri di più dal link in bio.')}
         - Non chiamare PDF una risorsa che è soltanto un'anteprima online e non promettere l'invio di messaggi nei DM.
 
-        Scrivi uno script TikTok di circa 130 parole in italiano.
+        Scrivi uno script TikTok di 75-90 parole in italiano, pensato per un video di circa 25-35 secondi.
         DEVE SUONARE NATURALE, UMANO E COLLOQUIALE. Elimina il tono robotico o troppo impostato. Parla come se stessi svelando un segreto affascinante a un amico.
 
         REGOLE FONDAMENTALI PER LA VOCE:
         - Usa frasi brevi, ritmate e dal forte impatto emotivo.
+        - In ogni atto inserisci un appiglio visivo concreto: persona, oggetto, luogo, gesto o fenomeno osservabile. Non accumulare spiegazioni astratte.
         - Scrivi TUTTI i numeri in lettere (es. "cento" e non "100").
         - NON USARE MAI simboli speciali, parentesi, o virgolette. Inserisci punti o virgole per far prendere fiato.
 
         STRUTTURA DEL COPIONE:
         TITOLO: <il tuo titolo accurato qui (max 5 parole)>
         TESTO:
-        ATTO 1: Un hook diretto, curioso e conversazionale. Niente formule noiose. Arriva subito al punto (max 20 parole).
-        ATTO 2: Spiega il concetto principale estratto dal libro in modo estremamente semplice e visivo.
-        ATTO 3: Svela una conseguenza sorprendente o un colpo di scena che riguarda la vita di chi guarda.
+        ATTO 1: Un hook diretto, curioso e conversazionale. Niente formule noiose. Arriva subito al punto (max 14 parole).
+        ATTO 2: Spiega il concetto principale estratto dal libro in modo estremamente semplice e visivo (max 28 parole).
+        ATTO 3: Svela una conseguenza utile che riguarda la vita di chi guarda (max 30 parole).
         ATTO 4: CTA finale esatta indicata sopra (max 10 parole).
         FONTE_NOTIZIA: <nome dell'ebook (max 1 riga)>
         FATTO_CENTRALE: <fatto verificabile tratto dall'estratto>
@@ -470,6 +473,7 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
 
         REGOLE FONDAMENTALI PER LA VOCE E IL TESTO:
         - Usa frasi incisive, brevi, come un dialogo intimo e rivelatore.
+        - In ogni atto inserisci un appiglio visivo concreto: persona, oggetto, luogo, gesto o fenomeno osservabile. Non accumulare spiegazioni astratte.
         - Scrivi TUTTI i numeri in lettere (es. "mille" e non "1000").
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato alla voce.
@@ -482,7 +486,7 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
         ATTO 2 — CONTESTO (25-30 parole MAX): Perché questo è rilevante per la vita quotidiana. Connetti il dato scientifico all'esperienza personale.
         ATTO 3 — RIVELAZIONE (40-50 parole MAX): Il dato/studio con fonte verificata e COERENTE col dominio della ricerca. Usa 'Secondo uno studio dell'[istituzione reale nel settore]...' — NON trasformare correlazioni in causalità.
         ATTO 4 — COLPO DI SCENA (15-20 parole MAX): L'implicazione inaspettata che nessuno aveva considerato.
-        ATTO 5 — CTA (10-15 parole MAX): Azione specifica che l'utente può fare ORA. Non 'seguimi'.
+        ATTO 5 — CTA (10-15 parole MAX): Invito esplicito e semplice a seguire il profilo (es. 'seguimi per altri contenuti simili').
         FONTE_NOTIZIA: <ente e documento o studio verificabile; mai una fonte generica>
         FATTO_CENTRALE: <una sola affermazione verificabile>
         TIPO_EVIDENZA: <studio, revisione o fatto consolidato>
@@ -524,6 +528,7 @@ def generate_tiktok_script(topic: str, category: str, ebook: dict, mode: str = "
 
         REGOLE FONDAMENTALI PER LA VOCE E IL TESTO:
         - Usa frasi incisive, brevi.
+        - In ogni atto inserisci un appiglio visivo concreto: persona, oggetto, luogo, gesto o fenomeno osservabile. Non accumulare spiegazioni astratte.
         - Scrivi TUTTI i numeri in lettere.
         - NON USARE MAI simboli speciali, parentesi, o virgolette.
         - Inserisci punti o virgole per far prendere fiato.

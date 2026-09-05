@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from modules.ebook_catalog import ebook_to_rag, get_ebook, load_ebook_catalog
+from modules.ebook_catalog import ebook_to_rag, get_ebook, load_ebook_catalog, video_cta_copy
 import rag_generator
 
 
@@ -28,6 +28,15 @@ class EbookCatalogTest(unittest.TestCase):
         preview = ebook_to_rag(get_ebook("meditazione"))
         self.assertIn("PDF", pdf["cta_tiktok"])
         self.assertIn("anteprima", preview["cta_tiktok"])
+
+    def test_video_cta_never_replaces_the_free_resource_with_amazon(self):
+        for ebook in load_ebook_catalog():
+            title, detail, action = video_cta_copy(ebook)
+            combined = f"{title} {detail} {action}".lower()
+            self.assertNotIn("amazon", combined)
+            self.assertIn("link in bio", combined)
+            expected = "pdf" if ebook["deliveryType"] == "pdf_email" else "anteprima"
+            self.assertIn(expected, combined)
 
     def test_promo_selection_starts_from_an_ebook(self):
         with patch.object(rag_generator.random, "choices", return_value=[rag_generator.find_ebook_by_id("epigenetica")]), patch.object(

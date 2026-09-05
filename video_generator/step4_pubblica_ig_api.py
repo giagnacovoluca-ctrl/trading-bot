@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 from dotenv import load_dotenv
 import subprocess
+import json
 from modules.media_server import TemporaryMediaServer
 from modules.meta_config import graph_url
 from modules.content_tracking import prepare_tracked_caption
@@ -94,7 +95,7 @@ def publish_reel(video_path: Path, caption: str, video_url: str):
 
     post_id = pub_data.get("id")
     console.print(f"\n[bold green]✅ REEL PUBBLICATO CON SUCCESSO SU INSTAGRAM! (Post ID: {post_id})[/]")
-    return True
+    return post_id
 
 def genera_metadata_ig(script_text: str, mode: str = "virale") -> str:
     """Legge la descrizione e hashtag per IG da file generato da Antigravity o lo crea al volo."""
@@ -130,6 +131,7 @@ def main():
     parser.add_argument("--video", default="output/carosello_finale.mp4", help="Video da caricare")
     parser.add_argument("--script", default="scripts/script_carosello.txt", help="File di testo per generare la caption")
     parser.add_argument("--mode", default="virale", help="Modalità video (promo, virale)")
+    parser.add_argument("--receipt", help="File JSON in cui salvare l'ID del Reel pubblicato")
     args = parser.parse_args()
 
     video_path = Path(args.video)
@@ -154,8 +156,13 @@ def main():
 
     # Avvia il server temporaneo
     with TemporaryMediaServer([video_path]) as media_server:
-        if not publish_reel(video_path, caption, media_server.url_for(video_path)):
+        post_id = publish_reel(video_path, caption, media_server.url_for(video_path))
+        if not post_id:
             sys.exit(1)
+        if args.receipt:
+            receipt_path = Path(args.receipt)
+            receipt_path.parent.mkdir(parents=True, exist_ok=True)
+            receipt_path.write_text(json.dumps({"media_id": post_id}), encoding="utf-8")
 
 if __name__ == "__main__":
     main()

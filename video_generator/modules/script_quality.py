@@ -37,7 +37,7 @@ GENERIC_SOURCES = re.compile(
     re.IGNORECASE,
 )
 CTA_TERMS = re.compile(
-    r"\b(commenta|scrivi|salva|prova|scopri|leggi|condividi|sperimenta|usa|cerca|pensa|chiedi|guarda|trova|inizia)\b",
+    r"\b(commenta|scrivi|salva|prova|scopri|leggi|condividi|sperimenta|usa|cerca|pensa|chiedi|guarda|trova|inizia|segui|seguimi|seguici)\b",
     re.IGNORECASE,
 )
 META_FIELDS = ("FATTO_CENTRALE", "TIPO_EVIDENZA", "LIMITE_EVIDENZA", "ANGOLO_NARRATIVO")
@@ -99,6 +99,8 @@ def validate_publication_text(text: str) -> tuple[str, ...]:
     rischioso, la pubblicazione viene comunque fermata.
     """
     issues: list[str] = []
+    if re.search(r"(?:\b(?:cura|curare|guarisce|guarire)\s+(?:l['’]|la |il |un['’]?)?(?:ansia|depressione|insonnia|cancro)|auto[- ]?guarigione|riprogramma(?:re)?\s+(?:il |tuo |il tuo )?DNA|confini biologici della tua meditazione|cortisolo.{0,30}(?:azzera|elimina)|(?:azzera|elimina).{0,30}cortisolo)", text, re.I):
+        issues.append("promessa fisiologica o terapeutica non sostenibile")
     if MISINFO_RISK_TERMS.search(text):
         issues.append("affermazione assoluta o retorica da disinformazione")
     if UNSOURCED_ANALOGIES.search(text):

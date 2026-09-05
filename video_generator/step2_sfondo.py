@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import argparse
 import sys
@@ -8,6 +9,7 @@ from pathlib import Path
 from rich.console import Console
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips, ImageClip
 from modules.video_composer import get_dynamic_background_videos, crop_to_ratio, _get_resolution
+from modules.scene_planner import scaled_scene_durations
 import config
 
 console = Console()
@@ -38,6 +40,7 @@ def main():
     parser.add_argument("--interval", type=float, default=3.5, help="Cambio scena ogni X sec")
     parser.add_argument("--images", nargs="+", help="Lista di immagini specifiche da usare come sfondo")
     parser.add_argument("--topic", help="Argomento per scaricare video coerenti da Pexels")
+    parser.add_argument("--scene-plan", help="Storyboard JSON: impone ordine e durata delle scene")
     
     args = parser.parse_args()
     
@@ -52,10 +55,17 @@ def main():
     
     target_w, target_h = _get_resolution(args.ratio)
     
-    n_clips_needed = math.ceil(audio_dur / args.interval)
+    scene_plan = []
+    if args.scene_plan and Path(args.scene_plan).exists():
+        scene_plan = json.loads(Path(args.scene_plan).read_text(encoding="utf-8"))
+    n_clips_needed = len(scene_plan) if scene_plan else math.ceil(audio_dur / args.interval)
     gen_images = [Path(p) for p in args.images] if args.images else []
+    scene_durations = scaled_scene_durations(scene_plan, audio_dur) if scene_plan else []
     
-    if gen_images or args.topic:
+    if scene_plan and gen_images:
+        console.print(f"Preparo {len(scene_plan)} scene nell'ordine dello storyboard...")
+        bg_paths = [gen_images[min(index, len(gen_images) - 1)] for index in range(len(scene_plan))]
+    elif gen_images or args.topic:
         console.print(f"Preparo {n_clips_needed} clip mixando immagini generate e video Pexels/Locali...")
         
         pexels_vids = []
@@ -123,7 +133,8 @@ def main():
     for i, p in enumerate(bg_paths):
         ext = str(p).lower().split('.')[-1]
         time_left = audio_dur - current_time
-        target_clip_dur = min(args.interval, time_left)
+        requested_duration = scene_durations[i] if i < len(scene_durations) else args.interval
+        target_clip_dur = min(requested_duration, time_left)
 
         if ext in ['jpg', 'jpeg', 'png']:
             clip = ImageClip(str(p)).set_duration(target_clip_dur)

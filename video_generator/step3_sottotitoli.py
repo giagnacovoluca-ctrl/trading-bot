@@ -15,6 +15,9 @@ def main():
     parser.add_argument("--audio", required=True, help="Audio per analizzare i sottotitoli (o video stesso)")
     parser.add_argument("--output", default="output/video_finale.mp4", help="Video finale TikTok")
     parser.add_argument("--cta", action="store_true", help="Aggiungi la CTA finale")
+    parser.add_argument("--cta-title", default="RISORSA GRATUITA", help="Titolo CTA coerente con la risorsa")
+    parser.add_argument("--cta-detail", default="SCOPRI IL CONTENUTO COLLEGATO", help="Dettaglio CTA")
+    parser.add_argument("--cta-action", default="LINK IN BIO", help="Azione CTA")
     parser.add_argument("--hook_title", default="", help="Titolo gancio da mostrare in alto all'inizio del video")
 
     args = parser.parse_args()
@@ -47,8 +50,13 @@ def main():
             console.print(f"[red]Errore generazione titolo Hook:[/] {e}")
 
     if args.cta:
-        cta_start = max(0.0, base_video.duration - 10.0)
-        cta_np = _render_pil_cta_card_np(target_w)
+        cta_start = max(0.0, base_video.duration - 7.0)
+        cta_np = _render_pil_cta_card_np(
+            target_w,
+            title=args.cta_title,
+            detail=args.cta_detail,
+            action=args.cta_action,
+        )
         cta_clip = (
             ImageClip(cta_np, transparent=True)
             .set_start(cta_start)

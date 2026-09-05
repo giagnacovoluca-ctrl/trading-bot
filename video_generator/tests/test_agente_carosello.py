@@ -100,8 +100,9 @@ class CarouselValidationTest(unittest.TestCase):
         self.assertIn("7-12 parole", prompt)
         self.assertIn("450-900 caratteri", prompt)
         self.assertIn("Non devi spegnere i pensieri", prompt)
-        self.assertEqual(expected_cta, AESTHETIC_CTA_PREVIEW)
-        self.assertIn(AESTHETIC_CTA_PREVIEW, prompt)
+        catalog_cta = agente_carosello.get_ebook_by_title(topic)["ctaInstagram"]
+        self.assertEqual(expected_cta, catalog_cta)
+        self.assertIn(catalog_cta, prompt)
 
     def test_recent_topic_is_penalized_during_selection(self):
         recent = [

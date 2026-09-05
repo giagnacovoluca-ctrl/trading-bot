@@ -16,7 +16,7 @@ fi
 
 for (( attempt=1; attempt<=MAX_ATTEMPTS; attempt++ )); do
   echo "Tentativo editoriale $attempt/$MAX_ATTEMPTS (modalità: $MODE)"
-  venv_video/bin/python agente_tiktok.py --mode "$MODE"
+  venv_video/bin/python agente_tiktok.py --mode "$MODE" --no-site
   exit_code=$?
 
   if (( exit_code == 0 )); then

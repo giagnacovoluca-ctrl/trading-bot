@@ -17,7 +17,9 @@ import asyncio
 import math
 import random
 import os
+import re
 import shutil
+import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -26,6 +28,45 @@ from pydub import AudioSegment
 import config
 
 console = Console()
+
+
+def sanitize_tts_segment(text: str) -> str:
+    """Rimuove i simboli pronunciabili dopo averne già ricavato l'intenzione."""
+    cleaned = text.replace('"', '').replace('*', '').replace('(', '').replace(')', '')
+    cleaned = re.sub(r"[.!?]+", " ", cleaned)
+    cleaned = re.sub(r"[,;:]+", "\n", cleaned)
+    cleaned = re.sub(r"[—–-]+", " ", cleaned)
+    cleaned = re.sub(r"[ \t]+", " ", cleaned)
+    cleaned = re.sub(r" *\n *", "\n", cleaned)
+    return cleaned.strip()
+
+
+def _apply_question_contour(wav_path: Path) -> None:
+    """Alza lievemente la coda vocale senza inserire '?' nel testo letto."""
+    try:
+        import librosa
+        import numpy as np
+        import soundfile as sf
+
+        audio, sample_rate = sf.read(str(wav_path), always_2d=False)
+        if getattr(audio, "ndim", 1) > 1:
+            audio = audio.mean(axis=1)
+        peak = float(np.max(np.abs(audio))) if len(audio) else 0.0
+        voiced = np.flatnonzero(np.abs(audio) > peak * 0.025) if peak else np.array([])
+        if not len(voiced):
+            return
+        end = int(voiced[-1]) + 1
+        start = max(0, end - int(sample_rate * 0.7))
+        original = audio[start:end].copy()
+        shifted = librosa.effects.pitch_shift(original, sr=sample_rate, n_steps=0.9)
+        blend_samples = min(len(original), int(sample_rate * 0.09))
+        blend = np.ones(len(original), dtype=float)
+        if blend_samples:
+            blend[:blend_samples] = np.linspace(0.0, 1.0, blend_samples)
+        audio[start:end] = original * (1.0 - blend) + shifted[:len(original)] * blend
+        sf.write(str(wav_path), audio, sample_rate)
+    except Exception as exc:
+        console.print(f"[dim yellow]Contorno interrogativo non applicato: {exc}[/]")
 
 
 # ── Edge-TTS ──────────────────────────────────────────────────────────────────
@@ -86,7 +127,12 @@ def _generate_elevenlabs(text: str, output_path: Path) -> Path:
 
 # ── Coqui XTTS v2 (Voice Cloning) ────────────────────────────────────────────
 
-def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None = None) -> Path:
+def _generate_xtts(
+    text: str,
+    output_path: Path,
+    speaker_wav: str | Path | None = None,
+    segments: list[dict] | None = None,
+) -> Path:
     """Genera audio via XTTS v2 Coqui TTS (clonazione vocale zero-shot)."""
     import os
     os.environ["COQUI_TOS_AGREED"] = "1"
@@ -142,13 +188,9 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
 
     tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=use_gpu)
 
-    # Pulizia testo per evitare balbettii e problemi di clonazione
-    clean_tts_text = text.replace('"', '').replace('*', '').replace('(', '').replace(')', '').replace('-', ' ')
-
-    # Sostituiamo la punteggiatura forte con a capo (il modello a volte legge "punto" a voce alta)
-    clean_tts_text = clean_tts_text.replace('.', '\n').replace('!', '\n').replace('?', '\n')
-    lines = [line.strip() for line in clean_tts_text.split('\n') if len(line.strip()) > 2]
-    clean_tts_text = '\n'.join(lines)
+    # L'intenzione è già contenuta nello storyboard. Al modello non passiamo
+    # simboli che in alcuni campioni vocali vengono letti come parole.
+    clean_tts_text = sanitize_tts_segment(text)
 
     if output_path.suffix.lower() == ".mp3":
         from pydub import AudioSegment
@@ -157,18 +199,47 @@ def _generate_xtts(text: str, output_path: Path, speaker_wav: str | Path | None 
         if ffmpeg_dir not in os.environ.get("PATH", ""):
             os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
-        wav_temp = output_path.with_suffix(".temp.wav")
-        with torch.inference_mode():
-            tts.tts_to_file(
-                text=clean_tts_text,
-                speaker_wav=str(speaker_sample),
-                language="it",
-                file_path=str(wav_temp),
-            )
-        sound = AudioSegment.from_wav(str(wav_temp))
-        sound.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
-        if wav_temp.exists():
-            wav_temp.unlink()
+        if segments:
+            combined = AudioSegment.empty()
+            with tempfile.TemporaryDirectory(prefix="conscia_voice_") as temp_dir:
+                for index, segment in enumerate(segments):
+                    segment_text = sanitize_tts_segment(str(segment.get("spoken_text", "")))
+                    if not segment_text:
+                        continue
+                    wav_segment = Path(temp_dir) / f"segment_{index:02d}.wav"
+                    with torch.inference_mode():
+                        tts.tts_to_file(
+                            text=segment_text,
+                            speaker_wav=str(speaker_sample),
+                            language="it",
+                            file_path=str(wav_segment),
+                        )
+                    intent = str(segment.get("intent", "spiegazione_calma"))
+                    if intent == "domanda_curiosa":
+                        _apply_question_contour(wav_segment)
+                    spoken = AudioSegment.from_wav(str(wav_segment))
+                    pause_ms = {
+                        "domanda_curiosa": 330,
+                        "hook_diretto": 230,
+                        "rivelazione": 260,
+                        "cta_chiara": 300,
+                    }.get(intent, 190)
+                    combined += spoken + AudioSegment.silent(duration=pause_ms)
+                    segment["audio_duration"] = round((len(spoken) + pause_ms) / 1000, 3)
+            combined.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
+        else:
+            wav_temp = output_path.with_suffix(".temp.wav")
+            with torch.inference_mode():
+                tts.tts_to_file(
+                    text=clean_tts_text,
+                    speaker_wav=str(speaker_sample),
+                    language="it",
+                    file_path=str(wav_temp),
+                )
+            sound = AudioSegment.from_wav(str(wav_temp))
+            sound.export(str(output_path), format="mp3", bitrate=config.AUDIO_BITRATE)
+            if wav_temp.exists():
+                wav_temp.unlink()
     else:
         with torch.inference_mode():
             tts.tts_to_file(
@@ -311,6 +382,7 @@ def generate_italian_voiceover(
     provider: str = "edge",
     voice: str | None = None,
     mix_ambient: bool = True,
+    segments: list[dict] | None = None,
 ) -> tuple[Path, float]:
     """
     Genera il voiceover italiano e opzionalmente lo mixa con un ambient track.
@@ -334,7 +406,7 @@ def generate_italian_voiceover(
     if provider == "elevenlabs":
         _generate_elevenlabs(text, raw_voice_path)
     elif provider == "xtts":
-        _generate_xtts(text, raw_voice_path, speaker_wav=voice)
+        _generate_xtts(text, raw_voice_path, speaker_wav=voice, segments=segments)
     else:
         _generate_edge(text, raw_voice_path, voice=voice)
 

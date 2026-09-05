@@ -296,7 +296,12 @@ def _render_pil_title_np(title_text: str, video_w: int):
     return np.array(img)
 
 
-def _render_pil_cta_card_np(video_w: int):
+def _render_pil_cta_card_np(
+    video_w: int,
+    title: str = "RISORSA GRATUITA",
+    detail: str = "SCOPRI IL CONTENUTO COLLEGATO",
+    action: str = "LINK IN BIO",
+):
     import numpy as np
     from PIL import Image, ImageDraw, ImageFont
     import os
@@ -356,26 +361,42 @@ def _render_pil_cta_card_np(video_w: int):
     except:
         font_title = font_sub = ImageFont.load_default()
 
-    # Title
-    t1 = "📖 SCOPRI IL LIBRO SU AMAZON"
+    def fit_font(text, preferred_size, max_width, minimum_size=30):
+        font_path = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'
+        try:
+            size = preferred_size
+            font = ImageFont.truetype(font_path, size)
+            while size > minimum_size and draw.textbbox((0, 0), text, font=font)[2] > max_width:
+                size -= 2
+                font = ImageFont.truetype(font_path, size)
+            return font
+        except Exception:
+            return font_sub
+
+    # Testi forniti dal catalogo canonico. Nessuna destinazione commerciale
+    # deve essere inventata dentro il renderer.
+    t1 = title.upper().strip()[:38]
+    font_title = fit_font(t1, 70, video_w - 140, minimum_size=34)
     bbox1 = draw.textbbox((0, 0), t1, font=font_title)
     w1 = bbox1[2] - bbox1[0]
     draw.text((int((video_w - w1)//2), 60), t1, font=font_title, fill=(255, 215, 0, 255))
 
     # Subtext button - elegant minimal button
-    t2 = " CLICCA IL LINK IN BIO NEL PROFILO "
-    bbox2 = draw.textbbox((0, 0), t2, font=font_sub)
+    t2 = f" {detail.upper().strip()[:42]} "
+    font_detail = fit_font(t2, 55, video_w - 200, minimum_size=28)
+    bbox2 = draw.textbbox((0, 0), t2, font=font_detail)
     w2, h2 = bbox2[2] - bbox2[0], bbox2[3] - bbox2[1]
     
     btn_y = 220
     draw.rounded_rectangle([int((video_w - w2)//2 - 40), btn_y, int((video_w + w2)//2 + 40), int(btn_y + h2 + 30)], radius=25, fill=(20, 20, 20, 230), outline=(255, 215, 0, 255), width=2)
-    draw.text((int((video_w - w2)//2), btn_y + 10), t2, font=font_sub, fill=(255, 255, 255, 255))
+    draw.text((int((video_w - w2)//2), btn_y + 10), t2, font=font_detail, fill=(255, 255, 255, 255))
 
     # Arrow indicator pointing down
-    t3 = "⬇️ ACCEDI AL LINK ORA ⬇️"
-    bbox3 = draw.textbbox((0, 0), t3, font=font_sub)
+    t3 = action.upper().strip()[:38]
+    font_action = fit_font(t3, 55, video_w - 160, minimum_size=30)
+    bbox3 = draw.textbbox((0, 0), t3, font=font_action)
     w3 = bbox3[2] - bbox3[0]
-    draw.text((int((video_w - w3)//2), 380), t3, font=font_sub, fill=(255, 215, 0, 255))
+    draw.text((int((video_w - w3)//2), 380), t3, font=font_action, fill=(255, 215, 0, 255))
 
     return np.array(img)
 

@@ -47,6 +47,90 @@ def _run_agy_validator(prompt: str) -> subprocess.CompletedProcess:
 
     return last_result
 
+
+def _call_scene_director(prompt: str) -> str:
+    result = _run_agy_validator(prompt)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "visual director non disponibile")
+    return result.stdout.strip()
+
+
+def download_scene_images(scene_plan: list[dict], bg_dir: Path) -> list[Path]:
+    """Scarica una sola immagine, nello stesso ordine, per ogni scena."""
+    import json
+    import urllib.parse
+    import urllib.request
+
+    pexels_key = os.getenv("PEXELS_API_KEY", "")
+    output: list[Path] = []
+    run_stamp = int(time.time())
+
+    for index, scene in enumerate(scene_plan):
+        scene_number = index + 1
+        local_path = bg_dir / f"scene_{run_stamp}_{scene_number:02d}.jpg"
+        provider = scene.get("provider", "generated")
+
+        if provider == "stock" and pexels_key and not os.getenv("PEXELS_DISABLED"):
+            try:
+                query = urllib.parse.quote(str(scene.get("pexels_query", "")))
+                url = f"https://api.pexels.com/v1/search?query={query}&per_page=5&orientation=portrait&size=large"
+                request = urllib.request.Request(url, headers={"Authorization": pexels_key})
+                with urllib.request.urlopen(request, timeout=12) as response:
+                    photos = json.loads(response.read()).get("photos", [])
+                if photos:
+                    image_url = photos[min(index, len(photos) - 1)]["src"]["large2x"]
+                    image_request = urllib.request.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(image_request, timeout=15) as response, open(local_path, "wb") as target:
+                        target.write(response.read())
+                    if local_path.stat().st_size < 10_000:
+                        local_path.unlink(missing_ok=True)
+                    else:
+                        console.print(f"[green]✓ Scena {scene_number}: immagine stock coerente[/]")
+            except Exception as exc:
+                if getattr(exc, "code", None) in (401, 403):
+                    os.environ["PEXELS_DISABLED"] = "1"
+                console.print(f"[yellow]Scena {scene_number}: stock non disponibile ({exc})[/]")
+
+        if not local_path.exists():
+            prompt = str(scene.get("visual_prompt", "vertical cinematic editorial photograph, no text"))
+            encoded = urllib.parse.quote(prompt)
+            url = (
+                f"https://image.pollinations.ai/prompt/{encoded}"
+                f"?width=1080&height=1920&model=flux&enhance=true&nologo=true&private=true&seed={run_stamp + index}"
+            )
+            for attempt, delay in enumerate((0, 5, 12), start=1):
+                try:
+                    if delay:
+                        time.sleep(delay)
+                    partial = local_path.with_suffix(".part")
+                    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(request, timeout=50) as response, open(partial, "wb") as target:
+                        target.write(response.read())
+                    if partial.stat().st_size < 10_000:
+                        raise ValueError("risposta immagine troppo piccola")
+                    partial.replace(local_path)
+                    console.print(f"[green]✓ Scena {scene_number}: immagine generata dal suo prompt[/]")
+                    break
+                except Exception as exc:
+                    partial = local_path.with_suffix(".part")
+                    partial.unlink(missing_ok=True)
+                    console.print(f"[yellow]Scena {scene_number}, tentativo {attempt}/3 fallito: {exc}[/]")
+
+        if local_path.exists():
+            output.append(local_path)
+        elif output:
+            # Mantiene almeno la continuità del soggetto, senza inserire stock casuali.
+            shutil.copy2(output[-1], local_path)
+            output.append(local_path)
+            console.print(f"[yellow]Scena {scene_number}: riuso controllato della scena precedente[/]")
+        else:
+            from PIL import Image
+            Image.new("RGB", (1080, 1920), (15, 18, 28)).save(local_path, quality=92)
+            output.append(local_path)
+            console.print(f"[yellow]Scena {scene_number}: fallback neutro, nessuno stock casuale[/]")
+
+    return output
+
 # Argomenti random — lista di fallback se il pick intelligente fallisce
 TOPIC_IDEAS = [
     "energia e digestione",
@@ -247,9 +331,10 @@ def main():
     audio_mp3 = "temp/voice.mp3"
     video_base = "temp/video_base.mp4"
     video_finale = "output/video_finale.mp4"
+    scene_plan_path = "scripts/scene_plan.json"
 
     # Assicurati che non ci siano vecchi file in giro
-    for f in [script_txt, audio_mp3, video_base, "scripts/tiktok_caption.txt"]:
+    for f in [script_txt, audio_mp3, video_base, scene_plan_path, "scripts/tiktok_caption.txt"]:
         if Path(f).exists():
             Path(f).unlink()
 
@@ -467,6 +552,17 @@ def main():
         sys.exit(75)
     console.print(f"[green]✓ Controllo editoriale locale: {local_quality.score}/10[/]")
 
+    # Storyboard unico: guida immagini, intenzione vocale e durata delle scene.
+    from modules.scene_planner import create_scene_plan, save_scene_plan
+    scene_plan = create_scene_plan(
+        title=hook_title,
+        topic=topic,
+        spoken_text=script_content_clean,
+        call_agy=_call_scene_director,
+    )
+    save_scene_plan(scene_plan, scene_plan_path)
+    console.print(f"[green]✓ Storyboard creato: {len(scene_plan)} scene coerenti[/]")
+
     # Salva la vera fonte nello storico per non ripetere la notizia
     if Path("used_news_history.txt").exists():
         history_lines = Path("used_news_history.txt").read_text(encoding="utf-8").splitlines()
@@ -481,84 +577,12 @@ def main():
     if not safe_title: safe_title = "video"
     video_finale = f"output/video_{safe_title}.mp4"
 
-    # STEP 0.5: Download Immagini (Pexels / Pollinations Fallback)
-    console.print(f"\n[bold magenta]▶ AVVIO STEP 0.5: Download Immagini[/]")
-
-    new_bg_files = []
-    if os.getenv("PEXELS_API_KEY"):
-        try:
-            console.print("[dim]Cerco immagini su Pexels...[/dim]")
-            import urllib.request
-            import urllib.parse
-            import json
-
-            headers = {"Authorization": os.getenv("PEXELS_API_KEY")}
-            stop_words = {"e", "a", "il", "la", "le", "lo", "gli", "i", "un", "uno", "una", "di", "da", "in", "con", "su", "per"}
-            topic_words = [w for w in topic.split() if w.lower() not in stop_words]
-            search_query = " ".join(topic_words) if topic_words else "aesthetic"
-
-            url = f"https://api.pexels.com/v1/search?query={urllib.parse.quote(search_query)}&per_page=6&orientation=portrait&size=large"
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read())
-
-            photos = data.get("photos", [])
-            for i, p in enumerate(photos[:3]):
-                img_url = p["src"]["large2x"]
-                local_path = bg_dir / f"pexels_img_{int(time.time())}_{i}.jpg"
-
-                req_img = urllib.request.Request(img_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req_img, timeout=10) as img_resp, open(local_path, 'wb') as out_file:
-                    out_file.write(img_resp.read())
-                new_bg_files.append(local_path)
-                console.print(f"[green]✓ Immagine {i+1} scaricata da Pexels[/]")
-        except Exception as e:
-            error_code = getattr(e, "code", None)
-            if error_code in (401, 403):
-                # Evita ulteriori chiamate Pexels nello step 2 dello stesso run.
-                os.environ["PEXELS_DISABLED"] = "1"
-                console.print(
-                    "[yellow]Pexels ha rifiutato la chiave (HTTP "
-                    f"{error_code}); lo disabilito per questo run e passo subito al fallback.[/]"
-                )
-            else:
-                console.print(f"[red]Errore Pexels images: {e}[/]")
-    else:
-        console.print("[yellow]PEXELS_API_KEY mancante, passo a Pollinations.[/]")
-
-    # FALLBACK SU POLLINATIONS SE PEXELS FALLISCE O MANCANO IMMAGINI
-    if len(new_bg_files) < 3:
-        console.print("[yellow]⚠️ Uso Pollinations AI per generare immagini mancanti...[/]")
-        import urllib.parse
-        import urllib.request
-        for i in range(len(new_bg_files), 3):
-            prompt = f"Abstract atmospheric vertical background for {topic}, cinematic lighting, highly detailed, minimalist"
-            pollinations_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}?width=1080&height=1920&model=flux&enhance=true&nologo=true&private=true&seed={int(time.time())+i}"
-            local_path = bg_dir / f"pollinations_img_{int(time.time())}_{i}.jpg"
-
-            retry_delays = (0, 5, 12)
-            for attempt, retry_delay in enumerate(retry_delays, start=1):
-                try:
-                    if retry_delay:
-                        time.sleep(retry_delay)
-                    req_img = urllib.request.Request(pollinations_url, headers={'User-Agent': 'Mozilla/5.0'})
-                    partial_path = local_path.with_suffix(".part")
-                    with urllib.request.urlopen(req_img, timeout=45) as img_resp, open(partial_path, 'wb') as out_file:
-                        out_file.write(img_resp.read())
-                    if partial_path.stat().st_size < 10_000:
-                        raise ValueError("risposta immagine troppo piccola")
-                    partial_path.replace(local_path)
-                    new_bg_files.append(local_path)
-                    console.print(f"[green]✓ Immagine {i+1} generata con Pollinations AI[/]")
-                    time.sleep(2) # Pausa breve per evitare HTTP 429
-                    break
-                except Exception as e:
-                    partial_path = local_path.with_suffix(".part")
-                    if partial_path.exists():
-                        partial_path.unlink()
-                    console.print(f"[yellow]Tentativo {attempt}/3 Pollinations fallito: {e}[/]")
-            else:
-                console.print(f"[red]Errore definitivo Pollinations per immagine {i+1}[/]")
+    # STEP 0.5: una immagine per scena, nello stesso ordine del parlato.
+    console.print(f"\n[bold magenta]▶ AVVIO STEP 0.5: Immagini da storyboard[/]")
+    new_bg_files = download_scene_images(scene_plan, bg_dir)
+    if not new_bg_files:
+        console.print("[red]Nessuna immagine dello storyboard disponibile.[/]")
+        sys.exit(1)
 
     # Usa XTTS v2 (Modello Locale Open Source) per una voce super performante gratuita
     provider = "xtts"
@@ -569,7 +593,8 @@ def main():
         "--script", script_txt,
         "--output", audio_mp3,
         "--provider", provider,
-        "--voice", "assets/voices/mia_voce.wav"  # Il file audio da clonare
+        "--voice", "assets/voices/mia_voce.wav",
+        "--scene-plan", scene_plan_path,
     ]
     try:
         run_step(step1_cmd, f"STEP 1: Generazione Voce Clonate Locale ({provider.upper()})")
@@ -577,7 +602,7 @@ def main():
             raise SystemExit(1)
     except SystemExit:
         console.print("[yellow]⚠️ Voce fallita o corrotta. Tento fallback con Edge-TTS...[/]")
-        step1_fallback = [python_exe, "step1_voce.py", "--script", script_txt, "--output", audio_mp3, "--provider", "edge-tts"]
+        step1_fallback = [python_exe, "step1_voce.py", "--script", script_txt, "--output", audio_mp3, "--provider", "edge", "--scene-plan", scene_plan_path]
         run_step(step1_fallback, "STEP 1: Fallback Voce (EDGE-TTS)")
 
     # STEP 2: Generazione Sfondo (Pexels / Immagini Generate)
@@ -586,7 +611,8 @@ def main():
         "--audio", audio_mp3,
         "--output", video_base,
         "--interval", "3.5",
-        "--topic", topic
+        "--topic", topic,
+        "--scene-plan", scene_plan_path,
     ]
     if new_bg_files:
         step2_cmd.append("--images")
@@ -598,9 +624,15 @@ def main():
         if not Path(video_base).exists() or Path(video_base).stat().st_size < 10000:
             raise SystemExit(1)
     except SystemExit:
-        console.print("[yellow]⚠️ Sfondo fallito o corrotto. Tento fallback senza immagini custom...[/]")
-        step2_fallback = [python_exe, "step2_sfondo.py", "--audio", audio_mp3, "--output", video_base, "--topic", topic]
-        run_step(step2_fallback, "STEP 2: Fallback Sfondo")
+        console.print("[yellow]⚠️ Montaggio fallito. Riprovo conservando storyboard e immagini ordinate...[/]")
+        run_step(step2_cmd, "STEP 2: Retry Storyboard")
+
+    # Carica la risorsa prima del rendering: anche la CTA visiva deve usare il
+    # catalogo canonico, non una vecchia scritta Amazon hard-coded.
+    resource_data = None
+    if ebook_id:
+        from modules.ebook_catalog import get_ebook
+        resource_data = get_ebook(ebook_id)
 
     # STEP 3: Sottotitoli Dinamici (Whisper)
     step3_cmd = [
@@ -612,6 +644,14 @@ def main():
     ]
     if args.mode == "promo":
         step3_cmd.append("--cta")
+        if resource_data:
+            from modules.ebook_catalog import video_cta_copy
+            cta_title, cta_detail, cta_action = video_cta_copy(resource_data)
+            step3_cmd.extend([
+                "--cta-title", cta_title,
+                "--cta-detail", cta_detail,
+                "--cta-action", cta_action,
+            ])
 
     try:
         run_step(step3_cmd, "STEP 3: Sottotitoli Dinamici e CTA (Whisper)")
@@ -623,10 +663,7 @@ def main():
         run_step(step3_fallback, "STEP 3: Fallback Sottotitoli")
 
     # STEP 4: Pubblicazione Automatica (Opzionale)
-    resource_data = None
-    if ebook_id:
-        from modules.ebook_catalog import get_ebook
-        resource_data = get_ebook(ebook_id)
+    os.environ["CONSCIA_RESOURCE_ID"] = ebook_id or ""
     profile_path = Path("chrome_profile")
     cookies_path = Path("cookies.txt")
     if args.no_publish:

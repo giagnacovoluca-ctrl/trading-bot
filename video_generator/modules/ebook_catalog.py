@@ -67,3 +67,11 @@ def ebook_to_rag(item: dict) -> dict:
         "social_weight": float(item["socialWeight"]),
         "category": item["category"],
     }
+
+
+def video_cta_copy(item: dict) -> tuple[str, str, str]:
+    """Restituisce la CTA visiva coerente con la consegna gratuita."""
+    short_title = item.get("shortTitle", item["title"])
+    if item["deliveryType"] == "pdf_email":
+        return "PDF GRATUITO VIA EMAIL", short_title, "APRI IL LINK IN BIO"
+    return "ANTEPRIMA GRATUITA", f"{short_title} - SENZA REGISTRAZIONE", "APRI IL LINK IN BIO"

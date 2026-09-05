@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 from rich.console import Console
 from modules.ebook_catalog import get_ebook_by_title, load_ebook_catalog
+from modules.script_quality import validate_publication_text
 
 console = Console()
 
@@ -73,6 +74,10 @@ def valida_output(
     caption = data.get("caption")
     if not isinstance(caption, str) or not caption.strip():
         raise ValueError("Caption mancante")
+    visible_text = caption + ' ' + str(data.get('testo_schermo', '')) + ' ' + ' '.join(str(s.get('overlay_text', '')) for s in data.get('slides', []) if isinstance(s, dict))
+    issues = validate_publication_text(visible_text)
+    if issues:
+        raise ValueError('; '.join(issues))
 
     if format_type == "aesthetic":
         text = data.get("testo_schermo")
@@ -166,20 +171,36 @@ def _recent_aesthetic_entries(limit: int = 12) -> list[dict]:
 
 
 def scegli_ebook_aesthetic() -> str:
-    """Bilancia i dati iniziali con varietà e penalità di recenza."""
+    """Bilancia prior iniziali, insight Instagram e varietà recente."""
     recent_topics = [
         entry.get("topic")
         for entry in _recent_aesthetic_entries()
         if entry.get("topic")
     ]
     last_topic = recent_topics[-1] if recent_topics else ""
+    try:
+        from modules.feedback_loop import get_topic_weights
+        categories = sorted(set(CATEGORIES_MAP.values()))
+        performance_weights = get_topic_weights(categories)
+        # I pesi sono normalizzati (somma 1): li riportiamo attorno a 1 per
+        # usarli come moltiplicatore dei prior editoriali invece di annullarli.
+        performance_multiplier = {
+            category: performance_weights.get(category, 1 / len(categories)) * len(categories)
+            for category in categories
+        }
+    except (ImportError, OSError, ValueError):
+        performance_multiplier = {category: 1.0 for category in CATEGORIES_MAP.values()}
     weights = []
     for ebook in EBOOKS:
         uses = recent_topics.count(ebook)
         diversity_factor = max(0.35, 1.0 - (uses * 0.16))
         if ebook == last_topic:
             diversity_factor *= 0.15
-        weights.append(AESTHETIC_TOPIC_PRIORS[ebook] * diversity_factor)
+        weights.append(
+            AESTHETIC_TOPIC_PRIORS[ebook]
+            * performance_multiplier.get(CATEGORIES_MAP[ebook], 1.0)
+            * diversity_factor
+        )
     return random.choices(EBOOKS, weights=weights, k=1)[0]
 
 
@@ -317,6 +338,7 @@ JSON DA REVISIONARE:
 {testo_json}
 
 Il tuo compito è scansionarlo e dirmi se rispetta le regole.
+Controlla anche la correttezza: nessun numero clinico senza una fonte precisa e verificata, nessuna promessa biologica derivata soltanto dal libro. Se non puoi verificare un'affermazione, riscrivila come osservazione pratica senza claim sanitario. Ayurveda e numerologia sono tradizioni/strumenti simbolici, non diagnosi o prove scientifiche. Preferisci un problema concreto, un esempio e una piccola azione. Il marchio è ConsciaMente.
 Regole per 'carosello': L'overlay_text deve essere LOGICO e CONSEQUENZIALE dalla slide 1 alla 6. NON ci devono essere muri di testo (frasi brevi e taglienti). Se il JSON è corrotto, boccialo.
 Regole per 'aesthetic':
 - testo_schermo di 7-12 parole, concreto, autonomo e leggibile in pochi secondi;
@@ -416,6 +438,8 @@ def main():
             f.write(final_json["caption"])
 
         console.print("[magenta]Avvio pipeline crea_carosello.py...[/]")
+        resource = get_ebook_by_title(topic) if args.mode == "promo" else None
+        os.environ["CONSCIA_RESOURCE_ID"] = resource["id"] if resource else ""
         command = [sys.executable, "crea_carosello.py"]
         if args.no_publish:
             command.append("--no-publish")
@@ -430,7 +454,7 @@ def main():
                 hook_title=first_slide,
                 category=category,
                 mode=f"carosello_{args.mode}",
-                quality_score=8,
+                quality_score=None,
                 fonte="",
                 success=True,
                 topic=topic,
@@ -441,17 +465,32 @@ def main():
 
     else:
         # Formato aesthetic
+        resource = get_ebook_by_title(topic)
+        os.environ["CONSCIA_RESOURCE_ID"] = resource["id"]
+        visual_cta = (
+            "PDF GRATUITO · LINK IN BIO"
+            if resource["deliveryType"] == "pdf_email"
+            else "ANTEPRIMA GRATUITA · LINK IN BIO"
+        )
         with open("scripts/temp_aesthetic_text.txt", "w", encoding="utf-8") as f:
             f.write(final_json["testo_schermo"])
         with open("scripts/ig_caption.txt", "w", encoding="utf-8") as f:
             f.write(final_json["caption"])
 
         console.print("[magenta]Avvio pipeline crea_ig_aesthetic.py...[/]")
-        subprocess.run([sys.executable, "crea_ig_aesthetic.py", "--text", final_json["testo_schermo"], "--category", category, "--out", "output/aesthetic_reel.mp4"], check=True)
+        subprocess.run([
+            sys.executable, "crea_ig_aesthetic.py",
+            "--text", final_json["testo_schermo"],
+            "--category", category,
+            "--cta", visual_cta,
+            "--out", "output/aesthetic_reel.mp4",
+        ], check=True)
         if args.no_publish:
             console.print("[yellow]Modalità --no-publish: Reel generato senza upload.[/]")
             return
         console.print("[magenta]Avvio caricamento IG...[/]")
+        receipt_path = Path("output/instagram_aesthetic_receipt.json")
+        receipt_path.unlink(missing_ok=True)
         subprocess.run([
             sys.executable,
             "step4_pubblica_ig_api.py",
@@ -461,21 +500,28 @@ def main():
             "scripts/temp_aesthetic_text.txt",
             "--mode",
             "aesthetic",
+            "--receipt",
+            str(receipt_path),
         ], check=True)
+        media_id = ""
+        try:
+            media_id = str(json.loads(receipt_path.read_text(encoding="utf-8"))["media_id"])
+        except (OSError, KeyError, json.JSONDecodeError):
+            console.print("[yellow]Reel pubblicato, ma ID Meta non disponibile per le metriche.[/]")
         from modules.feedback_loop import log_upload
-        resource = get_ebook_by_title(topic)
         log_upload(
             video_file="output/aesthetic_reel.mp4",
             hook_title=final_json["testo_schermo"],
             category=category,
             mode="aesthetic",
-            quality_score=8,
+            quality_score=None,
             fonte="",
             success=True,
             topic=topic,
             platform="instagram",
             resource_id=resource["id"],
             delivery_type=resource["deliveryType"],
+            media_id=media_id,
         )
 
     console.print("[bold green]CICLO COMPLETATO CON SUCCESSO![/]")
