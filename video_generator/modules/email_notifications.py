@@ -64,3 +64,31 @@ def notify_email(message: str) -> bool:
     except Exception as exc:
         print(f"Errore notifica email: {exc}")
         return False
+
+
+def notify_content_status(
+    outcome: str,
+    content_type: str,
+    platforms: str,
+    title: str = "",
+    resource: str = "",
+    reason: str = "",
+) -> bool:
+    """Notifica l'esito di ogni contenuto senza esporre dati sensibili.
+
+    ``outcome`` è ``published`` oppure ``not_published``: il secondo caso
+    include sempre il motivo, così un file renderizzato non viene scambiato per
+    un post effettivamente online.
+    """
+    labels = {"published": "PUBBLICATO", "not_published": "NON PUBBLICATO"}
+    status = labels.get(outcome, outcome.upper())
+    details = [f"Esito: {status}", f"Formato: {content_type}", f"Canale: {platforms}"]
+    if title:
+        details.append(f"Titolo: {title[:300]}")
+    if resource:
+        details.append(f"Risorsa: {resource}")
+    if outcome != "published":
+        details.append(f"Motivo: {reason or 'motivo non disponibile'}")
+    elif reason:
+        details.append(f"Nota: {reason}")
+    return notify_email("\n".join(details))

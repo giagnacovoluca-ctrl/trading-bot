@@ -17,6 +17,7 @@ from modules.meta_config import graph_url
 from modules.content_tracking import create_campaign, save_campaign
 from modules.feedback_loop import log_upload
 from modules.ebook_catalog import load_ebook_catalog
+from modules.email_notifications import notify_content_status
 
 console = Console()
 load_dotenv()
@@ -279,6 +280,11 @@ def main():
         topic=ebook_data["title"], platform="instagram", resource_id=ebook_id,
         delivery_type=ebook_data["deliveryType"],
     )
+    notify_content_status("published", "Storia", "Instagram", story_text.split(".", 1)[0], ebook_data["shortTitle"])
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        notify_content_status("not_published", "Storia", "Instagram", reason=f"{type(exc).__name__}: {exc}")
+        raise

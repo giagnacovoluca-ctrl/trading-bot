@@ -148,6 +148,7 @@ def main():
         console.print("[cyan]Caricamento come Reel Video su IG...[/]")
         subprocess.run([sys.executable, "step4_pubblica_ig_api.py", "--video", str(out_video), "--script", "scripts/script_carosello.txt", "--mode", "virale"], check=True)
 
+    notify_email(f"Esito: PUBBLICATO\nFormato: contenuto {args.prodotto}\nCanale: {args.piattaforma}\nFile: {out_video.name}")
     console.print(f"[bold green]Operazione completata per {args.prodotto} su {args.piattaforma}[/]")
 
 if __name__ == "__main__":

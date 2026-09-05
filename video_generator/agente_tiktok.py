@@ -10,7 +10,7 @@ from rich.console import Console
 
 from modules.site_integration import parse_generated_manifest
 from modules.script_quality import extract_metadata, validate_script
-from modules.email_notifications import notify_email
+from modules.email_notifications import notify_email, notify_content_status
 
 console = Console()
 
@@ -702,7 +702,11 @@ def main():
                 fonte=fonte_notizia,
                 metadata=editorial_metadata,
             )
-            notify_email(f"✅ Video pubblicato: '{hook_title}' (score {quality_score}/10)")
+            notify_content_status(
+                "published", f"video {args.mode}", "TikTok", hook_title,
+                resource_data["shortTitle"] if resource_data else "",
+                f"score qualità {quality_score}/10",
+            )
         except SystemExit:
             from modules.feedback_loop import log_upload
             log_upload(
@@ -718,9 +722,15 @@ def main():
                 resource_id=ebook_id,
                 delivery_type=resource_data["deliveryType"] if resource_data else "",
             )
+            notify_content_status(
+                "not_published", f"video {args.mode}", "TikTok", hook_title,
+                resource_data["shortTitle"] if resource_data else "",
+                "upload inviato ma non confermato oppure rifiutato dalla piattaforma",
+            )
             raise
     else:
         console.print("\n[dim]Salto la pubblicazione automatica: né 'chrome_profile' né 'cookies.txt' trovati.[/]")
+        notify_content_status("not_published", f"video {args.mode}", "TikTok", hook_title, resource_data["shortTitle"] if resource_data else "", "sessione TikTok non disponibile")
 
     # --- INTEGRAZIONE SITO NEXT.JS (Solo in modalità promo) ---
     if args.mode == "promo" and not args.no_site:

@@ -10,6 +10,7 @@ from pathlib import Path
 from rich.console import Console
 from modules.ebook_catalog import get_ebook_by_title, load_ebook_catalog
 from modules.script_quality import validate_publication_text
+from modules.email_notifications import notify_content_status
 
 console = Console()
 
@@ -462,6 +463,12 @@ def main():
                 resource_id=resource["id"] if resource else "",
                 delivery_type=resource["deliveryType"] if resource else "",
             )
+            notify_content_status(
+                "published", f"carosello {args.mode}", "TikTok e Instagram",
+                first_slide, resource["shortTitle"] if resource else "",
+            )
+        else:
+            notify_content_status("not_published", f"carosello {args.mode}", "nessuno", topic, reason="modalità --no-publish")
 
     else:
         # Formato aesthetic
@@ -487,6 +494,7 @@ def main():
         ], check=True)
         if args.no_publish:
             console.print("[yellow]Modalità --no-publish: Reel generato senza upload.[/]")
+            notify_content_status("not_published", "Reel aesthetic", "Instagram", final_json["testo_schermo"], resource["shortTitle"], "modalità --no-publish")
             return
         console.print("[magenta]Avvio caricamento IG...[/]")
         receipt_path = Path("output/instagram_aesthetic_receipt.json")
@@ -523,8 +531,13 @@ def main():
             delivery_type=resource["deliveryType"],
             media_id=media_id,
         )
+        notify_content_status("published", "Reel aesthetic", "Instagram", final_json["testo_schermo"], resource["shortTitle"])
 
     console.print("[bold green]CICLO COMPLETATO CON SUCCESSO![/]")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        notify_content_status("not_published", "carosello o Reel aesthetic", "TikTok e/o Instagram", reason=f"{type(exc).__name__}: {exc}")
+        raise
